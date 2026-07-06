@@ -2,12 +2,12 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js
 importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
 
 const firebaseConfig = {
-  projectId: "yarling-goods-9sjh2",
-  appId: "1:1018264177176:web:eab6c1540918308502d16d",
-  apiKey: "AIzaSyDN_iG8rIeYFPso6ylA99UTfXyCM7DUEl0",
-  authDomain: "yarling-goods-9sjh2.firebaseapp.com",
-  storageBucket: "yarling-goods-9sjh2.firebasestorage.app",
-  messagingSenderId: "1018264177176",
+  projectId: "ulfhachat",
+  appId: "1:684407740624:web:cb4aa9ccf5f935999766d5",
+  apiKey: "AIzaSyBo0Ml2F90R0Sw3zw2XjiE99N78joBXQJM",
+  authDomain: "ulfhachat.firebaseapp.com",
+  storageBucket: "ulfhachat.firebasestorage.app",
+  messagingSenderId: "684407740624",
   measurementId: ""
 };
 
