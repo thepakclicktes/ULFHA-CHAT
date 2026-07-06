@@ -121,6 +121,22 @@ export default function Settings({ profile }: SettingsProps) {
         username: cleanUsername,
         bio: editBio.trim()
       });
+      
+      // Update local storage cache immediately
+      try {
+        const cached = localStorage.getItem(`user_profile_backup_${profile.uid}`);
+        const currentData = cached ? JSON.parse(cached) : {};
+        localStorage.setItem(`user_profile_backup_${profile.uid}`, JSON.stringify({
+          ...profile,
+          ...currentData,
+          displayName: editName.trim(),
+          username: cleanUsername,
+          bio: editBio.trim()
+        }));
+      } catch (e) {
+        console.warn('Failed to update local profile cache in Settings:', e);
+      }
+
       setIsEditingProfile(false);
     } catch (err) {
       console.error('Failed to update profile:', err);

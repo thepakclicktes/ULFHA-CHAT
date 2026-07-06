@@ -31,7 +31,6 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
   const [groups, setGroups] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [activeFilter, setActiveFilter] = useState('All');
   const [isLoading, setIsLoading] = useState(false);
 
   // Modal and creation states
@@ -401,82 +400,8 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
     }
   };
 
-  const filters = ['All', 'My Contacts', 'Unread', 'Favorites', 'Groups'];
-  const [myContacts, setMyContacts] = useState<any[]>([]);
-
   const [allRegisteredUsers, setAllRegisteredUsers] = useState<UserProfile[]>([]);
 
-  // Load My Contacts and All Users for "My Contacts" tab
-  useEffect(() => {
-    if (!auth.currentUser) return;
-
-    const q = query(
-      collection(db, 'users', auth.currentUser.uid, 'contacts'), 
-      orderBy('savedAt', 'desc')
-    );
-    
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const contactsWithNicks = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
-      
-      if (contactsWithNicks.length === 0) {
-        setMyContacts([]);
-        // If no saved contacts, let's fetch some registered users to show something
-        try {
-          const allSnap = await getDocs(query(collection(db, 'users'), limit(50)));
-          const allList = allSnap.docs
-            .map(d => ({ uid: d.id, ...d.data() } as UserProfile))
-            .filter(u => u.uid !== auth.currentUser?.uid);
-          setAllRegisteredUsers(allList);
-        } catch (e) {
-          console.error(e);
-        }
-        return;
-      }
-
-      try {
-        const contactIds = contactsWithNicks.map(c => c.uid);
-        const profilesMap = new Map<string, any>();
-        
-        // Split IDs into chunks of 30 for Firestore 'in' query
-        for (let i = 0; i < contactIds.length; i += 30) {
-          const chunk = contactIds.slice(i, i + 30);
-          const profilesSnap = await getDocs(query(collection(db, 'users'), where('__name__', 'in', chunk)));
-          profilesSnap.docs.forEach(doc => {
-            profilesMap.set(doc.id, { uid: doc.id, ...doc.data() });
-          });
-        }
-
-        const mergedContacts = contactsWithNicks.map(c => {
-          const profile = profilesMap.get(c.uid);
-          return {
-            ...profile,
-            uid: c.uid,
-            displayName: (c as any).nickname || profile?.displayName || `User: ${c.uid}`,
-            isSavedContact: true,
-            timestamp: (c as any).savedAt || profile?.updatedAt // Use savedAt for sorting
-          };
-        }).sort((a, b) => {
-          const timeA = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : (a.timestamp instanceof Date ? a.timestamp.getTime() : (typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : 0));
-          const timeB = b.timestamp?.seconds ? b.timestamp.seconds * 1000 : (b.timestamp instanceof Date ? b.timestamp.getTime() : (typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() : 0));
-          return timeB - timeA;
-        });
-
-        setMyContacts(mergedContacts);
-        
-        // Also load a few general users
-        const allSnap = await getDocs(query(collection(db, 'users'), limit(20)));
-        const allList = allSnap.docs
-          .map(d => ({ uid: d.id, ...d.data() } as UserProfile))
-          .filter(u => u.uid !== auth.currentUser?.uid && !contactIds.includes(u.uid));
-        setAllRegisteredUsers(allList);
-
-      } catch (err) {
-        console.error("Error fetching contact profiles:", err);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [auth.currentUser]);
 
   // Sync internal search with prop search from header
   useEffect(() => {
@@ -523,20 +448,42 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
   useEffect(() => {
     if (!auth.currentUser) return;
 
+    // Immediately load cached users and groups for instant offline display
+    try {
+      const cachedUsersStr = localStorage.getItem(`cached_users_${auth.currentUser.uid}`);
+      if (cachedUsersStr) {
+        setUsers(JSON.parse(cachedUsersStr));
+      }
+      const cachedGroupsStr = localStorage.getItem(`cached_groups_${auth.currentUser.uid}`);
+      if (cachedGroupsStr) {
+        setGroups(JSON.parse(cachedGroupsStr));
+      }
+    } catch (e) {
+      console.warn('Failed to pre-load cached users or groups:', e);
+    }
+
     const q = query(
       collection(db, 'messages'),
       or(
         where('senderId', '==', auth.currentUser.uid),
         where('receiverId', '==', auth.currentUser.uid)
       ),
-      orderBy('timestamp', 'desc'),
-      limit(50)
+      limit(150)
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       setIsLoading(true);
       const activeUserIds = new Set<string>();
-      snapshot.docs.forEach(async (d) => {
+      
+      // Sort documents client-side by timestamp descending to ensure we process newest first if needed
+      const docs = [...snapshot.docs];
+      docs.sort((a, b) => {
+        const tA = a.data().timestamp?.seconds || 0;
+        const tB = b.data().timestamp?.seconds || 0;
+        return tB - tA;
+      });
+
+      docs.forEach(async (d) => {
         const data = d.data();
         if (data.senderId !== auth.currentUser?.uid && !data.receiverId?.startsWith('group_') && !data.receiverId?.startsWith('channel_') && !data.isGroupMode && !data.isChannelMode) {
           activeUserIds.add(data.senderId);
@@ -561,16 +508,35 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
         return;
       }
 
-      // Fetch user profiles for active conversations
-      const userQueries = Array.from(activeUserIds).map(uid => getDocs(query(collection(db, 'users'), where('__name__', '==', uid))));
-      const userSnaps = await Promise.all(userQueries);
-      const activeUsers = userSnaps.flatMap(snap => snap.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
-      
-      setUsers(activeUsers);
+      try {
+        // Fetch user profiles for active conversations
+        const userQueries = Array.from(activeUserIds).map(uid => getDocs(query(collection(db, 'users'), where('__name__', '==', uid))));
+        const userSnaps = await Promise.all(userQueries);
+        const activeUsers = userSnaps.flatMap(snap => snap.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
+        
+        setUsers(activeUsers);
+        // Cache newly loaded user profiles locally
+        try {
+          localStorage.setItem(`cached_users_${auth.currentUser.uid}`, JSON.stringify(activeUsers));
+        } catch (e) {
+          console.warn('Failed to save user profiles to local cache:', e);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch active users profiles online, keeping current display:', err);
+      }
       setIsLoading(false);
     }, (error) => {
       setIsLoading(false);
       handleFirestoreError(error, OperationType.LIST, 'messages');
+      // If Firestore subscription failed or went offline, read from local cache
+      try {
+        const cachedUsersStr = localStorage.getItem(`cached_users_${auth.currentUser?.uid}`);
+        if (cachedUsersStr) {
+          setUsers(JSON.parse(cachedUsersStr));
+        }
+      } catch (e) {
+        console.warn('Failed to load cached users on Firestore subscription error:', e);
+      }
     });
 
     return () => unsubscribe();
@@ -591,8 +557,23 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
         ...doc.data()
       }));
       setGroups(list);
+      // Cache newly loaded groups locally
+      try {
+        localStorage.setItem(`cached_groups_${auth.currentUser?.uid}`, JSON.stringify(list));
+      } catch (e) {
+        console.warn('Failed to save groups to local cache:', e);
+      }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'groups');
+      // Fallback to cached groups when offline or subscription fails
+      try {
+        const cachedGroupsStr = localStorage.getItem(`cached_groups_${auth.currentUser?.uid}`);
+        if (cachedGroupsStr) {
+          setGroups(JSON.parse(cachedGroupsStr));
+        }
+      } catch (e) {
+        console.warn('Failed to load cached groups on Firestore subscription error:', e);
+      }
     });
 
     return () => unsubscribe();
@@ -653,22 +634,104 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
         const lowerSearch = cleanSearch.toLowerCase();
         const cleanPhone = cleanSearch.replace(/[^\d+]/g, '');
 
-        // Search by exact email, username, display name, or phone number in users
-        const q = query(
-          collection(db, 'users'),
-          or(
-            where('email', '==', lowerSearch),
-            where('username', '==', lowerSearch),
-            where('displayName', '==', cleanSearch),
-            where('phoneNumber', '==', cleanSearch),
-            where('phoneNumber', '==', cleanPhone)
-          )
+        // To search with absolute reliability across any number of users, we use a multi-path query strategy:
+        // 1. Prefix query on username
+        // 2. Prefix query on email
+        // 3. Prefix query on displayName
+        // 4. Exact query on username
+        // 5. Exact query on email
+        // 6. Local substring fallback from a scan
+        const queryPromises = [];
+
+        // Prefix query on username
+        queryPromises.push(
+          getDocs(query(
+            collection(db, 'users'),
+            where('username', '>=', lowerSearch),
+            where('username', '<=', lowerSearch + '\uf8ff'),
+            limit(100)
+          )).catch(err => {
+            console.warn("Username prefix query failed:", err);
+            return null;
+          })
         );
+
+        // Prefix query on email
+        queryPromises.push(
+          getDocs(query(
+            collection(db, 'users'),
+            where('email', '>=', lowerSearch),
+            where('email', '<=', lowerSearch + '\uf8ff'),
+            limit(100)
+          )).catch(err => {
+            console.warn("Email prefix query failed:", err);
+            return null;
+          })
+        );
+
+        // Exact query on username
+        queryPromises.push(
+          getDocs(query(
+            collection(db, 'users'),
+            where('username', '==', lowerSearch),
+            limit(10)
+          )).catch(err => {
+            console.warn("Username exact query failed:", err);
+            return null;
+          })
+        );
+
+        // Exact query on email
+        queryPromises.push(
+          getDocs(query(
+            collection(db, 'users'),
+            where('email', '==', lowerSearch),
+            limit(10)
+          )).catch(err => {
+            console.warn("Email exact query failed:", err);
+            return null;
+          })
+        );
+
+        // Fallback scan query
+        queryPromises.push(
+          getDocs(query(collection(db, 'users'), limit(300))).catch(err => {
+            console.warn("Users fallback scan failed:", err);
+            return null;
+          })
+        );
+
+        const snapshots = await Promise.all(queryPromises);
         
-        const snapshot = await getDocs(q);
-        let results = snapshot.docs
-          .map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile))
-          .filter(u => u.uid !== auth.currentUser?.uid);
+        // Merge results from all queries
+        const mergedUsersMap = new Map<string, UserProfile>();
+        
+        snapshots.forEach(snapshot => {
+          if (!snapshot) return;
+          snapshot.docs.forEach(docSnap => {
+            const data = docSnap.data();
+            const uid = docSnap.id;
+            if (uid !== auth.currentUser?.uid) {
+              mergedUsersMap.set(uid, { uid, ...data } as UserProfile);
+            }
+          });
+        });
+
+        // Convert to array and run fine-grained client-side filtering for high accuracy
+        let results = Array.from(mergedUsersMap.values()).filter(u => {
+          const displayNameLower = (u.displayName || '').toLowerCase();
+          const emailLower = (u.email || '').toLowerCase();
+          const usernameLower = (u.username || '').toLowerCase();
+          const phoneClean = (u.phoneNumber || '').replace(/[^\d+]/g, '');
+
+          return (
+            displayNameLower.includes(lowerSearch) ||
+            emailLower.includes(lowerSearch) ||
+            usernameLower.includes(lowerSearch) ||
+            (cleanPhone && phoneClean.includes(cleanPhone)) ||
+            (cleanSearch && (u.phoneNumber || '').includes(cleanSearch))
+          );
+        });
 
         // If search term looks like a phone number and no direct user exists, inject virtual WhatsApp Contact
         const isPhonePattern = /^\+?[\d\s-]{7,20}$/.test(cleanSearch) && /[\d]/.test(cleanSearch);
@@ -819,25 +882,8 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
   // Combine both user profiles and group collections for unified display listing
   const allChats = [...users, ...groups];
 
-  // Apply visual category filters
+  // Apply visual category filters - Default to showing all
   let filteredChats = allChats;
-  if (activeFilter === 'Groups') {
-    filteredChats = groups;
-  } else if (activeFilter === 'My Contacts') {
-    // Merge saved contacts with all registered users to ensure "sary content" shows up
-    const combined = [...myContacts];
-    allRegisteredUsers.forEach(u => {
-      if (!combined.find(c => c.uid === u.uid)) {
-        combined.push(u);
-      }
-    });
-    filteredChats = combined;
-  } else if (activeFilter === 'Favorites') {
-    filteredChats = groups.filter(g => g.isChannel); // default show Channels as favorites / announcement spaces
-  } else if (activeFilter === 'Unread') {
-    // Return all chats for standard view
-    filteredChats = allChats;
-  }
 
   const displayedChats = searchTerm
     ? [
@@ -950,38 +996,63 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
       <div className="px-5 py-4 bg-white flex items-center justify-between border-b border-[#F5F6F6] sticky top-0 z-30">
         <h2 className="text-2xl font-bold text-[#111B21]">Chats</h2>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setActiveFilter('My Contacts')}
-            className={cn(
-              "p-2.5 rounded-full transition-all duration-300 shadow-sm border border-gray-100",
-              activeFilter === 'My Contacts' ? "bg-emerald-100 text-[#008069]" : "bg-white text-[#667781] hover:bg-gray-50"
-            )}
-            title="My Contacts"
-          >
-            <ListPlus size={20} />
-          </button>
-          <div className="relative">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowCreateOption(!showCreateOption)}
-              className="flex items-center gap-2 bg-[#25D366] text-white px-5 py-2.5 rounded-full shadow-lg hover:bg-[#128C7E] transition-all duration-300 font-bold text-sm tracking-wide group"
-            >
-              <Plus size={18} className={cn("transition-transform duration-300", showCreateOption && "rotate-45")} />
-              <span>Create</span>
-            </motion.button>
+          {/* Create button was removed from here */}
+        </div>
+      </div>
 
-          {/* Sub menu popover */}
+      {/* Search Bar - styled like standard WhatsApp/Telegram, supports real-time global user searches */}
+      <div className="px-5 py-2.5 bg-white border-b border-[#F5F6F6] z-10">
+        <div className="relative flex items-center bg-[#F0F2F5] rounded-xl px-3 py-2 border border-transparent focus-within:border-[#008069] transition-all">
+          <Search size={18} className="text-[#667781] mr-2" />
+          <input
+            id="chat-list-search-input"
+            type="text"
+            placeholder="Search email, username, or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-transparent text-sm text-[#111B21] outline-none placeholder:text-[#667781]"
+          />
+          {searchTerm && (
+            <button 
+              id="chat-list-clear-search-btn"
+              onClick={() => setSearchTerm('')} 
+              className="p-0.5 hover:bg-gray-200 rounded-full text-[#667781] transition-all"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+
+      {/* MAIN LIST container */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+        <AnimatePresence mode="popLayout">
+          {/* ... existing list content ... */}
+        </AnimatePresence>
+        
+        {/* FAB Create button */}
+        <div className="absolute bottom-6 right-6 z-50">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowCreateOption(!showCreateOption)}
+            className="w-14 h-14 bg-[#25D366] text-white rounded-full shadow-xl flex items-center justify-center hover:bg-[#128C7E] transition-all duration-300"
+          >
+            <Plus size={28} className={cn("transition-transform duration-300", showCreateOption && "rotate-45")} />
+          </motion.button>
+          
+          {/* Sub menu popover positioned above the FAB */}
           <AnimatePresence>
             {showCreateOption && (
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 15 }}
-                className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 overflow-hidden"
+                className="absolute bottom-16 right-0 mb-2 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 overflow-hidden"
               >
                 <button
-                  onClick={() => { setShowCreateOption(false); setActiveFilter('My Contacts'); }}
+                  onClick={() => { setShowCreateOption(false); }}
                   className="w-full text-left px-4 py-3 hover:bg-emerald-50 flex items-center gap-3 text-sm text-[#008069] font-bold border-b border-gray-50 transition-colors"
                 >
                   <ListPlus size={16} className="text-[#008069]" />
@@ -1033,31 +1104,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
             )}
           </AnimatePresence>
         </div>
-      </div>
-    </div>
 
-      {/* Filter Chips */}
-      {!searchTerm && !showArchivedOnly && (
-        <div className="px-5 pb-3 bg-white flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-[#F5F6F6]">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={cn(
-                "px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300",
-                activeFilter === filter 
-                  ? "bg-[#D9FDD3] text-[#008069] shadow-sm" 
-                  : "bg-[#F0F2F5] text-[#667781] hover:bg-gray-200"
-              )}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* MAIN LIST container */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
         <AnimatePresence mode="popLayout">
           {isLoading ? (
             Array.from({ length: 10 }).map((_, i) => <ChatSkeleton key={i} />)

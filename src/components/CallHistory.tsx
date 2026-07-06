@@ -21,14 +21,20 @@ export default function CallHistory({ profile, onNavigateToChat }: CallHistoryPr
     const q = query(
       collection(db, 'calls'),
       where('participants', 'array-contains', profile.uid),
-      orderBy('timestamp', 'desc'),
-      limit(50)
+      limit(100)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const callsData = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as Call))
         .filter(call => ['ended', 'missed', 'rejected'].includes(call.status));
+      
+      // Sort client-side by timestamp descending
+      callsData.sort((a, b) => {
+        const timeA = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : (a.timestamp instanceof Date ? a.timestamp.getTime() : (typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : 0));
+        const timeB = b.timestamp?.seconds ? b.timestamp.seconds * 1000 : (b.timestamp instanceof Date ? b.timestamp.getTime() : (typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() : 0));
+        return timeB - timeA;
+      });
       
       setCalls(callsData);
       setLoading(false);

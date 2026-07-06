@@ -58,8 +58,7 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
         where('senderId', '==', auth.currentUser.uid),
         where('receiverId', '==', auth.currentUser.uid)
       ),
-      orderBy('timestamp', 'desc'),
-      limit(100)
+      limit(150)
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
@@ -128,6 +127,122 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
     loadUsers();
   }, []);
 
+  // Real-time debounce search for direct user lookups
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchTerm.trim()) {
+        const triggerContactsSearch = async () => {
+          setIsLoading(true);
+          try {
+            const cleanSearch = searchTerm.trim();
+            const lowerSearch = cleanSearch.toLowerCase();
+
+            // Run extremely reliable multi-path prefix, exact, and fallback scanning queries in parallel
+            const queryPromises = [];
+
+            // Prefix query on username
+            queryPromises.push(
+              getDocs(query(
+                collection(db, 'users'),
+                where('username', '>=', lowerSearch),
+                where('username', '<=', lowerSearch + '\uf8ff'),
+                limit(100)
+              )).catch(err => {
+                console.warn("Username prefix query failed in Contacts:", err);
+                return null;
+              })
+            );
+
+            // Prefix query on email
+            queryPromises.push(
+              getDocs(query(
+                collection(db, 'users'),
+                where('email', '>=', lowerSearch),
+                where('email', '<=', lowerSearch + '\uf8ff'),
+                limit(100)
+              )).catch(err => {
+                console.warn("Email prefix query failed in Contacts:", err);
+                return null;
+              })
+            );
+
+            // Exact query on username
+            queryPromises.push(
+              getDocs(query(
+                collection(db, 'users'),
+                where('username', '==', lowerSearch),
+                limit(10)
+              )).catch(err => {
+                console.warn("Username exact query failed in Contacts:", err);
+                return null;
+              })
+            );
+
+            // Exact query on email
+            queryPromises.push(
+              getDocs(query(
+                collection(db, 'users'),
+                where('email', '==', lowerSearch),
+                limit(10)
+              )).catch(err => {
+                console.warn("Email exact query failed in Contacts:", err);
+                return null;
+              })
+            );
+
+            // Fallback scan query
+            queryPromises.push(
+              getDocs(query(collection(db, 'users'), limit(300))).catch(err => {
+                console.warn("Users fallback scan failed in Contacts:", err);
+                return null;
+              })
+            );
+
+            const snapshots = await Promise.all(queryPromises);
+
+            const mergedUsersMap = new Map<string, UserProfile>();
+
+            snapshots.forEach(snapshot => {
+              if (!snapshot) return;
+              snapshot.docs.forEach(docSnap => {
+                const data = docSnap.data();
+                const uid = docSnap.id;
+                if (uid !== auth.currentUser?.uid) {
+                  mergedUsersMap.set(uid, { uid, ...data } as UserProfile);
+                }
+              });
+            });
+
+            const results = Array.from(mergedUsersMap.values()).filter(u => {
+              const displayNameLower = (u.displayName || '').toLowerCase();
+              const emailLower = (u.email || '').toLowerCase();
+              const usernameLower = (u.username || '').toLowerCase();
+              const phoneClean = (u.phoneNumber || '').replace(/[^\d+]/g, '');
+
+              return (
+                displayNameLower.includes(lowerSearch) ||
+                emailLower.includes(lowerSearch) ||
+                usernameLower.includes(lowerSearch) ||
+                phoneClean.includes(lowerSearch)
+              );
+            });
+
+            setSearchResults(results);
+          } catch (error) {
+            console.error("Contacts search error:", error);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        triggerContactsSearch();
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
   // Global search handler for direct user lookups
   const handleSearchUsers = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,18 +255,97 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
     try {
       const cleanSearch = searchTerm.trim();
       const lowerSearch = cleanSearch.toLowerCase();
-      const q = query(
-        collection(db, 'users'),
-        or(
-          where('email', '==', lowerSearch),
-          where('username', '==', lowerSearch),
-          where('displayName', '==', cleanSearch)
-        )
+
+      // Run extremely reliable multi-path prefix, exact, and fallback scanning queries in parallel
+      const queryPromises = [];
+
+      // Prefix query on username
+      queryPromises.push(
+        getDocs(query(
+          collection(db, 'users'),
+          where('username', '>=', lowerSearch),
+          where('username', '<=', lowerSearch + '\uf8ff'),
+          limit(100)
+        )).catch(err => {
+          console.warn("Username prefix query failed in Contacts Search:", err);
+          return null;
+        })
       );
-      const snapshot = await getDocs(q);
-      const results = snapshot.docs
-        .map(docSnap => ({ uid: docSnap.id, ...docSnap.data() } as UserProfile))
-        .filter(u => u.uid !== auth.currentUser?.uid);
+
+      // Prefix query on email
+      queryPromises.push(
+        getDocs(query(
+          collection(db, 'users'),
+          where('email', '>=', lowerSearch),
+          where('email', '<=', lowerSearch + '\uf8ff'),
+          limit(100)
+        )).catch(err => {
+          console.warn("Email prefix query failed in Contacts Search:", err);
+          return null;
+        })
+      );
+
+      // Exact query on username
+      queryPromises.push(
+        getDocs(query(
+          collection(db, 'users'),
+          where('username', '==', lowerSearch),
+          limit(10)
+        )).catch(err => {
+          console.warn("Username exact query failed in Contacts Search:", err);
+          return null;
+        })
+      );
+
+      // Exact query on email
+      queryPromises.push(
+        getDocs(query(
+          collection(db, 'users'),
+          where('email', '==', lowerSearch),
+          limit(10)
+        )).catch(err => {
+          console.warn("Email exact query failed in Contacts Search:", err);
+          return null;
+        })
+      );
+
+      // Fallback scan query
+      queryPromises.push(
+        getDocs(query(collection(db, 'users'), limit(300))).catch(err => {
+          console.warn("Users fallback scan failed in Contacts Search:", err);
+          return null;
+        })
+      );
+
+      const snapshots = await Promise.all(queryPromises);
+
+      const mergedUsersMap = new Map<string, UserProfile>();
+
+      snapshots.forEach(snapshot => {
+        if (!snapshot) return;
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          const uid = docSnap.id;
+          if (uid !== auth.currentUser?.uid) {
+            mergedUsersMap.set(uid, { uid, ...data } as UserProfile);
+          }
+        });
+      });
+
+      const results = Array.from(mergedUsersMap.values()).filter(u => {
+        const displayNameLower = (u.displayName || '').toLowerCase();
+        const emailLower = (u.email || '').toLowerCase();
+        const usernameLower = (u.username || '').toLowerCase();
+        const phoneClean = (u.phoneNumber || '').replace(/[^\d+]/g, '');
+
+        return (
+          displayNameLower.includes(lowerSearch) ||
+          emailLower.includes(lowerSearch) ||
+          usernameLower.includes(lowerSearch) ||
+          phoneClean.includes(lowerSearch)
+        );
+      });
+
       setSearchResults(results);
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, 'users');

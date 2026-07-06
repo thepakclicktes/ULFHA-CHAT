@@ -373,12 +373,16 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
         collection(db, 'messages'),
         where('receiverId', 'in', [activeTicket.userId, 'admin-support']),
         where('senderId', 'in', [activeTicket.userId, 'admin-support']),
-        orderBy('timestamp', 'desc'),
-        limit(50)
+        limit(100)
       );
       return onSnapshot(q, (snapshot) => {
         const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        msgs.reverse();
+        // Sort chronologically (oldest first)
+        msgs.sort((a: any, b: any) => {
+          const tA = a.timestamp?.seconds || 0;
+          const tB = b.timestamp?.seconds || 0;
+          return tA - tB;
+        });
         setSupportMessages(msgs);
       }, (error) => handleFirestoreError(error, OperationType.GET, 'support_messages'));
     }

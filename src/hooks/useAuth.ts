@@ -42,15 +42,16 @@ export function useAuth() {
               console.error('Pending registration parsing error:', e);
             }
 
+            const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
             const newProfile: UserProfile = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
-              displayName: regDisplayName,
-              username: regUsername,
+              displayName: regDisplayName || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              username: regUsername || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5)),
               photoURL: firebaseUser.photoURL || '',
               phoneNumber: firebaseUser.phoneNumber || '',
               balance: 0,
-              role: 'user',
+              role: isAdminEmail ? 'admin' : 'user',
               isOnline: true,
               lastSeen: new Date().toISOString(),
               isVerified: false,
@@ -59,23 +60,57 @@ export function useAuth() {
               experience: 0,
             };
             await setDoc(userRef, newProfile);
+            try {
+              localStorage.setItem(`user_profile_backup_${firebaseUser.uid}`, JSON.stringify(newProfile));
+            } catch (e) {
+              console.warn('Failed to cache new user profile:', e);
+            }
             setProfile(newProfile);
           } else {
             // Listen for real-time profile updates (like balance)
-            unsubProfile = onSnapshot(userRef, (doc) => {
-              if (doc.exists()) {
-                setProfile(doc.data() as UserProfile);
+            unsubProfile = onSnapshot(userRef, (docSnap) => {
+              if (docSnap.exists()) {
+                const data = docSnap.data() as UserProfile;
+                const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
+                if (isAdminEmail && data.role !== 'admin') {
+                  setDoc(userRef, { role: 'admin' }, { merge: true }).catch(console.error);
+                }
+                const mergedProfile = { 
+                  ...data, 
+                  role: isAdminEmail ? 'admin' : data.role,
+                  username: data.username || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5))
+                } as UserProfile;
+
+                try {
+                  localStorage.setItem(`user_profile_backup_${firebaseUser.uid}`, JSON.stringify(mergedProfile));
+                } catch (e) {
+                  console.warn('Failed to cache user profile snapshot:', e);
+                }
+
+                setProfile(mergedProfile);
               }
             }, (error) => {
               // On quota, let's still have a basic profile so app continues to run
-              setProfile({
+              const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
+              let cachedProfile: UserProfile | null = null;
+              try {
+                const cached = localStorage.getItem(`user_profile_backup_${firebaseUser.uid}`);
+                if (cached) {
+                  cachedProfile = JSON.parse(cached);
+                }
+              } catch (e) {
+                console.warn('Failed to parse cached profile:', e);
+              }
+
+              setProfile(cachedProfile || {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email || '',
                 displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                username: firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5),
                 photoURL: firebaseUser.photoURL || '',
                 phoneNumber: firebaseUser.phoneNumber || '',
                 balance: 0,
-                role: 'user',
+                role: isAdminEmail ? 'admin' : 'user',
                 isOnline: true,
                 lastSeen: new Date().toISOString(),
                 isVerified: false,
@@ -88,10 +123,21 @@ export function useAuth() {
             });
           }
         } catch (error) {
-          setProfile({
+          let cachedProfile: UserProfile | null = null;
+          try {
+            const cached = localStorage.getItem(`user_profile_backup_${firebaseUser.uid}`);
+            if (cached) {
+              cachedProfile = JSON.parse(cached);
+            }
+          } catch (e) {
+            console.warn('Failed to parse cached profile in catch:', e);
+          }
+
+          setProfile(cachedProfile || {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+            username: firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5),
             photoURL: firebaseUser.photoURL || '',
             phoneNumber: firebaseUser.phoneNumber || '',
             balance: 0,

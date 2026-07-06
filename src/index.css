@@ -114,3 +114,9 @@
     scrollbar-width: none; /* Firefox */
   }
 }
+
+@media (max-width: 640px) {
+  #root {
+    zoom: 0.9;
+  }
+}

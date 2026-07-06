@@ -1,305 +1,230 @@
 {
   "entities": {
     "User": {
-      "title": "User",
-      "description": "User profile and balance information",
+      "title": "User Profile",
+      "description": "User account information, level, status and preferences.",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
         "email": { "type": "string" },
         "displayName": { "type": "string" },
+        "username": { "type": "string" },
         "photoURL": { "type": "string" },
         "phoneNumber": { "type": "string" },
         "balance": { "type": "number" },
         "role": { "type": "string", "enum": ["user", "admin"] },
         "isOnline": { "type": "boolean" },
-        "lastSeen": { "type": "string", "format": "date-time" },
+        "lastSeen": { "type": "string" },
         "isVerified": { "type": "boolean" },
         "isBanned": { "type": "boolean" },
         "bio": { "type": "string" },
         "isShadowBanned": { "type": "boolean" },
         "level": { "type": "string", "enum": ["Bronze", "Silver", "Gold"] },
-        "experience": { "type": "number" },
-        "currentGame": { "type": "string" },
-        "blockedUntil": { "type": "string", "format": "date-time" },
-        "wallpaper": { "type": "string" },
-        "ipAddress": { "type": "string" },
-        "deviceFingerprint": { "type": "string" },
-        "clickCount": { "type": "number" },
-        "lastClickTime": { "type": "number" },
-        "badges": { "type": "array", "items": { "type": "string" } }
+        "experience": { "type": "number" }
       },
-      "required": ["uid", "email", "balance", "role"]
+      "required": ["uid", "email"]
+    },
+    "Contact": {
+      "title": "Contact",
+      "description": "A saved contact for a user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "savedAt": { "type": "string" }
+      },
+      "required": ["uid"]
     },
     "Message": {
       "title": "Message",
-      "description": "Chat message between users",
+      "description": "A chat message between users, groups, or channels.",
       "type": "object",
       "properties": {
         "senderId": { "type": "string" },
         "receiverId": { "type": "string" },
         "text": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["sent", "delivered", "read"] },
-        "type": { "type": "string", "enum": ["text", "voice", "image", "support"] },
-        "audioUrl": { "type": "string" },
-        "replyTo": { "type": "string" },
-        "isForwarded": { "type": "boolean" }
+        "status": { "type": "string" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "object" }
       },
-      "required": ["senderId", "receiverId", "text", "timestamp"]
+      "required": ["senderId", "receiverId", "text"]
     },
-    "Withdrawal": {
-      "title": "Withdrawal",
-      "description": "Withdrawal request from a user",
+    "GroupOrChannel": {
+      "title": "Group or Channel",
+      "description": "A group chat or announcement channel.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "isGroup": { "type": "boolean" },
+        "isChannel": { "type": "boolean" },
+        "displayName": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "members": { "type": "array" },
+        "admins": { "type": "array" }
+      },
+      "required": ["uid", "displayName", "creatorId"]
+    },
+    "Call": {
+      "title": "Call",
+      "description": "A voice or video call log and signaling data.",
+      "type": "object",
+      "properties": {
+        "callerId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "status": { "type": "string" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "object" }
+      },
+      "required": ["callerId", "receiverId", "status", "type"]
+    },
+    "Status": {
+      "title": "Status",
+      "description": "A user's visual/text story/status update.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
-        "amount": { "type": "number" },
-        "paymentMethod": { "type": "string", "enum": ["EasyPaisa", "JazzCash"] },
-        "phoneNumber": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "taxAmount": { "type": "number" },
-        "netAmount": { "type": "number" },
-        "auditLog": {
-          "type": "object",
-          "properties": {
-            "ip": { "type": "string" },
-            "device": { "type": "string" }
-          }
-        }
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "caption": { "type": "string" },
+        "timestamp": { "type": "object" },
+        "views": { "type": "array" }
       },
-      "required": ["userId", "amount", "paymentMethod", "phoneNumber", "status", "timestamp"]
+      "required": ["userId", "imageUrl"]
     },
-    "GameLog": {
-      "title": "GameLog",
-      "description": "Log of game plays and earnings",
+    "Announcement": {
+      "title": "Announcement",
+      "description": "A global announcement or notice.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "gameName": { "type": "string" },
-        "reward": { "type": "number" },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "text": { "type": "string" },
+        "type": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "object" }
       },
-      "required": ["userId", "gameName", "reward", "timestamp"]
-    },
-    "AppSettings": {
-      "title": "AppSettings",
-      "description": "Global application settings",
-      "type": "object",
-      "properties": {
-        "isMaintenanceMode": { "type": "boolean" },
-        "adFrequency": { "type": "number" },
-        "globalAnnouncement": { "type": "string" },
-        "isWithdrawalsEnabled": { "type": "boolean" },
-        "isGamesEnabled": { "type": "boolean" },
-        "withdrawalTax": { "type": "number" },
-        "isJackpotHour": { "type": "boolean" },
-        "jackpotEndTime": { "type": "string", "format": "date-time" },
-        "tickerMessages": { "type": "array", "items": { "type": "string" } },
-        "rewardMultiplier": { "type": "number" },
-        "minWithdrawal": { "type": "number" },
-        "adEarningRate": { "type": "number" },
-        "tickerText": { "type": "string" }
-      },
-      "required": ["isMaintenanceMode", "adFrequency", "isWithdrawalsEnabled", "isGamesEnabled"]
+      "required": ["text", "type"]
     },
     "SupportTicket": {
-      "title": "SupportTicket",
-      "description": "Live support ticket for a user",
+      "title": "Support Ticket",
+      "description": "A user help or support ticket.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
         "userName": { "type": "string" },
-        "userPhoto": { "type": "string" },
-        "status": { "type": "string", "enum": ["open", "closed"] },
+        "status": { "type": "string" },
         "lastMessage": { "type": "string" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "object" }
       },
-      "required": ["userId", "userName", "status", "updatedAt", "createdAt"]
+      "required": ["userId", "status"]
     },
     "ActivityLog": {
-      "title": "ActivityLog",
-      "description": "System activity log for terminal",
+      "title": "Activity Log",
+      "description": "A log of user actions for audit purposes.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
         "userName": { "type": "string" },
         "action": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "timestamp": { "type": "object" }
       },
-      "required": ["userId", "userName", "action", "timestamp"]
+      "required": ["userId", "action"]
     },
-    "RevenueStats": {
-      "title": "RevenueStats",
-      "description": "Daily revenue and payout statistics",
+    "Notification": {
+      "title": "Notification",
+      "description": "A pending system push notification.",
       "type": "object",
       "properties": {
-        "date": { "type": "string" },
-        "adRevenue": { "type": "number" },
-        "userPayouts": { "type": "number" },
-        "profit": { "type": "number" }
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "userId": { "type": "string" },
+        "timestamp": { "type": "object" }
       },
-      "required": ["date", "adRevenue", "userPayouts", "profit"]
+      "required": ["title", "body"]
     },
-    "GameSettings": {
-      "title": "GameSettings",
-      "description": "Settings for individual games",
+    "Book": {
+      "title": "Book",
+      "description": "A book in the Islamic Library.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "earningRate": { "type": "number" },
-        "isEnabled": { "type": "boolean" },
-        "dailyLimit": { "type": "number" }
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "category": { "type": "string" }
       },
-      "required": ["id", "name", "earningRate", "isEnabled", "dailyLimit"]
-    },
-    "Announcement": {
-      "title": "Announcement",
-      "description": "Application-wide announcements",
-      "type": "object",
-      "properties": {
-        "text": { "type": "string" },
-        "type": { "type": "string", "enum": ["info", "warning", "success"] },
-        "isActive": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["text", "type", "isActive", "createdAt"]
-    },
-    "Call": {
-      "title": "Call",
-      "description": "Voice or video call between users",
-      "type": "object",
-      "properties": {
-        "callerId": { "type": "string" },
-        "receiverId": { "type": "string" },
-        "callerName": { "type": "string" },
-        "callerPhoto": { "type": "string" },
-        "status": { "type": "string", "enum": ["calling", "ongoing", "ended", "missed", "rejected"] },
-        "type": { "type": "string", "enum": ["voice", "video"] },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "offer": { "type": "object" },
-        "answer": { "type": "object" }
-      },
-      "required": ["callerId", "receiverId", "callerName", "status", "type", "timestamp"]
-    },
-    "AdminSettings": {
-      "title": "AdminSettings",
-      "description": "Sensitive administrative settings",
-      "type": "object",
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "adTimer": { "type": "number" }
-      },
-      "required": ["enabled"]
+      "required": ["title"]
     },
     "SystemConfig": {
-      "title": "SystemConfig",
-      "description": "System configuration file content",
+      "title": "System Config",
+      "description": "System configuration parameters.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "content": { "type": "string" },
-        "path": { "type": "string" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "key": { "type": "string" },
+        "value": { "type": "string" }
       },
-      "required": ["id", "name", "content"]
+      "required": ["key"]
     },
-    "SystemConfigBackup": {
-      "title": "SystemConfigBackup",
-      "description": "Backup of system configuration file",
+    "AppSettings": {
+      "title": "App Settings",
+      "description": "Global application setting document.",
       "type": "object",
       "properties": {
-        "originalId": { "type": "string" },
-        "content": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["originalId", "content", "timestamp"]
-    },
-    "LibraryBook": {
-      "title": "LibraryBook",
-      "description": "Custom Islamic books uploaded by admin",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "urduTitle": { "type": "string" },
-        "author": { "type": "string" },
-        "urduAuthor": { "type": "string" },
-        "description": { "type": "string" },
-        "urduDescription": { "type": "string" },
-        "language": { "type": "string" },
-        "category": { "type": "string" },
-        "url": { "type": "string" },
-        "coverUrl": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "title", "urduTitle", "author", "urduAuthor", "category"]
+        "isMaintenanceMode": { "type": "boolean" },
+        "globalAnnouncement": { "type": "string" }
+      }
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "User profiles"
+    "users": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Collection of user profiles."
     },
-    "/messages/{messageId}": {
-      "schema": "Message",
-      "description": "Chat messages"
+    "users/{userId}/contacts": {
+      "schema": { "$ref": "#/entities/Contact" },
+      "description": "Sub-collection of saved contacts for each user."
     },
-    "/withdrawals/{withdrawalId}": {
-      "schema": "Withdrawal",
-      "description": "Withdrawal requests"
+    "messages": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Collection of chat messages."
     },
-    "/gameLogs/{logId}": {
-      "schema": "GameLog",
-      "description": "Game play logs"
+    "groups": {
+      "schema": { "$ref": "#/entities/GroupOrChannel" },
+      "description": "Collection of group chats and channels."
     },
-    "/settings/global": {
-      "schema": "AppSettings",
-      "description": "Global application settings"
+    "calls": {
+      "schema": { "$ref": "#/entities/Call" },
+      "description": "Collection of call signals and logs."
     },
-    "/admin_settings/{settingId}": {
-      "schema": "AdminSettings",
-      "description": "Administrative settings like ads toggle"
+    "statuses": {
+      "schema": { "$ref": "#/entities/Status" },
+      "description": "Collection of user status/stories."
     },
-    "/supportTickets/{ticketId}": {
-      "schema": "SupportTicket",
-      "description": "Support tickets"
+    "announcements": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "Collection of global announcements."
     },
-    "/activityLogs/{logId}": {
-      "schema": "ActivityLog",
-      "description": "System activity logs"
+    "supportTickets": {
+      "schema": { "$ref": "#/entities/SupportTicket" },
+      "description": "Collection of admin/user support tickets."
     },
-    "/revenueStats/{statId}": {
-      "schema": "RevenueStats",
-      "description": "Daily revenue statistics"
+    "activityLogs": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Collection of user/admin activity logs."
     },
-    "/gameSettings/{gameId}": {
-      "schema": "GameSettings",
-      "description": "Settings for individual games"
+    "notifications": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Collection of queued system notifications."
     },
-    "/announcements/{announcementId}": {
-      "schema": "Announcement",
-      "description": "Global announcements"
+    "library_books": {
+      "schema": { "$ref": "#/entities/Book" },
+      "description": "Collection of Islamic library books."
     },
-    "/calls/{callId}": {
-      "schema": "Call",
-      "description": "Voice and video calls"
+    "system_configs": {
+      "schema": { "$ref": "#/entities/SystemConfig" },
+      "description": "Collection of key-value system configurations."
     },
-    "/system_configs/{configId}": {
-      "schema": "SystemConfig",
-      "description": "System configuration files"
-    },
-    "/system_configs_backups/{backupId}": {
-      "schema": "SystemConfigBackup",
-      "description": "Backups of system configuration files"
-    },
-    "/library_books/{bookId}": {
-      "schema": "LibraryBook",
-      "description": "Custom Islamic books uploaded by admin"
+    "settings": {
+      "schema": { "$ref": "#/entities/AppSettings" },
+      "description": "Collection of settings documents (like settings/global)."
     }
   }
 }

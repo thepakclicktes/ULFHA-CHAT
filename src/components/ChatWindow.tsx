@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { updateDoc, doc } from 'firebase/firestore';
 import VoiceCall from './VoiceCall';
 import { triggerPushNotification } from '../utils/notifications';
+import { queuePendingMessage, syncPendingMessages } from '../utils/SyncManager';
 
 const MessageBubble = React.memo(({ 
   msg, 
@@ -502,6 +503,21 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
     }
   };
   const [messages, setMessages] = useState<Message[]>([]);
+  const [showSearchBar, setShowSearchBar] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const displayedMessages = React.useMemo(() => {
+    const unDeleted = messages.filter(m => !m.deletedFor?.includes(currentUser.uid));
+    if (!searchQuery.trim()) return unDeleted;
+    const queryStr = searchQuery.toLowerCase().trim();
+    return unDeleted.filter(m => {
+      const textMatch = m.text?.toLowerCase().includes(queryStr);
+      const fileNameMatch = m.fileName?.toLowerCase().includes(queryStr);
+      const senderMatch = m.senderName?.toLowerCase().includes(queryStr);
+      return textMatch || fileNameMatch || senderMatch;
+    });
+  }, [messages, currentUser.uid, searchQuery]);
+
   const [messageMap, setMessageMap] = useState<Record<string, Message>>({});
   const [newMessage, setNewMessage] = useState('');
   const [showGamesMenu, setShowGamesMenu] = useState(false);
@@ -777,31 +793,27 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      // Sync queued messages
-      const queue = JSON.parse(localStorage.getItem('msg_queue') || '[]');
-      if (queue.length > 0) {
-        queue.forEach(async (msg: Message) => {
-          try {
-            await addDoc(collection(db, 'messages'), { 
-              ...msg, 
-              replyTo: msg.replyTo || null,
-              timestamp: serverTimestamp() 
-            });
-          } catch (e) {
-            console.error('Failed to sync message:', e);
-          }
-        });
-        localStorage.removeItem('msg_queue');
-      }
+      // Sync queued messages using our SyncManager
+      syncPendingMessages(enrichMessageObject).catch(e => console.error('Failed to sync on online:', e));
     };
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    
+    const handleQueueChanged = () => {
+      // Re-trigger sync if we are online
+      if (navigator.onLine) {
+        syncPendingMessages(enrichMessageObject).catch(e => console.error('Failed to sync on queue change:', e));
+      }
+    };
+    window.addEventListener('ulfha_pending_queue_changed', handleQueueChanged);
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('ulfha_pending_queue_changed', handleQueueChanged);
     };
-  }, []);
+  }, [chat.uid, currentUser.uid]);
 
   const wallpapers = [
     'https://images.unsplash.com/photo-1557683316-973673baf926',
@@ -822,14 +834,32 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
   };
 
   useEffect(() => {
+    // Pre-load conversation messages from local cache for instant offline rendering
+    try {
+      const cachedMsgsStr = localStorage.getItem(`cached_messages_${currentUser.uid}_${chat.uid}`);
+      if (cachedMsgsStr) {
+        const cachedMsgs = JSON.parse(cachedMsgsStr);
+        setMessages(cachedMsgs);
+        const map: Record<string, Message> = {};
+        cachedMsgs.forEach((m: Message) => { if (m.id) map[m.id] = m; });
+        setMessageMap(map);
+      } else {
+        setMessages([]);
+        setMessageMap({});
+      }
+    } catch (e) {
+      console.warn('Failed to pre-load cached messages:', e);
+      setMessages([]);
+      setMessageMap({});
+    }
+
     // For groups & channels, query by receiverId matching the group/channel unique ID directly
     const isGroupOrChannel = chat.isGroup || chat.isChannel;
     const q = isGroupOrChannel
       ? query(
           collection(db, 'messages'),
           where('receiverId', '==', chat.uid),
-          orderBy('timestamp', 'desc'),
-          limit(50)
+          limit(100)
         )
       : query(
           collection(db, 'messages'),
@@ -837,8 +867,7 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
             and(where('senderId', '==', currentUser.uid), where('receiverId', '==', chat.uid)),
             and(where('senderId', '==', chat.uid), where('receiverId', '==', currentUser.uid))
           ),
-          orderBy('timestamp', 'desc'),
-          limit(50)
+          limit(100)
         );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -851,13 +880,24 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
           timestamp: data.timestamp || { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 }
         } as Message;
       });
-      // Reverse to show chronologically (oldest to newest) since we fetched desc
-      msgs.reverse();
+      // Sort chronologically (oldest to newest) using seconds and nanoseconds
+      msgs.sort((a, b) => {
+        const tA = (a.timestamp?.seconds || 0) * 1000 + Math.floor((a.timestamp?.nanoseconds || 0) / 1000000);
+        const tB = (b.timestamp?.seconds || 0) * 1000 + Math.floor((b.timestamp?.nanoseconds || 0) / 1000000);
+        return tA - tB;
+      });
       setMessages(msgs);
       
       const map: Record<string, Message> = {};
       msgs.forEach(m => { if (m.id) map[m.id] = m; });
       setMessageMap(map);
+
+      // Save messages to cache
+      try {
+        localStorage.setItem(`cached_messages_${currentUser.uid}_${chat.uid}`, JSON.stringify(msgs));
+      } catch (e) {
+        console.warn('Failed to save messages to local cache:', e);
+      }
       
       // Mark unread messages as read (Read Receipts Logic)
       const readReceiptsEnabled = currentUser.userSettings?.readReceipts !== false;
@@ -907,10 +947,8 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
     setReplyingTo(null);
 
     if (!isOnline) {
-      // Queue message locally
-      const queue = JSON.parse(localStorage.getItem('msg_queue') || '[]');
-      queue.push(msg);
-      localStorage.setItem('msg_queue', JSON.stringify(queue));
+      // Queue message locally in IndexedDB
+      await queuePendingMessage(msg);
       // Add to local state for immediate feedback
       setMessages(prev => [...prev, { ...msg, id: 'temp-' + Date.now(), status: 'sent', timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } } as Message]);
       return;
@@ -996,10 +1034,10 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
         }
       }
     } catch (error) {
-      // Restore message if it failed
-      setNewMessage(messageText);
-      setReplyingTo(currentReplyingTo);
-      handleFirestoreError(error, OperationType.CREATE, 'messages');
+      console.warn('Failed to send message immediately, queueing to IndexedDB:', error);
+      await queuePendingMessage(msg);
+      // Add to local state for immediate feedback
+      setMessages(prev => [...prev, { ...msg, id: 'temp-' + Date.now(), status: 'sent', timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } } as Message]);
     }
   };
 
@@ -1107,10 +1145,8 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
       };
 
       if (!isOnline) {
-        // Queue locally
-        const queue = JSON.parse(localStorage.getItem('msg_queue') || '[]');
-        queue.push(msg);
-        localStorage.setItem('msg_queue', JSON.stringify(queue));
+        // Queue locally in IndexedDB
+        await queuePendingMessage(msg);
         setMessages(prev => [...prev, { ...msg, id: 'temp-' + Date.now(), status: 'sent', timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } } as Message]);
         return;
       }
@@ -1119,9 +1155,9 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
         await addDoc(collection(db, 'messages'), enrichMessageObject(msg));
         sendPushForMessage('🎤 Voice Message');
       } catch (error) {
-        setRecordedAudio(currentAudio);
-        setReplyingTo(currentReplyingTo);
-        handleFirestoreError(error, OperationType.CREATE, 'messages');
+        console.warn('Failed to send voice message immediately, queueing to IndexedDB:', error);
+        await queuePendingMessage(msg);
+        setMessages(prev => [...prev, { ...msg, id: 'temp-' + Date.now(), status: 'sent', timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } } as Message]);
       }
     };
   };
@@ -1213,11 +1249,17 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
     };
 
     try {
+      if (!navigator.onLine) {
+        throw new Error('Offline');
+      }
       await addDoc(collection(db, 'messages'), forwardedMsg);
       setMessageToForward(null);
       alert(`Message forwarded to ${targetUser.displayName}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'messages');
+      console.warn('Failed to forward message immediately, queueing to IndexedDB:', error);
+      await queuePendingMessage(forwardedMsg);
+      setMessageToForward(null);
+      alert(`Message queued for forwarding to ${targetUser.displayName} when online`);
     }
   };
 
@@ -1536,9 +1578,58 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
               </>
             )}
             <button className="p-2 hover:bg-gray-100 rounded-full transition-colors hidden sm:block"><Gamepad2 size={22} /></button>
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors"><Search size={22} /></button>
+            <button 
+              id="header-search-btn"
+              onClick={() => {
+                setShowSearchBar(!showSearchBar);
+                if (showSearchBar) {
+                  setSearchQuery('');
+                }
+              }}
+              className={cn("p-2 rounded-full transition-colors", showSearchBar ? "bg-[#00A884]/10 text-[#00A884]" : "hover:bg-gray-100 text-[#54656F]")}
+              title="Search Messages"
+            >
+              <Search size={22} />
+            </button>
             <button className="p-2 hover:bg-gray-100 rounded-full transition-colors"><MoreVertical size={22} /></button>
           </div>
+        </div>
+      )}
+
+      {/* Local Message Search Bar */}
+      {showSearchBar && (
+        <div id="message-local-search-bar" className="bg-white border-b border-gray-100 px-4 py-2 flex items-center gap-2 z-10 shadow-sm">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              id="local-message-search-input"
+              type="text"
+              placeholder="Search in this chat..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 focus:border-[#00A884] rounded-xl py-2 pl-9 pr-8 text-gray-900 text-sm outline-none transition-all"
+              autoFocus
+            />
+            {searchQuery && (
+              <button
+                id="clear-message-search-btn"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                <XCircle size={16} />
+              </button>
+            )}
+          </div>
+          <button
+            id="close-message-search-btn"
+            onClick={() => {
+              setShowSearchBar(false);
+              setSearchQuery('');
+            }}
+            className="text-xs font-bold text-[#54656F] hover:text-gray-900 px-2 py-1 rounded transition-colors"
+          >
+            Cancel
+          </button>
         </div>
       )}
 
@@ -1617,26 +1708,40 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
         ref={scrollRef}
         className="scrollable-content p-4 space-y-1 z-10"
       >
-        {messages.filter(m => !m.deletedFor?.includes(currentUser.uid)).map((msg) => (
-          <div key={msg.id} id={`msg-${msg.id}`} className="w-full">
-            <MessageBubble
-              msg={msg}
-              currentUser={currentUser}
-              chat={chat}
-              messageMap={messageMap}
-              onDelete={setMessageToDelete}
-              onForward={setMessageToForward}
-              onReply={setReplyingTo}
-              isSelectionMode={isSelectionMode}
-              selectedMessageIds={selectedMessageIds}
-              onToggleSelect={handleToggleSelect}
-              onMessageContextMenu={setMessageContextMenu}
-              onReact={handleReact}
-              pinnedMessageIds={pinnedMessageIds}
-              keptMessageIds={keptMessageIds}
-            />
+        {displayedMessages.length === 0 && searchQuery.trim() !== '' ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+            <Search size={40} className="text-gray-300 mb-2 stroke-[1.5]" />
+            <p className="text-sm">No messages found matching "{searchQuery}"</p>
+            <button
+              id="clear-message-search-no-results-btn"
+              onClick={() => setSearchQuery('')}
+              className="mt-2 text-xs font-bold text-[#00A884] hover:underline animate-pulse"
+            >
+              Clear search
+            </button>
           </div>
-        ))}
+        ) : (
+          displayedMessages.map((msg) => (
+            <div key={msg.id} id={`msg-${msg.id}`} className="w-full">
+              <MessageBubble
+                msg={msg}
+                currentUser={currentUser}
+                chat={chat}
+                messageMap={messageMap}
+                onDelete={setMessageToDelete}
+                onForward={setMessageToForward}
+                onReply={setReplyingTo}
+                isSelectionMode={isSelectionMode}
+                selectedMessageIds={selectedMessageIds}
+                onToggleSelect={handleToggleSelect}
+                onMessageContextMenu={setMessageContextMenu}
+                onReact={handleReact}
+                pinnedMessageIds={pinnedMessageIds}
+                keptMessageIds={keptMessageIds}
+              />
+            </div>
+          ))
+        )}
       </div>
 
       {/* Media Preview Modal */}

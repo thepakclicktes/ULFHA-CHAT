@@ -9,9 +9,25 @@ import { GoogleGenAI } from "@google/genai";
 import { initializeApp as initAdminApp, getApps as getAdminApps, getApp as getAdminApp } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
-// Read config
+// Read config safely with fallback to prevent crashes if file is missing/deleted
+let firebaseConfig: any = {
+  apiKey: "AIzaSyBo0Ml2F90R0Sw3zw2XjiE99N78joBXQJM",
+  authDomain: "ulfhachat.firebaseapp.com",
+  projectId: "ulfhachat",
+  storageBucket: "ulfhachat.firebasestorage.app",
+  messagingSenderId: "684407740624",
+  appId: "1:684407740624:web:3e962db49dfa8a1a9766d5",
+  measurementId: "G-W00CNT2XDF"
+};
+
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+if (fs.existsSync(configPath)) {
+  try {
+    firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } catch (e) {
+    console.error('Error reading firebase-applet-config.json:', e);
+  }
+}
 
 // Initialize firebase-admin for secure backend tasks
 let adminDb: any;
@@ -158,9 +174,25 @@ async function startServer() {
 
       // 3. Trigger notification
       try {
-        const recipientDoc = await adminDb.collection('users').doc(receiverId).get();
-        if (recipientDoc.exists) {
-          const recipientData = recipientDoc.data();
+        let recipientData: any = null;
+        try {
+          if (adminDb) {
+            const recipientDoc = await adminDb.collection('users').doc(receiverId).get();
+            if (recipientDoc.exists) {
+              recipientData = recipientDoc.data();
+            }
+          } else {
+            throw new Error("Admin DB unavailable");
+          }
+        } catch (adminErr) {
+          console.warn('Admin DB failed for recipient fetch, trying client SDK fallback:', adminErr);
+          const snap = await getDoc(doc(db, 'users', receiverId));
+          if (snap.exists()) {
+            recipientData = snap.data();
+          }
+        }
+
+        if (recipientData) {
           const subscriptions: string[] = recipientData?.webPushSubscriptions || [];
           for (const subStr of subscriptions) {
             try {
@@ -513,10 +545,26 @@ async function startServer() {
     for (const uid of recipientUids) {
       if (!uid) continue;
       try {
-        const userRef = adminDb.collection('users').doc(uid);
-        const userSnap = await userRef.get();
-        if (userSnap.exists) {
-          const userData = userSnap.data();
+        let userData: any = null;
+        try {
+          if (adminDb) {
+            const userRef = adminDb.collection('users').doc(uid);
+            const userSnap = await userRef.get();
+            if (userSnap.exists) {
+              userData = userSnap.data();
+            }
+          } else {
+            throw new Error("Admin DB unavailable");
+          }
+        } catch (adminErr) {
+          console.warn(`Admin DB lookup failed for user ${uid}, trying client SDK fallback:`, adminErr);
+          const snap = await getDoc(doc(db, 'users', uid));
+          if (snap.exists()) {
+            userData = snap.data();
+          }
+        }
+
+        if (userData) {
           const subscriptions: string[] = userData?.webPushSubscriptions || [];
           
           for (const subStr of subscriptions) {

@@ -59,7 +59,7 @@ export default function Sidebar({ profile, selectedChat }: SidebarProps) {
     { path: '/explore', label: 'Explore', icon: Compass },
   ];
 
-  if (profile.role === 'admin' || profile.email === 'abdulrehmanhabib.com@gmail.com') {
+  if (profile.role === 'admin' || profile.email === 'abdulrehmanhabib.com@gmail.com' || profile.email === 'teemabdulrehman.com@gmail.com') {
     navItems.push({ path: '/admin', label: 'Admin', icon: ShieldCheck });
   }
 

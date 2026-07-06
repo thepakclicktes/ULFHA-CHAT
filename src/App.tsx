@@ -24,6 +24,7 @@ import Header from './components/Header';
 import SplashScreen from './components/SplashScreen';
 import Settings from './components/Settings';
 import { motion, AnimatePresence } from 'motion/react';
+import { syncPendingMessages } from './utils/SyncManager';
 
 const DEFAULT_VAPID_KEY = 'BENdBUValtJIOHok8BLVpKY3FhQwej5RwZXJ8NdfFCoZKZY1SpllJQVSscwiG6HnA7n2PFHSSU8EQFZPLAndEhw';
 const DEFAULT_APP_LOGO = '/logo.png'; // Improved high-quality fallback logo placeholder
@@ -76,6 +77,25 @@ export default function App() {
     });
     return () => unsubscribe();
   }, [profile?.uid]);
+
+  // Synchronize pending offline messages from IndexedDB / localStorage when coming online
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('App came online, triggering syncPendingMessages...');
+      syncPendingMessages().catch(err => console.error('Failed to sync pending messages:', err));
+    };
+
+    window.addEventListener('online', handleOnline);
+    
+    // Also try syncing initially if already online
+    if (navigator.onLine) {
+      syncPendingMessages().catch(err => console.error('Initial offline sync failed:', err));
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
 
   useEffect(() => {
     const handleQuotaError = () => {
@@ -151,7 +171,7 @@ export default function App() {
         ringtoneRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
         ringtoneRef.current.loop = true;
       }
-      ringtoneRef.current.play().catch(e => console.error('Ringtone failed:', e));
+      ringtoneRef.current.play().catch(e => console.warn('Ringtone autoplay blocked or failed:', e));
     } else {
       if (ringtoneRef.current) {
         ringtoneRef.current.pause();
@@ -187,14 +207,18 @@ export default function App() {
               await new Promise(resolve => setTimeout(resolve, 2000));
 
               try {
-                const token = await getToken(messaging, { 
-                  vapidKey: vapidKey,
-                  serviceWorkerRegistration: registration
-                });
-                
-                if (token) {
-                  console.log('FCM Token:', token);
-                  await updateDoc(doc(db, 'users', user.uid), { fcmToken: token });
+                if (navigator.onLine) {
+                  const token = await getToken(messaging, { 
+                    vapidKey: vapidKey,
+                    serviceWorkerRegistration: registration
+                  });
+                  
+                  if (token) {
+                    console.log('FCM Token:', token);
+                    await updateDoc(doc(db, 'users', user.uid), { fcmToken: token });
+                  }
+                } else {
+                  console.warn('Skipping FCM Token registration because the client is offline.');
                 }
               } catch (fcmErr) {
                 console.warn('FCM registration failed (skipping):', fcmErr);
@@ -202,35 +226,47 @@ export default function App() {
 
               // Rely on standard Web Push VAPID Registration for the bridge
               try {
-                const res = await fetch('/api/push-public-key');
-                if (res.ok) {
-                  const data = await res.json();
-                  const publicKey = data.publicKey;
-                  if (publicKey) {
-                    const subscription = await registration.pushManager.subscribe({
-                      userVisibleOnly: true,
-                      applicationServerKey: urlBase64ToUint8Array(publicKey)
-                    });
-                    const subStr = JSON.stringify(subscription);
-                    const userRef = doc(db, 'users', user.uid);
-                    const userSnap = await getDoc(userRef);
-                    if (userSnap.exists()) {
-                      const userData = userSnap.data();
-                      const existingSubs: string[] = userData.webPushSubscriptions || [];
-                      if (!existingSubs.includes(subStr)) {
-                        await updateDoc(userRef, {
-                          webPushSubscriptions: [...existingSubs, subStr]
-                        });
-                        console.log('Registered Web Push Subscription successfully');
+                if (!navigator.onLine) {
+                  console.warn('Skipping Web Push VAPID subscription registration because the client is offline.');
+                } else {
+                  const res = await fetch('/api/push-public-key');
+                  if (res.ok) {
+                    const data = await res.json();
+                    const publicKey = data.publicKey;
+                    if (publicKey) {
+                      const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(publicKey)
+                      });
+                      const subStr = JSON.stringify(subscription);
+                      const userRef = doc(db, 'users', user.uid);
+                      const userSnap = await getDoc(userRef);
+                      if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        const existingSubs: string[] = userData.webPushSubscriptions || [];
+                        if (!existingSubs.includes(subStr)) {
+                          await updateDoc(userRef, {
+                            webPushSubscriptions: [...existingSubs, subStr]
+                          });
+                          console.log('Registered Web Push Subscription successfully');
+                        }
                       }
                     }
                   }
                 }
               } catch (pushSubErr) {
-                console.error('Failed to register Web Push VAPID subscription:', pushSubErr);
+                if (!navigator.onLine || (pushSubErr instanceof Error && pushSubErr.message.includes('offline'))) {
+                  console.warn('Skipped Web Push VAPID subscription registration (client is offline):', pushSubErr);
+                } else {
+                  console.error('Failed to register Web Push VAPID subscription:', pushSubErr);
+                }
               }
             } catch (err) {
-              console.error('Failed to get notifications configuration:', err);
+              if (!navigator.onLine) {
+                console.warn('Skipped getting notification configuration because the client is offline.');
+              } else {
+                console.error('Failed to get notifications configuration:', err);
+              }
             }
           }
 
@@ -246,7 +282,11 @@ export default function App() {
           });
         }
       } catch (error) {
-        console.error('Notification setup failed:', error);
+        if (!navigator.onLine) {
+          console.warn('Notification setup failed (client is offline):', error);
+        } else {
+          console.error('Notification setup failed:', error);
+        }
       }
     };
 
@@ -260,8 +300,7 @@ export default function App() {
     const q = query(
       collection(db, 'messages'),
       where('receiverId', '==', user.uid),
-      orderBy('timestamp', 'desc'),
-      limit(1)
+      limit(10)
     );
 
     let isInitialLoad = true;
@@ -274,11 +313,15 @@ export default function App() {
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
           const msg = change.doc.data();
-          if (Notification.permission === 'granted' && document.visibilityState !== 'visible') {
-            new Notification('New Message', {
-              body: msg.text,
-              icon: resolveLogo(appSettings?.appLogoUrl)
-            });
+          // Verify that this is a very recently sent message to avoid notification floods of older messages
+          const msgTime = msg.timestamp?.seconds ? msg.timestamp.seconds * 1000 : Date.now();
+          if (Date.now() - msgTime < 15000) {
+            if (Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+              new Notification('New Message', {
+                body: msg.text,
+                icon: resolveLogo(appSettings?.appLogoUrl)
+              });
+            }
           }
         }
       });
@@ -456,7 +499,8 @@ export default function App() {
   }, [user?.uid]); // Use user.uid to avoid re-running on every user object change
 
   useEffect(() => {
-    if (user && user.email === 'abdulrehmanhabib.com@gmail.com' && profile?.isBanned) {
+    const isOwnerAdmin = user && (user.email === 'abdulrehmanhabib.com@gmail.com' || user.email === 'teemabdulrehman.com@gmail.com');
+    if (isOwnerAdmin && profile?.isBanned) {
       const unbanAdmin = async () => {
         try {
           await updateDoc(doc(db, 'users', user.uid), { isBanned: false });
@@ -572,7 +616,7 @@ export default function App() {
   // Email Verification Check Removed
 
   // Maintenance Mode Check (Admins bypass)
-  const isAdmin = profile.role === 'admin' || user.email === 'abdulrehmanhabib.com@gmail.com';
+  const isAdmin = profile.role === 'admin' || user.email === 'abdulrehmanhabib.com@gmail.com' || user.email === 'teemabdulrehman.com@gmail.com';
   if (appSettings?.isMaintenanceMode && !isAdmin) {
     return (
       <div className="h-dvh w-full flex flex-col items-center justify-center bg-[#111B21] text-white p-6 text-center">
@@ -589,7 +633,8 @@ export default function App() {
     );
   }
 
-  if (profile.isBanned && user.email !== 'abdulrehmanhabib.com@gmail.com') {
+  const isBypassedFromBan = user.email === 'abdulrehmanhabib.com@gmail.com' || user.email === 'teemabdulrehman.com@gmail.com';
+  if (profile.isBanned && !isBypassedFromBan) {
     return (
       <div className="flex items-center justify-center h-dvh bg-[#F0F2F5]">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
@@ -633,11 +678,15 @@ export default function App() {
           </div>
         </div>
       )}
-      {activeTab !== 'admin' && !isReaderPage && <Header profile={profile} onSearch={setSearchQuery} logoUrl={resolveLogo(appSettings?.appLogoUrl)} />}
+      {activeTab !== 'admin' && !isReaderPage && (
+        <div className={cn(selectedChat ? "hidden xl:block" : "block")}>
+          <Header profile={profile} onSearch={setSearchQuery} logoUrl={resolveLogo(appSettings?.appLogoUrl)} />
+        </div>
+      )}
       
       {/* System Announcement Ticker (Elite Feature) */}
       {activeTab !== 'admin' && appSettings?.tickerMessages && appSettings.tickerMessages.length > 0 && (
-        <div className="bg-[#008069] text-white py-1.5 px-4 overflow-hidden whitespace-nowrap relative z-50 border-b border-[#075E54]">
+        <div className={cn("bg-[#008069] text-white py-1.5 px-4 overflow-hidden whitespace-nowrap relative z-50 border-b border-[#075E54]", selectedChat ? "hidden xl:block" : "block")}>
           <div className="inline-block animate-marquee hover:pause">
             {appSettings.tickerMessages.map((msg, i) => (
               <span key={i} className="mx-12 font-bold uppercase text-xs tracking-wider">
@@ -650,7 +699,7 @@ export default function App() {
 
       {/* Announcement Ticker */}
       {activeTab !== 'admin' && announcements.length > 0 && (
-        <div className="bg-[#25D366] text-white py-2 px-4 overflow-hidden whitespace-nowrap relative z-50">
+        <div className={cn("bg-[#25D366] text-white py-2 px-4 overflow-hidden whitespace-nowrap relative z-50", selectedChat ? "hidden xl:block" : "block")}>
           <div className="inline-block animate-marquee hover:pause">
             {announcements.map((a, i) => (
               <span key={a.id} className="mx-8 font-medium">
@@ -720,7 +769,7 @@ export default function App() {
         <Route path="/explore" element={<Explore />} />
         <Route path="/settings" element={<Settings profile={profile} />} />
         <Route path="/admin" element={
-          (profile.role === 'admin' || profile.email === 'abdulrehmanhabib.com@gmail.com') ? 
+          (profile.role === 'admin' || profile.email === 'abdulrehmanhabib.com@gmail.com' || profile.email === 'teemabdulrehman.com@gmail.com') ? 
           <AdminPanel onExit={() => navigate('/')} /> : 
           <Navigate to="/" replace />
         } />
@@ -729,7 +778,11 @@ export default function App() {
     </div>
         
         {/* Sidebar Navigation (Now at the bottom for mobile feel) */}
-        {activeTab !== 'admin' && <Sidebar profile={profile} selectedChat={selectedChat} />}
+        {activeTab !== 'admin' && (
+          <div className={cn(selectedChat ? "hidden xl:block" : "block")}>
+            <Sidebar profile={profile} selectedChat={selectedChat} />
+          </div>
+        )}
       </div>
 
       {/* Incoming Call UI */}
