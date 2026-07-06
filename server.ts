@@ -6,7 +6,7 @@ import fs from "fs";
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { GoogleGenAI } from "@google/genai";
-import { initializeApp as initAdminApp, getApps as getAdminApps, getApp as getAdminApp } from 'firebase-admin/app';
+import { initializeApp as initAdminApp, getApps as getAdminApps, getApp as getAdminApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
 // Read config safely with fallback to prevent crashes if file is missing/deleted
@@ -36,6 +36,7 @@ try {
   const adminApp = apps.length > 0 
     ? getAdminApp() 
     : initAdminApp({
+        credential: applicationDefault(),
         projectId: firebaseConfig.projectId
       });
   
