@@ -613,9 +613,13 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
         setSearchResults(prev => prev.map(item => item.uid === chatItem.uid ? { ...item, isVirtual: false } : item));
         return;
       } catch (err) {
-        console.error("Failed to persist virtual WhatsApp contact:", err);
-        alert("Failed to start chat: " + String(err));
-        return;
+        console.error("Failed to persist virtual WhatsApp contact, but proceeding to open chat anyway:", err);
+        // Proceed to open chat even if persistence fails, as per user request to fix click-to-chat
+        onSelectChat({
+          ...chatItem,
+          isWhatsAppContact: true,
+          bio: '🟢 WhatsApp contact (unsaved)'
+        });
       }
     }
     onSelectChat(chatItem);
