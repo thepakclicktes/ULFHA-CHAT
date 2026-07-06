@@ -36,13 +36,13 @@ try {
   const adminApp = apps.length > 0 
     ? getAdminApp() 
     : initAdminApp({
-        credential: applicationDefault(),
         projectId: firebaseConfig.projectId
       });
   
   const databaseId = firebaseConfig.firestoreDatabaseId || '(default)';
   adminDb = getAdminFirestore(adminApp, databaseId);
   console.log('Firebase Admin initialized with config for project:', firebaseConfig.projectId);
+  console.log('Firebase Admin DB initialized successfully:', !!adminDb);
 } catch (adminInitErr) {
   console.error('Firebase Admin initialization failed:', adminInitErr);
 }
