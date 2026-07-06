@@ -14,35 +14,40 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
+// Handle FCM background messages
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  const notificationTitle = payload.notification.title;
+  const notificationTitle = payload.notification?.title || 'New Message';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: 'https://storage.googleapis.com/test-media-objects/643ljz7fuma5cdqt7xpc5p/75971609428/7f8a7065-27a3-4903-8898-d142b655da03.png'
+    body: payload.notification?.body,
+    icon: '/logo.png', // Using local logo
+    tag: 'chat'
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
+// Handle generic Web Push messages
 self.addEventListener('push', (event) => {
   console.log('[Service Worker] Push Received.', event);
+  
   let data = {};
   if (event.data) {
     try {
       data = event.data.json();
     } catch (e) {
-      console.warn('Failed to parse push data as JSON, using text:', event.data.text());
-      data = { notification: { title: 'Ulfah Chat', body: event.data.text() } };
+      console.warn('Failed to parse push data as JSON');
+      return; // If not JSON, we don't know how to handle it
     }
   }
 
   const notification = data.notification || {};
   const title = notification.title || 'Ulfah Chat';
   const options = {
-    body: notification.body || 'New notification received',
-    icon: notification.icon || 'https://img.icons8.com/deco/200/000000/mosque.png',
-    badge: notification.badge || 'https://img.icons8.com/deco/200/000000/mosque.png',
+    body: notification.body || 'New message received',
+    icon: '/logo.png', // Using local logo
+    badge: '/logo.png',
+    tag: notification.tag || 'chat',
     data: notification.data || {},
   };
 
@@ -53,6 +58,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Try to focus an existing window, otherwise open a new one
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           return client.focus();
