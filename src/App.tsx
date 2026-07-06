@@ -234,6 +234,11 @@ export default function App() {
                     const data = await res.json();
                     const publicKey = data.publicKey;
                     if (publicKey) {
+                      const existingSubscription = await registration.pushManager.getSubscription();
+                      if (existingSubscription) {
+                        await existingSubscription.unsubscribe();
+                        console.log('Unsubscribed from existing push subscription.');
+                      }
                       const subscription = await registration.pushManager.subscribe({
                         userVisibleOnly: true,
                         applicationServerKey: urlBase64ToUint8Array(publicKey)
