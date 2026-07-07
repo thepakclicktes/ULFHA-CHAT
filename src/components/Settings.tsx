@@ -8,7 +8,7 @@ import {
   CircleDashed, ToggleLeft as Toggle, Clock, Sun, 
   Palette, Send, EyeOff, Languages, Volume2, History,
   Database, HelpCircle, Users, Smile, BadgePlus, QrCode, PlusCircle,
-  Ban
+  Ban, Camera, Mic, MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../types';
@@ -20,7 +20,7 @@ interface SettingsProps {
   profile: UserProfile;
 }
 
-type SettingsTab = 'main' | 'account' | 'privacy' | 'lists' | 'chats' | 'notifications' | 'accessibility' | 'blocked';
+type SettingsTab = 'main' | 'account' | 'privacy' | 'lists' | 'chats' | 'notifications' | 'accessibility' | 'blocked' | 'permissions';
 
 export default function Settings({ profile }: SettingsProps) {
   const navigate = useNavigate();
@@ -237,6 +237,91 @@ export default function Settings({ profile }: SettingsProps) {
       alert("Failed to setup Biometric App Lock. Your device might not support it, or you cancelled the prompt.");
     }
   };
+
+  // Permissions States
+  const [cameraStatus, setCameraStatus] = useState<string>('unknown');
+  const [micStatus, setMicStatus] = useState<string>('unknown');
+  const [locationStatus, setLocationStatus] = useState<string>('unknown');
+  const [notificationStatus, setNotificationStatus] = useState<string>('default');
+
+  const checkPermissions = async () => {
+    try {
+      if (navigator.permissions) {
+        const cam = await navigator.permissions.query({ name: 'camera' as any }).catch(() => null);
+        if (cam) {
+          setCameraStatus(cam.state);
+          cam.onchange = () => setCameraStatus(cam.state);
+        } else {
+          setCameraStatus('unknown');
+        }
+        
+        const mic = await navigator.permissions.query({ name: 'microphone' as any }).catch(() => null);
+        if (mic) {
+          setMicStatus(mic.state);
+          mic.onchange = () => setMicStatus(mic.state);
+        } else {
+          setMicStatus('unknown');
+        }
+
+        const loc = await navigator.permissions.query({ name: 'geolocation' as any }).catch(() => null);
+        if (loc) {
+          setLocationStatus(loc.state);
+          loc.onchange = () => setLocationStatus(loc.state);
+        } else {
+          setLocationStatus('unknown');
+        }
+      }
+      if ('Notification' in window) {
+        setNotificationStatus(Notification.permission);
+      }
+    } catch (e) {
+      console.warn("Failed to check permissions via query:", e);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'permissions') {
+      checkPermissions();
+    }
+  }, [activeTab]);
+
+  const requestCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(t => t.stop());
+      setCameraStatus('granted');
+    } catch (err) {
+      console.error('Camera request failed:', err);
+      setCameraStatus('denied');
+    }
+  };
+
+  const requestMic = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop());
+      setMicStatus('granted');
+    } catch (err) {
+      console.error('Mic request failed:', err);
+      setMicStatus('denied');
+    }
+  };
+
+  const requestLocation = () => {
+    navigator.geolocation.getCurrentPosition(
+      () => setLocationStatus('granted'),
+      () => setLocationStatus('denied'),
+      { timeout: 5000 }
+    );
+  };
+
+  const requestNotification = async () => {
+    if ('Notification' in window) {
+      const result = await Notification.requestPermission();
+      setNotificationStatus(result);
+    }
+  };
+
 const cycleVisibility = (key: string, current: string) => {
     const options: ('everyone' | 'myContacts' | 'nobody')[] = ['everyone', 'myContacts', 'nobody'];
     const currentIndex = options.indexOf(current as any);
@@ -499,6 +584,12 @@ const cycleVisibility = (key: string, current: string) => {
           icon={Accessibility} 
           title="Accessibility" 
           onClick={() => setActiveTab('accessibility')} 
+        />
+        <SettingItem 
+          icon={Camera} 
+          title="App Permissions" 
+          subtitle="Camera, microphone, location and notifications" 
+          onClick={() => setActiveTab('permissions')} 
         />
       </div>
     </div>
@@ -892,6 +983,140 @@ const cycleVisibility = (key: string, current: string) => {
     );
   };
 
+  const renderPermissions = () => (
+    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
+      {renderHeader("App Permissions")}
+      
+      <div className="p-4 bg-gray-50 border-b border-gray-100">
+        <p className="text-xs text-[#667781] leading-relaxed">
+          Manage device permissions for Ulfah Chat. Grant permissions to enable calling, audio recording, status uploads, location sharing, and real-time push alerts.
+        </p>
+      </div>
+
+      <div className="flex flex-col mt-2">
+        {/* Camera Permission */}
+        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 bg-green-50 text-[#008069] rounded-xl">
+              <Camera size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Camera</h3>
+              <p className="text-xs text-gray-500">Required for video calls and profile pictures</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              "text-xs font-bold px-2.5 py-1 rounded-full",
+              cameraStatus === 'granted' ? "bg-green-100 text-green-700" :
+              cameraStatus === 'denied' ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+            )}>
+              {cameraStatus === 'granted' ? 'Allowed' : cameraStatus === 'denied' ? 'Blocked' : 'Not Allowed'}
+            </span>
+            {cameraStatus !== 'granted' && (
+              <button
+                onClick={requestCamera}
+                className="text-xs font-bold text-[#008069] bg-[#D9FDD3] hover:bg-[#cbf7c3] px-3 py-1.5 rounded-full transition-all"
+              >
+                Allow
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Microphone Permission */}
+        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 bg-green-50 text-[#008069] rounded-xl">
+              <Mic size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Microphone</h3>
+              <p className="text-xs text-gray-500">Required for voice calls and voice messages</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              "text-xs font-bold px-2.5 py-1 rounded-full",
+              micStatus === 'granted' ? "bg-green-100 text-green-700" :
+              micStatus === 'denied' ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+            )}>
+              {micStatus === 'granted' ? 'Allowed' : micStatus === 'denied' ? 'Blocked' : 'Not Allowed'}
+            </span>
+            {micStatus !== 'granted' && (
+              <button
+                onClick={requestMic}
+                className="text-xs font-bold text-[#008069] bg-[#D9FDD3] hover:bg-[#cbf7c3] px-3 py-1.5 rounded-full transition-all"
+              >
+                Allow
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Geolocation Permission */}
+        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 bg-green-50 text-[#008069] rounded-xl">
+              <MapPin size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Location</h3>
+              <p className="text-xs text-gray-500">Required for sharing location in chats</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              "text-xs font-bold px-2.5 py-1 rounded-full",
+              locationStatus === 'granted' ? "bg-green-100 text-green-700" :
+              locationStatus === 'denied' ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+            )}>
+              {locationStatus === 'granted' ? 'Allowed' : locationStatus === 'denied' ? 'Blocked' : 'Not Allowed'}
+            </span>
+            {locationStatus !== 'granted' && (
+              <button
+                onClick={requestLocation}
+                className="text-xs font-bold text-[#008069] bg-[#D9FDD3] hover:bg-[#cbf7c3] px-3 py-1.5 rounded-full transition-all"
+              >
+                Allow
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Notifications Permission */}
+        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 bg-green-50 text-[#008069] rounded-xl">
+              <Bell size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
+              <p className="text-xs text-gray-500">Required for message alerts and calling</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              "text-xs font-bold px-2.5 py-1 rounded-full",
+              notificationStatus === 'granted' ? "bg-green-100 text-green-700" :
+              notificationStatus === 'denied' ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+            )}>
+              {notificationStatus === 'granted' ? 'Allowed' : notificationStatus === 'denied' ? 'Blocked' : 'Not Allowed'}
+            </span>
+            {notificationStatus !== 'granted' && (
+              <button
+                onClick={requestNotification}
+                className="text-xs font-bold text-[#008069] bg-[#D9FDD3] hover:bg-[#cbf7c3] px-3 py-1.5 rounded-full transition-all"
+              >
+                Allow
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-full bg-[#f0f2f5] relative z-40 overflow-hidden">
       <AnimatePresence mode="wait">
@@ -911,6 +1136,7 @@ const cycleVisibility = (key: string, current: string) => {
           {activeTab === 'notifications' && renderNotifications()}
           {activeTab === 'accessibility' && renderAccessibility()}
           {activeTab === 'blocked' && renderBlocked()}
+          {activeTab === 'permissions' && renderPermissions()}
         </motion.div>
       </AnimatePresence>
     </div>
