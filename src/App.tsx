@@ -56,7 +56,14 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const [showSplash, setShowSplash] = useState(true);
-  const [selectedChat, setSelectedChat] = useState<any | null>(null);
+  const [selectedChat, setSelectedChat] = useState<any | null>(() => {
+    try {
+      const saved = localStorage.getItem('ulfha_selected_chat');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [appSettings, setAppSettings] = useState<AppSettings | null>(() => {
     try {
@@ -100,6 +107,37 @@ export default function App() {
     return () => unsubscribe();
   }, [profile?.uid]);
 
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
+
   useEffect(() => {
     // Request permissions proactively on first load (after splash) for better mobile integration
     if (!showSplash && !loading && user) {
@@ -131,6 +169,14 @@ export default function App() {
       requestAll();
     }
   }, [showSplash, loading, user]);
+
+  useEffect(() => {
+    if (selectedChat) {
+      localStorage.setItem('ulfha_selected_chat', JSON.stringify(selectedChat));
+    } else {
+      localStorage.removeItem('ulfha_selected_chat');
+    }
+  }, [selectedChat]);
 
   // Synchronize pending offline messages from IndexedDB / localStorage when coming online
   useEffect(() => {
@@ -256,9 +302,6 @@ export default function App() {
               // Wait for service worker to be active
               await navigator.serviceWorker.ready;
               console.log('Service Worker ready');
-
-              // Small delay to ensure everything is settled
-              await new Promise(resolve => setTimeout(resolve, 2000));
 
               try {
                 if (navigator.onLine) {
@@ -716,6 +759,42 @@ export default function App() {
     <div 
       className={cn(activeTab === 'admin' ? "w-full h-dvh flex flex-col bg-[#1e1e1e] relative overflow-hidden" : "layout-shield relative")}
     >
+      {/* Offline Indicator */}
+      {!isOnline && (
+        <div className="fixed top-0 left-0 w-full bg-red-500 text-white text-[10px] py-1 text-center font-bold z-[1000] animate-pulse">
+          You are currently offline. Using cached data.
+        </div>
+      )}
+
+      {/* PWA Install Banner */}
+      {deferredPrompt && (
+        <div className="fixed top-4 left-4 right-4 bg-white rounded-2xl p-4 shadow-2xl z-[1100] border border-gray-100 flex items-center justify-between animate-in fade-in slide-in-from-top duration-500">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-[#00A884] rounded-xl flex items-center justify-center text-white shadow-lg overflow-hidden">
+              <img src={resolveLogo(appSettings?.appLogoUrl)} className="w-full h-full object-cover" alt="Logo" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm">Install Ulfah Chat</h3>
+              <p className="text-[10px] text-gray-500 leading-tight">Add to home screen for original app experience</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setDeferredPrompt(null)}
+              className="px-3 py-1.5 text-[10px] font-bold text-gray-400 hover:text-gray-600"
+            >
+              Later
+            </button>
+            <button 
+              onClick={handleInstallClick}
+              className="bg-[#00A884] text-white px-4 py-1.5 rounded-lg text-[10px] font-bold shadow-md active:scale-95 transition-transform"
+            >
+              Install
+            </button>
+          </div>
+        </div>
+      )}
+
       {quotaExceeded && (
         <div className="bg-amber-600 text-white py-3 px-4 relative z-[9999] shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left transition-all">
           <div className="flex items-center gap-3">

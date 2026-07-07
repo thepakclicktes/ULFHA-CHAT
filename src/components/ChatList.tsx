@@ -27,8 +27,22 @@ interface ChatListProps {
 
 export default function ChatList({ onSelectChat, selectedChat, searchQuery = '', nicknames }: ChatListProps) {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [groups, setGroups] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem('ulfha_recent_chats');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [groups, setGroups] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('ulfha_recent_groups');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);

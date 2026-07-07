@@ -503,6 +503,34 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
     }
   };
   const [messages, setMessages] = useState<Message[]>([]);
+  
+  // Load cached messages for instant display
+  useEffect(() => {
+    if (!chat?.uid) return;
+    try {
+      const saved = localStorage.getItem(`ulfha_messages_${chat.uid}`);
+      if (saved) {
+        setMessages(JSON.parse(saved));
+      } else {
+        setMessages([]); // Reset if no cache
+      }
+    } catch {
+      setMessages([]);
+    }
+  }, [chat?.uid]);
+
+  // Save messages to cache when they update
+  useEffect(() => {
+    if (!chat?.uid || messages.length === 0) return;
+    try {
+      // Only cache last 50 messages to save space
+      const toCache = messages.slice(-50);
+      localStorage.setItem(`ulfha_messages_${chat.uid}`, JSON.stringify(toCache));
+    } catch (e) {
+      console.warn('Failed to cache messages:', e);
+    }
+  }, [messages, chat?.uid]);
+
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
