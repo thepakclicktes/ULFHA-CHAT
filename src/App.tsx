@@ -680,9 +680,10 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-dvh bg-white">
-        <div className="flex flex-col items-center">
-          <div className="w-16 h-16 rounded-full mb-4 flex items-center justify-center shadow-lg transform scale-125 overflow-hidden">
+      <div className="flex flex-col items-center justify-between h-dvh bg-white py-12 px-4 font-sans relative overflow-hidden">
+        {/* Top/Center Branding */}
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="w-24 h-24 rounded-full mb-4 flex items-center justify-center shadow-xl ring-4 ring-[#00A884]/10 transition-transform hover:scale-105 overflow-hidden bg-white border border-gray-100">
             <img 
               src={resolveLogo(appSettings?.appLogoUrl)} 
               className="w-full h-full object-cover"
@@ -690,14 +691,16 @@ export default function App() {
               referrerPolicy="no-referrer"
             />
           </div>
-          <p className="text-[#25D366] font-bold text-xl">Ulfah Chat</p>
-          <div className="mt-8 flex flex-col items-center gap-1">
-            <p className="text-[#8696A0] text-[10px] uppercase tracking-[0.2em] font-medium">from</p>
-            <p className="text-[#111B21] font-bold tracking-widest text-sm">Ulfah.llc</p>
-          </div>
-          <div className="mt-4 text-[#8696A0] text-[10px] font-medium">
-            ©️ abdulrehmanhabib
-          </div>
+          <h1 className="text-3xl font-extrabold text-[#00A884] tracking-tight mt-2">Ulfah Chat</h1>
+        </div>
+
+        {/* Footer Brand Aligned to the Bottom */}
+        <div className="flex flex-col items-center gap-2 mt-auto">
+          <p className="text-[#8696A0] text-xs uppercase tracking-[0.25em] font-bold">from</p>
+          <p className="text-[#111B21] font-extrabold tracking-wide text-lg">Ulfah.llc</p>
+          <p className="text-[#7C3AED] text-xs font-semibold mt-1">
+            © abdulrehmanhabib
+          </p>
         </div>
       </div>
     );

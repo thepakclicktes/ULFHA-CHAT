@@ -17,6 +17,7 @@ import {
 import { cn } from '../utils';
 import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
+import BookReader from './BookReader';
 
 export interface Book {
   id: string;
@@ -431,6 +432,19 @@ export default function IslamicLibrary({
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [readingBook, setReadingBook] = useState<Book | null>(null);
   const [downloadingBookVolumes, setDownloadingBookVolumes] = useState<Book | null>(null);
+  const [cachedBooks, setCachedBooks] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const checkCache = async () => {
+      if ('caches' in window) {
+        const cache = await caches.open('ulfha-books-cache');
+        const requests = await cache.keys();
+        const urls = new Set(requests.map(req => req.url));
+        setCachedBooks(urls);
+      }
+    };
+    checkCache();
+  }, []);
 
   useEffect(() => {
     try {
@@ -796,6 +810,14 @@ export default function IslamicLibrary({
 
       {/* Elegant Modal Bottom Sheet */}
       <AnimatePresence>
+        {readingBook && (
+          <BookReader 
+            bookTitle={readingBook.urduTitle} 
+            bookUrl={readingBook.url!} 
+            onClose={() => setReadingBook(null)} 
+            onCached={(url) => setCachedBooks(prev => new Set(prev).add(url))}
+          />
+        )}
         {selectedBook && (
           <>
             {/* Backdrop overlay */}
@@ -910,14 +932,23 @@ export default function IslamicLibrary({
                               <BookOpen size={12} /> پڑھیں
                             </button>
                             {/* Download Volume */}
-                            <a
-                              href={vol.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-2.5 py-1.5 rounded-lg border border-blue-200/50 dark:border-blue-900/40 transition-all font-bold Urdu flex items-center gap-1"
-                            >
-                              <Download size={12} /> ڈاؤنلوڈ
-                            </a>
+                            {cachedBooks.has(vol.url) ? (
+                              <button
+                                onClick={() => handleReadBook({ ...selectedBook, url: vol.url })}
+                                className="text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 px-2.5 py-1.5 rounded-lg border border-emerald-200/50 dark:border-emerald-900/40 transition-all font-bold Urdu flex items-center gap-1"
+                              >
+                                <BookOpen size={12} /> Read Offline
+                              </button>
+                            ) : (
+                              <a
+                                href={vol.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-2.5 py-1.5 rounded-lg border border-blue-200/50 dark:border-blue-900/40 transition-all font-bold Urdu flex items-center gap-1"
+                              >
+                                <Download size={12} /> ڈاؤنلوڈ
+                              </a>
+                            )}
                           </div>
                         </div>
                       ))}
