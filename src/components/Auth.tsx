@@ -64,7 +64,7 @@ export default function Auth() {
     setVerificationSent(false);
   };
 
-  // Original Google Authentication & Custom Registration
+  // Original Apple Authentication
   const handleAppleLogin = async () => {
     if (isRegistering) {
       if (!displayName.trim()) {
@@ -139,9 +139,11 @@ export default function Auth() {
       }
     } catch (error: any) {
       if (error.code === 'auth/popup-blocked') {
-        setError('Popup Blocked! Please allow popups or use "New Tab".');
+        setError('Popup Blocked! Please allow popups or use "New Tab" in the AI Studio toolbar to open the app outside the iframe.');
       } else if (error.code === 'auth/popup-closed-by-user') {
-        setError('Login cancelled.');
+        setError('The Apple Sign-In popup was closed before completion. If this keeps happening, try opening the app in a "New Tab" from the AI Studio toolbar.');
+      } else if (error.code === 'auth/operation-not-allowed') {
+        setError('Apple Login is not fully configured. Please check Firebase Console and ensure this domain is whitelisted.');
       } else {
         setError(error.message || 'An unexpected error occurred.');
       }
@@ -151,6 +153,7 @@ export default function Auth() {
     }
   };
 
+  // Original Google Authentication & Custom Registration
   const handleGoogleLogin = async () => {
     if (isRegistering) {
       if (!displayName.trim()) {
@@ -242,15 +245,15 @@ export default function Auth() {
     } catch (error: any) {
       localStorage.removeItem('pending_registration');
       if (error.code === 'auth/popup-blocked') {
-        setError('Popup Blocked! Your browser or iframe sandbox has blocked the login window. Please allow popups, or click the "New Tab" button in the upper-right corner of AI Studio to open the app on a full tab.');
+        setError('Popup Blocked! Your browser or iframe sandbox has blocked the login window. Please allow popups, or click the "New Tab" button in the AI Studio toolbar to open the app on a full tab.');
       } else if (error.code === 'auth/popup-closed-by-user') {
-        setError('The Google Sign-In popup was closed before completion. Please keep the popup window open to sign in.');
+        setError('The Google Sign-In popup was closed before completion. If this keeps happening, try using "New Tab" from the AI Studio toolbar to avoid iframe issues.');
       } else if (error.code === 'auth/cancelled-popup-request') {
         setError('A previous login request is still pending. Please wait a moment.');
       } else if (error.code === 'auth/unauthorized-domain') {
-        setError('This domain is not authorized for Google Sign-In.');
+        setError('This domain is not authorized for Google Sign-In. Please check Firebase Console.');
       } else if (error.message && (error.message.includes('Pending promise') || error.message.includes('INTERNAL ASSERTION FAILED'))) {
-        setError('Iframe authentication limit. Please click "New Tab" in the upper-right corner to open the app in a full window, then sign in with Google.');
+        setError('Iframe authentication limit. Please click "New Tab" in the AI Studio toolbar to open the app in a full window, then sign in with Google.');
       } else {
         setError(error.message || 'An unexpected authentication error occurred.');
       }

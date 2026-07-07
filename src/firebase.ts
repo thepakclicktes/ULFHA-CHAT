@@ -19,3 +19,5 @@ export const db = initializeFirestore(app, {
 export const messaging = getMessaging(app);
 export const googleProvider = new GoogleAuthProvider();
 export const appleProvider = new OAuthProvider('apple.com');
+appleProvider.addScope('email');
+appleProvider.addScope('name');
