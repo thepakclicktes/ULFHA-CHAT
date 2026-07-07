@@ -5,18 +5,16 @@ import {
   signInWithEmailAndPassword, 
   updateProfile,
   sendEmailVerification,
-  RecaptchaVerifier,
-  signInWithPhoneNumber
+  sendPasswordResetEmail,
 } from 'firebase/auth';
-import { auth, googleProvider, appleProvider, db } from '../firebase';
+import { auth, db } from '../firebase';
 import { doc, setDoc, serverTimestamp, query, collection, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { LogIn, Mail, Lock, User, ArrowRight, Github, ImageIcon, AtSign, Eye, EyeOff, Key, ShieldCheck, Smartphone, CheckCircle2 } from 'lucide-react';
 import { cn } from '../utils';
 import { AppSettings } from '../types';
 
 export default function Auth() {
-  // Current main tab: 'google' | 'phone' | 'email_password'
-  const [authMethod, setAuthMethod] = useState<'google' | 'email_password' | 'phone'>('google');
+  // Current main tab: 'google' | 'anonymous' | 'email_password'
   
   // Registration and general states
   const [isRegistering, setIsRegistering] = useState(false);
@@ -27,12 +25,6 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
 
-  // Phone Auth specific states
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
-
   // Email/Password specific states
   const [isEmailPasswordRegistering, setIsEmailPasswordRegistering] = useState(false);
   const [email, setEmail] = useState('');
@@ -40,6 +32,8 @@ export default function Auth() {
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const DEFAULT_LOGO = '/logo.png';
 
@@ -56,224 +50,6 @@ export default function Auth() {
     });
     return () => unsub();
   }, []);
-
-  // Reset error on tab change
-  const handleTabChange = (method: 'google' | 'email_password' | 'phone') => {
-    setAuthMethod(method);
-    setError(null);
-    setSuccessMessage(null);
-    setIsRegistering(false);
-    setIsEmailPasswordRegistering(false);
-    setDisplayName('');
-    setUsername('');
-    setEmail('');
-    setPassword('');
-    setEmailOrUsername('');
-    setVerificationSent(false);
-    setPhoneNumber('');
-    setOtpCode('');
-    setOtpSent(false);
-    setConfirmationResult(null);
-  };
-
-  // Original Apple Authentication
-  const handleAppleLogin = async () => {
-    if (isRegistering) {
-      if (!displayName.trim()) {
-        setError('Please set your Full Name first.');
-        return;
-      }
-      if (!username.trim()) {
-        setError('Please set your Username first.');
-        return;
-      }
-      const usernameRegex = /^[a-zA-Z0-9_]+$/;
-      if (!usernameRegex.test(username.trim())) {
-        setError('Username can only contain letters, numbers, and underscores.');
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      try {
-        const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase().trim()));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          setError('This username is already taken. Please choose another username.');
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Error checking username:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    try {
-      setError(null);
-      setLoading(true);
-      const result = await signInWithPopup(auth, appleProvider);
-      const user = result.user;
-      
-      if (isRegistering) {
-        // Double check username to ensure uniqueness
-        const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase().trim()));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const existingUser = querySnapshot.docs[0];
-          if (existingUser.id !== user.uid) {
-            await auth.signOut();
-            setError('This username is already taken. Please choose another username.');
-            return;
-          }
-        }
-
-        // Setup the user profile document in Firestore
-        const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email || '',
-          displayName: displayName.trim(),
-          username: username.toLowerCase().trim(),
-          photoURL: user.photoURL || '',
-          phoneNumber: user.phoneNumber || '',
-          balance: 0,
-          role: 'user',
-          isOnline: true,
-          lastSeen: new Date().toISOString(),
-          isVerified: false,
-          isBanned: false,
-          level: 'Bronze',
-          experience: 0,
-          createdAt: serverTimestamp()
-        }, { merge: true });
-      }
-    } catch (error: any) {
-      if (error.code === 'auth/popup-blocked') {
-        setError('Popup Blocked! Please allow popups or use "New Tab" in the AI Studio toolbar to open the app outside the iframe.');
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        setError('The Apple Sign-In popup was closed before completion. If this keeps happening, try opening the app in a "New Tab" from the AI Studio toolbar.');
-      } else if (error.code === 'auth/operation-not-allowed') {
-        setError('Apple Login is not fully configured. Please check Firebase Console and ensure this domain is whitelisted.');
-      } else {
-        setError(error.message || 'An unexpected error occurred.');
-      }
-      console.error('Apple Login error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Original Google Authentication & Custom Registration
-  const handleGoogleLogin = async () => {
-    if (isRegistering) {
-      if (!displayName.trim()) {
-        setError('Please set your Full Name first.');
-        return;
-      }
-      if (!username.trim()) {
-        setError('Please set your Username first.');
-        return;
-      }
-      const usernameRegex = /^[a-zA-Z0-9_]+$/;
-      if (!usernameRegex.test(username.trim())) {
-        setError('Username can only contain letters, numbers, and underscores.');
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      try {
-        const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase().trim()));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          setError('This username is already taken. Please choose another username.');
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error('Error checking username:', err);
-      } finally {
-        setLoading(false);
-      }
-
-      // Save registration values to localStorage to avoid hook race conditions
-      localStorage.setItem('pending_registration', JSON.stringify({
-        displayName: displayName.trim(),
-        username: username.toLowerCase().trim()
-      }));
-    }
-
-    try {
-      setError(null);
-      setLoading(true);
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      if (user.email && !user.email.toLowerCase().endsWith('@gmail.com')) {
-        await auth.signOut();
-        localStorage.removeItem('pending_registration');
-        setError('Only @gmail.com emails are allowed.');
-        return;
-      }
-
-      if (isRegistering) {
-        // Double check username to ensure uniqueness
-        const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase().trim()));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const existingUser = querySnapshot.docs[0];
-          if (existingUser.id !== user.uid) {
-            localStorage.removeItem('pending_registration');
-            await auth.signOut();
-            setError('This username is already taken. Please choose another username.');
-            return;
-          }
-        }
-
-        // Setup the user profile document in Firestore
-        const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email || '',
-          displayName: displayName.trim(),
-          username: username.toLowerCase().trim(),
-          photoURL: user.photoURL || '',
-          phoneNumber: user.phoneNumber || '',
-          balance: 0,
-          role: 'user',
-          isOnline: true,
-          lastSeen: new Date().toISOString(),
-          isVerified: false,
-          isBanned: false,
-          level: 'Bronze',
-          experience: 0,
-          createdAt: serverTimestamp()
-        }, { merge: true });
-
-        localStorage.removeItem('pending_registration');
-      }
-    } catch (error: any) {
-      localStorage.removeItem('pending_registration');
-      if (error.code === 'auth/popup-blocked') {
-        setError('Popup Blocked! Your browser or iframe sandbox has blocked the login window. Please allow popups, or click the "New Tab" button in the AI Studio toolbar to open the app on a full tab.');
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        setError('The Google Sign-In popup was closed before completion. If this keeps happening, try using "New Tab" from the AI Studio toolbar to avoid iframe issues.');
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        setError('A previous login request is still pending. Please wait a moment.');
-      } else if (error.code === 'auth/unauthorized-domain') {
-        setError('This domain is not authorized for Google Sign-In. Please check Firebase Console.');
-      } else if (error.message && (error.message.includes('Pending promise') || error.message.includes('INTERNAL ASSERTION FAILED'))) {
-        setError('Iframe authentication limit. Please click "New Tab" in the AI Studio toolbar to open the app in a full window, then sign in with Google.');
-      } else {
-        setError(error.message || 'An unexpected authentication error occurred.');
-      }
-      console.error('Login error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Email & Password Registration Handler with Email Verification
   const handleEmailPasswordRegister = async (e: React.FormEvent) => {
@@ -370,6 +146,35 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !email.includes('@')) {
+      setError('Please enter a valid email address to reset your password.');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+    
+    try {
+      await sendPasswordResetEmail(auth, email.toLowerCase().trim());
+      setResetEmailSent(true);
+      setSuccessMessage(`Password reset link sent to ${email}`);
+    } catch (err: any) {
+      console.error('Password reset error:', err);
+      if (err.code === 'auth/user-not-found') {
+        setError('No account found with this email.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('The email address format is invalid.');
+      } else {
+        setError(err.message || 'An error occurred while sending the reset link.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Email & Password Login Handler (Supports Email OR Username login!)
   const handleEmailPasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -435,114 +240,6 @@ export default function Auth() {
     }
   };
 
-  // Phone Authentication Handlers
-  const setupRecaptcha = () => {
-    if ((window as any).recaptchaVerifier) {
-      return (window as any).recaptchaVerifier;
-    }
-    try {
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: (response: any) => {
-          // reCAPTCHA solved
-        },
-        'expired-callback': () => {
-          setError('reCAPTCHA verification expired. Please try again.');
-        }
-      });
-      (window as any).recaptchaVerifier = verifier;
-      return verifier;
-    } catch (err: any) {
-      console.error('reCAPTCHA setup error:', err);
-      setError('reCAPTCHA loading failed. If in iframe, please use "New Tab" in the AI Studio toolbar.');
-      return null;
-    }
-  };
-
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phoneNumber.trim()) {
-      setError('Please enter a valid phone number.');
-      return;
-    }
-    
-    let formattedPhone = phoneNumber.trim().replace(/\s+/g, '');
-    if (!formattedPhone.startsWith('+')) {
-      if (formattedPhone.startsWith('0')) {
-        formattedPhone = '+92' + formattedPhone.substring(1);
-      } else {
-        formattedPhone = '+' + formattedPhone;
-      }
-    }
-
-    setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
-
-    try {
-      const appVerifier = setupRecaptcha();
-      if (!appVerifier) {
-        setLoading(false);
-        return;
-      }
-
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-      setConfirmationResult(confirmation);
-      setOtpSent(true);
-      setSuccessMessage('Code sent successfully to ' + formattedPhone);
-    } catch (err: any) {
-      console.error('Send OTP error:', err);
-      if (err.code === 'auth/invalid-phone-number') {
-        setError('Invalid phone number. Format should be: +923001234567');
-      } else if (err.code === 'auth/captcha-check-failed') {
-        setError('reCAPTCHA check failed. Please refresh and try again.');
-      } else {
-        setError(err.message || 'Error sending OTP. Make sure Phone authentication is enabled in Firebase Console.');
-      }
-      if ((window as any).recaptchaVerifier) {
-        try {
-          (window as any).recaptchaVerifier.clear();
-          (window as any).recaptchaVerifier = null;
-        } catch (clearErr) {
-          console.error(clearErr);
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otpCode.trim() || otpCode.trim().length < 6) {
-      setError('Please enter a valid 6-digit code.');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      if (!confirmationResult) {
-        setError('Verification session expired. Please request a new code.');
-        setLoading(false);
-        return;
-      }
-
-      await confirmationResult.confirm(otpCode.trim());
-      setSuccessMessage('Logged in successfully!');
-    } catch (err: any) {
-      console.error('Verify OTP error:', err);
-      if (err.code === 'auth/invalid-verification-code') {
-        setError('Incorrect verification code. Please try again.');
-      } else {
-        setError(err.message || 'Verification failed. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="flex flex-col items-center justify-center min-h-dvh bg-[#F0F2F5] p-4 font-sans relative overflow-hidden">
       {/* Background Pattern */}
@@ -568,49 +265,6 @@ export default function Auth() {
         <h1 className="text-3xl font-bold text-[#111B21] mb-1">Ulfah Chat</h1>
         <p className="text-[#667781] text-center mb-6 text-sm font-medium">Simple. Reliable. Private.</p>
 
-        {/* Tab Navigation */}
-        <div className="w-full flex bg-gray-100 p-1 rounded-xl mb-6 gap-0.5">
-          <button
-            id="tab_google"
-            type="button"
-            onClick={() => handleTabChange('google')}
-            className={cn(
-              "flex-1 py-2 text-[11px] font-bold rounded-lg transition-all",
-              authMethod === 'google' 
-                ? "bg-[#00A884] text-white shadow-sm" 
-                : "text-gray-500 hover:text-gray-800"
-            )}
-          >
-            Google
-          </button>
-          <button
-            id="tab_phone"
-            type="button"
-            onClick={() => handleTabChange('phone')}
-            className={cn(
-              "flex-1 py-2 text-[11px] font-bold rounded-lg transition-all",
-              authMethod === 'phone' 
-                ? "bg-[#00A884] text-white shadow-sm" 
-                : "text-gray-500 hover:text-gray-800"
-            )}
-          >
-            Phone No
-          </button>
-          <button
-            id="tab_email_pass"
-            type="button"
-            onClick={() => handleTabChange('email_password')}
-            className={cn(
-              "flex-1 py-2 text-[11px] font-bold rounded-lg transition-all",
-              authMethod === 'email_password' 
-                ? "bg-[#00A884] text-white shadow-sm" 
-                : "text-gray-500 hover:text-gray-800"
-            )}
-          >
-            Email & Pass
-          </button>
-        </div>
-
         {error && (
           <div id="auth_error_banner" className="w-full bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg text-xs mb-4 text-center font-medium">
             {error}
@@ -623,253 +277,8 @@ export default function Auth() {
           </div>
         )}
 
-        {/* Google Authentication */}
-        {authMethod === 'google' && (
-          <div className="w-full">
-            {isRegistering ? (
-              <div className="w-full space-y-4">
-                <div className="relative">
-                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="reg_google_displayname"
-                    type="text"
-                    placeholder="Full Name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 focus:border-[#00A884] rounded-xl py-3 pl-10 pr-4 text-gray-900 text-sm outline-none transition-all"
-                    required
-                  />
-                </div>
-                <div className="relative">
-                  <AtSign size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="reg_google_username"
-                    type="text"
-                    placeholder="Username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 focus:border-[#00A884] rounded-xl py-3 pl-10 pr-4 text-gray-900 text-sm outline-none transition-all"
-                    required
-                  />
-                </div>
-
-                <p className="text-xs text-[#667781] text-center mt-2 px-1">
-                  Enter your Full Name and unique Username, then click below to complete your registration with Google.
-                </p>
-
-                <button
-                  id="btn_google_register"
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                  className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-900 font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 active:scale-95 mt-4"
-                >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-gray-300 border-t-[#00A884] rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                        />
-                      </svg>
-                      Continue with Google
-                    </>
-                  )}
-                </button>
-
-                <button
-                  id="btn_apple_register"
-                  onClick={handleAppleLogin}
-                  disabled={loading}
-                  className="w-full bg-black hover:bg-zinc-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-3 active:scale-95"
-                >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-zinc-700 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.05 20.28c-.96.95-2.04 1.72-3.23 1.72-1.16 0-1.54-.71-2.91-.71s-1.8.71-2.91.71c-1.19 0-2.31-.83-3.26-1.77C2.8 18.33 1.5 15.14 1.5 12.11c0-4.73 3.06-7.23 6.04-7.23 1.55 0 2.5.9 3.51.9.98 0 2.21-.93 3.65-.93 1.25 0 4.25.56 5.3 2.11-2.58 1.53-2.17 5.03.4 6.31-1.03 2.5-2.32 5.01-3.35 7.01zm-4.11-16.14c.04 0 .07 0 .11 0 2.05-.13 3.8-1.78 3.8-3.83 0-.1 0-.21-.01-.31-1.89.08-3.52 1.34-3.9 3.19-.07.33-.11.66-.11.99 0 .28 0 .54.11-.04z"/>
-                      </svg>
-                      Continue with Apple
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
-              <div className="w-full space-y-4">
-                <button
-                  id="btn_google_login"
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                  className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-900 font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 active:scale-95"
-                >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-gray-300 border-t-[#00A884] rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                        />
-                      </svg>
-                      Continue with Google
-                    </>
-                  )}
-                </button>
-
-                <button
-                  id="btn_apple_login"
-                  onClick={handleAppleLogin}
-                  disabled={loading}
-                  className="w-full bg-black hover:bg-zinc-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-3 active:scale-95"
-                >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-zinc-700 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.05 20.28c-.96.95-2.04 1.72-3.23 1.72-1.16 0-1.54-.71-2.91-.71s-1.8.71-2.91.71c-1.19 0-2.31-.83-3.26-1.77C2.8 18.33 1.5 15.14 1.5 12.11c0-4.73 3.06-7.23 6.04-7.23 1.55 0 2.5.9 3.51.9.98 0 2.21-.93 3.65-.93 1.25 0 4.25.56 5.3 2.11-2.58 1.53-2.17 5.03.4 6.31-1.03 2.5-2.32 5.01-3.35 7.01zm-4.11-16.14c.04 0 .07 0 .11 0 2.05-.13 3.8-1.78 3.8-3.83 0-.1 0-.21-.01-.31-1.89.08-3.52 1.34-3.9 3.19-.07.33-.11.66-.11.99 0 .28 0 .54.11-.04z"/>
-                      </svg>
-                      Continue with Apple
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-
-            <button
-              id="btn_google_toggle_register"
-              onClick={() => setIsRegistering(!isRegistering)}
-              className="w-full mt-6 text-[#00A884] hover:underline text-sm font-bold block text-center"
-            >
-              {isRegistering ? 'Already have an account? Sign In' : "Don't have an account? Register"}
-            </button>
-          </div>
-        )}
-
-        {/* Phone Number Authentication */}
-        {authMethod === 'phone' && (
-          <div className="w-full">
-            {!otpSent ? (
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                <div className="relative">
-                  <Smartphone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="phone_number_input"
-                    type="tel"
-                    placeholder="Phone Number (e.g. +923001234567)"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 focus:border-[#00A884] rounded-xl py-3 pl-10 pr-4 text-gray-900 text-sm outline-none transition-all"
-                    required
-                  />
-                </div>
-                
-                <p className="text-xs text-[#667781] text-center mt-2 px-1">
-                  Enter your mobile number with country code (e.g., +92 for Pakistan).
-                </p>
-
-                <button
-                  id="btn_send_otp"
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#00A884] hover:bg-[#008f70] text-white font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
-                >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Smartphone size={18} />
-                      Send Verification Code
-                    </>
-                  )}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div className="relative">
-                  <Key size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="otp_code_input"
-                    type="text"
-                    pattern="[0-9]*"
-                    maxLength={6}
-                    placeholder="6-Digit Code"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 focus:border-[#00A884] rounded-xl py-3 pl-10 pr-4 text-gray-900 text-sm outline-none tracking-[0.25em] text-center font-bold"
-                    required
-                  />
-                </div>
-
-                <p className="text-xs text-[#667781] text-center mt-2 px-1">
-                  Enter the 6-digit code sent to your phone.
-                </p>
-
-                <button
-                  id="btn_verify_otp"
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#00A884] hover:bg-[#008f70] text-white font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
-                >
-                  {loading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <ShieldCheck size={18} />
-                      Verify & Login
-                    </>
-                  )}
-                </button>
-
-                <button
-                  id="btn_back_to_phone"
-                  type="button"
-                  onClick={() => {
-                    setOtpSent(false);
-                    setError(null);
-                    setSuccessMessage(null);
-                  }}
-                  className="w-full text-[#00A884] hover:underline text-xs block text-center font-bold mt-2"
-                >
-                  Change Phone Number
-                </button>
-              </form>
-            )}
-            
-            {/* Recaptcha container target */}
-            <div id="recaptcha-container" className="mt-4 flex justify-center scale-90 origin-center"></div>
-          </div>
-        )}
 
         {/* Email & Password Authentication */}
-        {authMethod === 'email_password' && (
           <div className="w-full">
             {verificationSent ? (
               <div className="text-center space-y-4 py-4">
@@ -892,6 +301,60 @@ export default function Auth() {
                   Back to Sign In
                 </button>
               </div>
+            ) : isForgotPassword ? (
+              // Forgot Password Form
+              <div className="space-y-4">
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <p className="text-sm text-[#667781] text-center mb-4">
+                    Enter your email address and we'll send you a link to reset your password.
+                  </p>
+                  <div className="relative">
+                    <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      id="forgot_password_email"
+                      type="email"
+                      placeholder="Email Address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 focus:border-[#00A884] rounded-xl py-3 pl-10 pr-4 text-gray-900 text-sm outline-none transition-all"
+                      required
+                    />
+                  </div>
+                  <button
+                    id="btn_forgot_password_submit"
+                    type="submit"
+                    disabled={loading || resetEmailSent}
+                    className="w-full bg-[#00A884] hover:bg-[#008f70] text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    {loading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : resetEmailSent ? (
+                      <>
+                        <CheckCircle2 size={18} />
+                        Link Sent
+                      </>
+                    ) : (
+                      <>
+                        <Mail size={18} />
+                        Send Reset Link
+                      </>
+                    )}
+                  </button>
+                </form>
+                <button
+                  id="btn_back_to_login_from_forgot"
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setError(null);
+                    setSuccessMessage(null);
+                    setResetEmailSent(false);
+                  }}
+                  className="w-full mt-2 text-[#00A884] hover:underline text-sm font-bold block text-center"
+                >
+                  Back to Sign In
+                </button>
+              </div>
             ) : (
               <>
                 {!isEmailPasswordRegistering ? (
@@ -909,6 +372,7 @@ export default function Auth() {
                         required
                       />
                     </div>
+
                     <div className="relative">
                       <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input
@@ -927,6 +391,20 @@ export default function Auth() {
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
                       >
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsForgotPassword(true);
+                          setError(null);
+                          setSuccessMessage(null);
+                        }}
+                        className="text-xs text-[#00A884] hover:underline font-medium"
+                      >
+                        Forgot Password?
                       </button>
                     </div>
 
@@ -1038,7 +516,6 @@ export default function Auth() {
               </>
             )}
           </div>
-        )}
 
         <p className="mt-8 text-[11px] text-[#8696A0] text-center leading-relaxed">
           By continuing, you agree to our <br />

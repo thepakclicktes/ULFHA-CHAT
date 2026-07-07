@@ -55,7 +55,7 @@ self.addEventListener('push', (event) => {
 });
 
 // PWA requirement: Cache assets for offline use
-const CACHE_NAME = 'ulfha-chat-v1';
+const CACHE_NAME = 'ulfha-chat-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -87,26 +87,31 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests
+  // Only handle GET requests
   if (event.request.method !== 'GET') return;
+  
+  // Exclude API requests
+  if (event.request.url.includes('/api/')) return;
 
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((fetchResponse) => {
-        // Cache new assets on the fly
-        if (fetchResponse.status === 200) {
-          const responseClone = fetchResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return fetchResponse;
-      });
-    }).catch(() => {
-      // Fallback for navigation requests
-      if (event.request.mode === 'navigate') {
-        return caches.match('/');
+    fetch(event.request).then((fetchResponse) => {
+      // Network success! Cache it and return.
+      if (fetchResponse.status === 200) {
+        const responseClone = fetchResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
+        });
       }
+      return fetchResponse;
+    }).catch(() => {
+      // Network failed! Fallback to cache
+      return caches.match(event.request).then((response) => {
+        if (response) return response;
+        // Fallback for navigation requests
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
+        }
+      });
     })
   );
 });

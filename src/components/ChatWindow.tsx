@@ -11,6 +11,7 @@ import { updateDoc, doc } from 'firebase/firestore';
 import VoiceCall from './VoiceCall';
 import { triggerPushNotification } from '../utils/notifications';
 import { queuePendingMessage, syncPendingMessages } from '../utils/SyncManager';
+import { useTypingIndicator } from '../hooks/useTypingIndicator';
 
 const MessageBubble = React.memo(({ 
   msg, 
@@ -587,6 +588,8 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
   const [messageToReport, setMessageToReport] = useState<Message | null>(null);
   const [reportReason, setReportReason] = useState('spam');
   const [isReporting, setIsReporting] = useState(false);
+
+  const { typingUsers, handleTyping } = useTypingIndicator(chat.uid, currentUser.uid, chat.isGroup || chat.isChannel);
 
   const handleReact = async (msgId: string, emoji: string) => {
     if (!msgId || !currentUser.uid) return;
@@ -1572,8 +1575,12 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
                   {nicknames[chat.uid] || chat.displayName}
                   {chat.isVerified && <BadgeCheck size={14} className="text-[#3b82f6] fill-[#3b82f6]/10 flex-shrink-0" />}
                 </h3>
-                <p className="text-[11px] text-[#667781]">
-                  {chat.isGroup ? `${chat.members?.length || 0} members` : chat.isChannel ? `${chat.members?.length || 0} subscribers` : (chat.isOnline ? 'Online' : 'Offline')}
+                <p className={cn("text-[11px]", typingUsers.length > 0 ? "text-[#00A884] font-semibold" : "text-[#667781]")}>
+                  {typingUsers.length > 0 
+                    ? (typingUsers.length === 1 && !chat.isGroup 
+                        ? 'typing...' 
+                        : `${typingUsers.length} typing...`)
+                    : (chat.isGroup ? `${chat.members?.length || 0} members` : chat.isChannel ? `${chat.members?.length || 0} subscribers` : (chat.isOnline ? 'Online' : 'Offline'))}
                 </p>
               </div>
             </div>
@@ -1907,6 +1914,7 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
                   value={newMessage}
                   onChange={(e) => {
                     setNewMessage(e.target.value);
+                    handleTyping();
                     e.target.style.height = 'auto';
                     e.target.style.height = e.target.scrollHeight + 'px';
                   }}

@@ -456,8 +456,7 @@ export default function Settings({ profile }: SettingsProps) {
       />
       <SettingItem icon={BadgePlus} title="Passkeys" subtitle="Create an extra layer of security" />
       <SettingItem icon={Mail} title="Email address" subtitle={profile.email} />
-      <SettingItem icon={Smartphone} title="Two-step verification" subtitle="Extra security for your phone" />
-      <SettingItem icon={Smartphone} title="Change phone number" />
+      <SettingItem icon={Smartphone} title="Two-step verification" subtitle="Extra security for your account" />
       <SettingItem icon={FileText} title="Request account info" />
       <SettingItem icon={ListIcon} title="Ad preferences in Accounts Center" />
       <div className="h-px bg-gray-100 my-2" />
