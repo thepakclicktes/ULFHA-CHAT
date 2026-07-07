@@ -44,6 +44,8 @@ export interface UserProfile {
     linksVisibility: 'everyone' | 'myContacts' | 'nobody';
     disappearingMessagesTimer: 'off' | '24h' | '7d' | '90d';
     securityNotifications: boolean;
+    appLockEnabled?: boolean;
+    appLockCredentialId?: string;
     customLists?: string[];
   };
 }

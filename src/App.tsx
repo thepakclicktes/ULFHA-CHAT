@@ -18,7 +18,7 @@ import { getToken, onMessage } from 'firebase/messaging';
 import { reload, updatePassword } from 'firebase/auth';
 import { db, messaging, auth } from './firebase';
 import { handleFirestoreError, OperationType } from './firebaseError';
-import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video } from 'lucide-react';
+import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock } from 'lucide-react';
 import { cn } from './utils';
 import VoiceCall from './components/VoiceCall';
 import Header from './components/Header';
@@ -109,6 +109,8 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showIOSInvite, setShowIOSInvite] = useState(false);
+  const [isAppUnlocked, setIsAppUnlocked] = useState(false);
+  const [isAuthenticatingLock, setIsAuthenticatingLock] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -180,7 +182,50 @@ export default function App() {
     }
   }, [loading, user]);
 
+  
   useEffect(() => {
+    if (!loading && profile) {
+      if (profile.userSettings?.appLockEnabled && !isAppUnlocked) {
+        // Trigger passkey authentication
+        handleAppLockAuth();
+      } else {
+        setIsAppUnlocked(true);
+      }
+    }
+  }, [loading, profile, isAppUnlocked]);
+
+  const handleAppLockAuth = async () => {
+    if (!profile?.userSettings?.appLockCredentialId) {
+       setIsAppUnlocked(true);
+       return;
+    }
+    
+    try {
+      setIsAuthenticatingLock(true);
+      const credentialIdBuffer = Uint8Array.from(atob(profile.userSettings.appLockCredentialId), c => c.charCodeAt(0));
+      
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge: new Uint8Array(32), // dummy challenge for simple lock
+          allowCredentials: [{
+            id: credentialIdBuffer,
+            type: 'public-key'
+          }],
+          timeout: 60000,
+          userVerification: "required"
+        }
+      });
+      
+      if (assertion) {
+        setIsAppUnlocked(true);
+      }
+    } catch (err) {
+      console.error("App lock auth failed:", err);
+    } finally {
+      setIsAuthenticatingLock(false);
+    }
+  };
+useEffect(() => {
     if (selectedChat) {
       localStorage.setItem('ulfha_selected_chat', JSON.stringify(selectedChat));
     } else {
@@ -758,7 +803,39 @@ export default function App() {
 
   const isReaderPage = path === '/explore' || path === '/status' || path === '/settings';
 
-  return (
+  
+  if (!isAppUnlocked && profile?.userSettings?.appLockEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center h-dvh bg-[#F0F2F5] animate-in fade-in zoom-in duration-500">
+        <div className="w-24 h-24 bg-gray-200 rounded-full mb-8 flex items-center justify-center shadow-inner overflow-hidden border-4 border-white">
+          <img 
+            src={resolveLogo(appSettings?.appLogoUrl)} 
+            className="w-full h-full object-cover"
+            alt="Ulfah Chat Logo"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+        <h1 className="text-2xl font-bold text-[#111B21] mb-2">App Locked</h1>
+        <p className="text-[#667781] text-sm mb-8">Please authenticate to continue.</p>
+        
+        <button
+          onClick={handleAppLockAuth}
+          disabled={isAuthenticatingLock}
+          className="bg-[#00A884] hover:bg-[#008f70] text-white font-bold py-3 px-8 rounded-full transition-all shadow-md active:scale-95 flex items-center gap-2"
+        >
+          {isAuthenticatingLock ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <>
+              <Lock size={18} />
+              Unlock App
+            </>
+          )}
+        </button>
+      </div>
+    );
+  }
+return (
     <div 
       className={cn(activeTab === 'admin' ? "w-full h-dvh flex flex-col bg-[#1e1e1e] relative overflow-hidden" : "layout-shield relative")}
     >

@@ -177,7 +177,67 @@ export default function Settings({ profile }: SettingsProps) {
     }
   };
 
-  const cycleVisibility = (key: string, current: string) => {
+  
+  const handleToggleAppLock = async () => {
+    if (!profile.uid) return;
+    
+    if (settings.appLockEnabled) {
+      // Disable
+      try {
+        await updateDoc(doc(db, 'users', profile.uid), {
+          'userSettings.appLockEnabled': false,
+          'userSettings.appLockCredentialId': null
+        });
+      } catch (err) {
+        console.error("Error disabling app lock:", err);
+      }
+      return;
+    }
+
+    // Enable App Lock via WebAuthn
+    try {
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge: challenge,
+          rp: {
+            name: "Ulfah Chat",
+            id: window.location.hostname
+          },
+          user: {
+            id: Uint8Array.from(profile.uid, c => c.charCodeAt(0)),
+            name: profile.email || profile.username || 'user',
+            displayName: profile.displayName || 'User'
+          },
+          pubKeyCredParams: [{alg: -7, type: "public-key"}, {alg: -257, type: "public-key"}],
+          authenticatorSelection: {
+            authenticatorAttachment: "platform",
+            userVerification: "required"
+          },
+          timeout: 60000,
+          attestation: "none"
+        }
+      });
+      
+      if (credential) {
+        // credential.id is base64url encoded
+        // Store the raw ID in firestore to check against later
+        const rawId = new Uint8Array((credential as PublicKeyCredential).rawId);
+        const base64Id = btoa(String.fromCharCode.apply(null, Array.from(rawId)));
+        
+        await updateDoc(doc(db, 'users', profile.uid), {
+          'userSettings.appLockEnabled': true,
+          'userSettings.appLockCredentialId': base64Id
+        });
+      }
+    } catch (err) {
+      console.error("Failed to setup app lock:", err);
+      alert("Failed to setup Biometric App Lock. Your device might not support it, or you cancelled the prompt.");
+    }
+  };
+const cycleVisibility = (key: string, current: string) => {
     const options: ('everyone' | 'myContacts' | 'nobody')[] = ['everyone', 'myContacts', 'nobody'];
     const currentIndex = options.indexOf(current as any);
     const nextValue = options[(currentIndex + 1) % options.length];
@@ -454,7 +514,14 @@ export default function Settings({ profile }: SettingsProps) {
         toggleValue={settings.securityNotifications}
         onClick={() => updateSetting('securityNotifications', !settings.securityNotifications)}
       />
-      <SettingItem icon={BadgePlus} title="Passkeys" subtitle="Create an extra layer of security" />
+      <SettingItem 
+        icon={BadgePlus} 
+        title="App Lock (Biometric/PIN)" 
+        subtitle="Require authentication to open Ulfah Chat" 
+        toggle
+        toggleValue={settings.appLockEnabled || false}
+        onClick={handleToggleAppLock}
+      />
       <SettingItem icon={Mail} title="Email address" subtitle={profile.email} />
       <SettingItem icon={Smartphone} title="Two-step verification" subtitle="Extra security for your account" />
       <SettingItem icon={FileText} title="Request account info" />
