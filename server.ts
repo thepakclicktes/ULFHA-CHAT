@@ -200,9 +200,9 @@ async function startServer() {
               const subscriptionObj = JSON.parse(subStr);
               const payload = JSON.stringify({
                 notification: {
-                  title: senderName || `Message from ${senderUid}`,
+                  title: senderName || recipientData.displayName || `Message from ${senderUid}`,
                   body: text,
-                  icon: 'https://cdn-icons-png.flaticon.com/512/124/124034.png',
+                  icon: senderProfile?.photoURL || 'https://cdn-icons-png.flaticon.com/512/124/124034.png',
                   tag: 'chat',
                   data: { type: 'chat', senderId: senderUid }
                 }
@@ -452,9 +452,9 @@ async function startServer() {
               const subscriptionObj = JSON.parse(subStr);
               const payload = JSON.stringify({
                 notification: {
-                  title: `WhatsApp from ${cleanSender}`,
+                  title: senderProfile.displayName || `WhatsApp from ${cleanSender}`,
                   body: cleanText,
-                  icon: 'https://cdn-icons-png.flaticon.com/512/124/124034.png',
+                  icon: senderProfile.photoURL || 'https://cdn-icons-png.flaticon.com/512/124/124034.png',
                   badge: 'https://cdn-icons-png.flaticon.com/512/124/124034.png',
                   tag: 'chat',
                   data: { type: 'chat', senderId: senderUid }

@@ -58,8 +58,22 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [selectedChat, setSelectedChat] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(() => {
+    try {
+      const saved = localStorage.getItem('ulfha_app_settings');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
+    try {
+      const saved = localStorage.getItem('ulfha_announcements');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
@@ -322,7 +336,7 @@ export default function App() {
           const msgTime = msg.timestamp?.seconds ? msg.timestamp.seconds * 1000 : Date.now();
           if (Date.now() - msgTime < 15000) {
             if (Notification.permission === 'granted' && document.visibilityState !== 'visible') {
-              new Notification('New Message', {
+              new Notification(msg.senderName || 'New Message', {
                 body: msg.text,
                 icon: resolveLogo(appSettings?.appLogoUrl)
               });
@@ -348,7 +362,11 @@ export default function App() {
 
   useEffect(() => {
     const unsubS = onSnapshot(doc(db, 'settings', 'global'), (doc) => {
-      if (doc.exists()) setAppSettings(doc.data() as AppSettings);
+      if (doc.exists()) {
+        const data = doc.data() as AppSettings;
+        setAppSettings(data);
+        localStorage.setItem('ulfha_app_settings', JSON.stringify(data));
+      }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'settings/global');
     });
@@ -361,7 +379,9 @@ export default function App() {
 
     const qA = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(10));
     const unsubA = onSnapshot(qA, (snapshot) => {
-      setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement)));
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
+      setAnnouncements(data);
+      localStorage.setItem('ulfha_announcements', JSON.stringify(data));
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'announcements');
     });

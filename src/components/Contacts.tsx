@@ -22,8 +22,22 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
   const [activeTab, setActiveTab] = useState<'direct' | 'my-communities' | 'discover'>('my-communities');
   
   // Real-time states
-  const [contacts, setContacts] = useState<UserProfile[]>([]);
-  const [groups, setGroups] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<UserProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem('ulfha_contacts');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [groups, setGroups] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('ulfha_groups');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   
   // Selection and search states
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,9 +99,12 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
         
         activeUsers.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
         setContacts(activeUsers);
+        localStorage.setItem('ulfha_contacts', JSON.stringify(activeUsers));
       } catch (err) {
         console.error("Error batch loading contacts:", err);
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'messages');
     });
 
     return () => unsubscribe();
@@ -104,6 +121,7 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
         ...docSnap.data()
       }));
       setGroups(list);
+      localStorage.setItem('ulfha_groups', JSON.stringify(list));
     }, (error) => {
       console.error("Communities real-time groups failed loading:", error);
     });
