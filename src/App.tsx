@@ -914,6 +914,7 @@ export default function App() {
             )}>
               {selectedChat ? (
                 <ChatWindow 
+                  key={selectedChat.uid}
                   chat={selectedChat} 
                   currentUser={profile} 
                   onBack={() => setSelectedChat(null)} 

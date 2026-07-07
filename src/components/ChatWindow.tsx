@@ -452,6 +452,7 @@ const VoiceMessage = ({ audioUrl }: { audioUrl: string }) => {
 };
 
 interface ChatWindowProps {
+  key?: string | number;
   chat: any;
   currentUser: UserProfile;
   onBack?: () => void;
@@ -502,22 +503,15 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
       console.error('Failed to send push notification:', e);
     }
   };
-  const [messages, setMessages] = useState<Message[]>([]);
-  
-  // Load cached messages for instant display
-  useEffect(() => {
-    if (!chat?.uid) return;
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (!chat?.uid) return [];
     try {
       const saved = localStorage.getItem(`ulfha_messages_${chat.uid}`);
-      if (saved) {
-        setMessages(JSON.parse(saved));
-      } else {
-        setMessages([]); // Reset if no cache
-      }
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      setMessages([]);
+      return [];
     }
-  }, [chat?.uid]);
+  });
 
   // Save messages to cache when they update
   useEffect(() => {
@@ -920,9 +914,9 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
       msgs.forEach(m => { if (m.id) map[m.id] = m; });
       setMessageMap(map);
 
-      // Save messages to cache
+      // Cache for instant load
       try {
-        localStorage.setItem(`cached_messages_${currentUser.uid}_${chat.uid}`, JSON.stringify(msgs));
+        localStorage.setItem(`ulfha_messages_${chat.uid}`, JSON.stringify(msgs.slice(-50)));
       } catch (e) {
         console.warn('Failed to save messages to local cache:', e);
       }

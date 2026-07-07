@@ -8,10 +8,10 @@ interface SplashScreenProps {
 
 export default function SplashScreen({ onComplete, logoUrl }: SplashScreenProps) {
   useEffect(() => {
-    // Elegant and professional 0.8s total loading time
+    // Fast and professional 0.4s total loading time
     const timer = setTimeout(() => {
       onComplete();
-    }, 800);
+    }, 400);
 
     return () => {
       clearTimeout(timer);
