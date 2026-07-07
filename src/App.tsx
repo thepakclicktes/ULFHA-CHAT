@@ -21,7 +21,6 @@ import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video } f
 import { cn } from './utils';
 import VoiceCall from './components/VoiceCall';
 import Header from './components/Header';
-import SplashScreen from './components/SplashScreen';
 import Settings from './components/Settings';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
@@ -55,7 +54,6 @@ export default function App() {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [showSplash, setShowSplash] = useState(true);
   const [selectedChat, setSelectedChat] = useState<any | null>(() => {
     try {
       const saved = localStorage.getItem('ulfha_selected_chat');
@@ -150,8 +148,8 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Request permissions proactively on first load (after splash) for better mobile integration
-    if (!showSplash && !loading && user) {
+    // Request permissions proactively on first load for better mobile integration
+    if (!loading && user) {
       const requestAll = async () => {
         try {
           // Notifications
@@ -179,7 +177,7 @@ export default function App() {
       };
       requestAll();
     }
-  }, [showSplash, loading, user]);
+  }, [loading, user]);
 
   useEffect(() => {
     if (selectedChat) {
@@ -679,10 +677,6 @@ export default function App() {
       timestamp: new Date()
     });
   };
-
-  if (showSplash) {
-    return <SplashScreen onComplete={() => setShowSplash(false)} logoUrl={resolveLogo(appSettings?.appLogoUrl)} />;
-  }
 
   if (loading) {
     return (
