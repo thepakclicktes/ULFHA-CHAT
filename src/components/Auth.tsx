@@ -4,7 +4,9 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   updateProfile,
-  sendEmailVerification
+  sendEmailVerification,
+  RecaptchaVerifier,
+  signInWithPhoneNumber
 } from 'firebase/auth';
 import { auth, googleProvider, appleProvider, db } from '../firebase';
 import { doc, setDoc, serverTimestamp, query, collection, where, getDocs, onSnapshot } from 'firebase/firestore';
@@ -13,8 +15,8 @@ import { cn } from '../utils';
 import { AppSettings } from '../types';
 
 export default function Auth() {
-  // Current main tab: 'google' | 'email_password'
-  const [authMethod, setAuthMethod] = useState<'google' | 'email_password'>('google');
+  // Current main tab: 'google' | 'phone' | 'email_password'
+  const [authMethod, setAuthMethod] = useState<'google' | 'email_password' | 'phone'>('google');
   
   // Registration and general states
   const [isRegistering, setIsRegistering] = useState(false);
@@ -24,6 +26,12 @@ export default function Auth() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+
+  // Phone Auth specific states
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
 
   // Email/Password specific states
   const [isEmailPasswordRegistering, setIsEmailPasswordRegistering] = useState(false);
@@ -50,7 +58,7 @@ export default function Auth() {
   }, []);
 
   // Reset error on tab change
-  const handleTabChange = (method: 'google' | 'email_password') => {
+  const handleTabChange = (method: 'google' | 'email_password' | 'phone') => {
     setAuthMethod(method);
     setError(null);
     setSuccessMessage(null);
@@ -62,6 +70,10 @@ export default function Auth() {
     setPassword('');
     setEmailOrUsername('');
     setVerificationSent(false);
+    setPhoneNumber('');
+    setOtpCode('');
+    setOtpSent(false);
+    setConfirmationResult(null);
   };
 
   // Original Apple Authentication
@@ -423,6 +435,114 @@ export default function Auth() {
     }
   };
 
+  // Phone Authentication Handlers
+  const setupRecaptcha = () => {
+    if ((window as any).recaptchaVerifier) {
+      return (window as any).recaptchaVerifier;
+    }
+    try {
+      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: (response: any) => {
+          // reCAPTCHA solved
+        },
+        'expired-callback': () => {
+          setError('reCAPTCHA verification expired. Please try again.');
+        }
+      });
+      (window as any).recaptchaVerifier = verifier;
+      return verifier;
+    } catch (err: any) {
+      console.error('reCAPTCHA setup error:', err);
+      setError('reCAPTCHA loading failed. If in iframe, please use "New Tab" in the AI Studio toolbar.');
+      return null;
+    }
+  };
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneNumber.trim()) {
+      setError('Please enter a valid phone number.');
+      return;
+    }
+    
+    let formattedPhone = phoneNumber.trim().replace(/\s+/g, '');
+    if (!formattedPhone.startsWith('+')) {
+      if (formattedPhone.startsWith('0')) {
+        formattedPhone = '+92' + formattedPhone.substring(1);
+      } else {
+        formattedPhone = '+' + formattedPhone;
+      }
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const appVerifier = setupRecaptcha();
+      if (!appVerifier) {
+        setLoading(false);
+        return;
+      }
+
+      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      setConfirmationResult(confirmation);
+      setOtpSent(true);
+      setSuccessMessage('Code sent successfully to ' + formattedPhone);
+    } catch (err: any) {
+      console.error('Send OTP error:', err);
+      if (err.code === 'auth/invalid-phone-number') {
+        setError('Invalid phone number. Format should be: +923001234567');
+      } else if (err.code === 'auth/captcha-check-failed') {
+        setError('reCAPTCHA check failed. Please refresh and try again.');
+      } else {
+        setError(err.message || 'Error sending OTP. Make sure Phone authentication is enabled in Firebase Console.');
+      }
+      if ((window as any).recaptchaVerifier) {
+        try {
+          (window as any).recaptchaVerifier.clear();
+          (window as any).recaptchaVerifier = null;
+        } catch (clearErr) {
+          console.error(clearErr);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode.trim() || otpCode.trim().length < 6) {
+      setError('Please enter a valid 6-digit code.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (!confirmationResult) {
+        setError('Verification session expired. Please request a new code.');
+        setLoading(false);
+        return;
+      }
+
+      await confirmationResult.confirm(otpCode.trim());
+      setSuccessMessage('Logged in successfully!');
+    } catch (err: any) {
+      console.error('Verify OTP error:', err);
+      if (err.code === 'auth/invalid-verification-code') {
+        setError('Incorrect verification code. Please try again.');
+      } else {
+        setError(err.message || 'Verification failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-dvh bg-[#F0F2F5] p-4 font-sans relative overflow-hidden">
       {/* Background Pattern */}
@@ -449,12 +569,13 @@ export default function Auth() {
         <p className="text-[#667781] text-center mb-6 text-sm font-medium">Simple. Reliable. Private.</p>
 
         {/* Tab Navigation */}
-        <div className="w-full flex bg-gray-100 p-1 rounded-xl mb-6">
+        <div className="w-full flex bg-gray-100 p-1 rounded-xl mb-6 gap-0.5">
           <button
             id="tab_google"
+            type="button"
             onClick={() => handleTabChange('google')}
             className={cn(
-              "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
+              "flex-1 py-2 text-[11px] font-bold rounded-lg transition-all",
               authMethod === 'google' 
                 ? "bg-[#00A884] text-white shadow-sm" 
                 : "text-gray-500 hover:text-gray-800"
@@ -463,10 +584,24 @@ export default function Auth() {
             Google
           </button>
           <button
+            id="tab_phone"
+            type="button"
+            onClick={() => handleTabChange('phone')}
+            className={cn(
+              "flex-1 py-2 text-[11px] font-bold rounded-lg transition-all",
+              authMethod === 'phone' 
+                ? "bg-[#00A884] text-white shadow-sm" 
+                : "text-gray-500 hover:text-gray-800"
+            )}
+          >
+            Phone No
+          </button>
+          <button
             id="tab_email_pass"
+            type="button"
             onClick={() => handleTabChange('email_password')}
             className={cn(
-              "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
+              "flex-1 py-2 text-[11px] font-bold rounded-lg transition-all",
               authMethod === 'email_password' 
                 ? "bg-[#00A884] text-white shadow-sm" 
                 : "text-gray-500 hover:text-gray-800"
@@ -635,6 +770,101 @@ export default function Auth() {
             >
               {isRegistering ? 'Already have an account? Sign In' : "Don't have an account? Register"}
             </button>
+          </div>
+        )}
+
+        {/* Phone Number Authentication */}
+        {authMethod === 'phone' && (
+          <div className="w-full">
+            {!otpSent ? (
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div className="relative">
+                  <Smartphone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    id="phone_number_input"
+                    type="tel"
+                    placeholder="Phone Number (e.g. +923001234567)"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-[#00A884] rounded-xl py-3 pl-10 pr-4 text-gray-900 text-sm outline-none transition-all"
+                    required
+                  />
+                </div>
+                
+                <p className="text-xs text-[#667781] text-center mt-2 px-1">
+                  Enter your mobile number with country code (e.g., +92 for Pakistan).
+                </p>
+
+                <button
+                  id="btn_send_otp"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#00A884] hover:bg-[#008f70] text-white font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Smartphone size={18} />
+                      Send Verification Code
+                    </>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div className="relative">
+                  <Key size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    id="otp_code_input"
+                    type="text"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    placeholder="6-Digit Code"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-[#00A884] rounded-xl py-3 pl-10 pr-4 text-gray-900 text-sm outline-none tracking-[0.25em] text-center font-bold"
+                    required
+                  />
+                </div>
+
+                <p className="text-xs text-[#667781] text-center mt-2 px-1">
+                  Enter the 6-digit code sent to your phone.
+                </p>
+
+                <button
+                  id="btn_verify_otp"
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#00A884] hover:bg-[#008f70] text-white font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <ShieldCheck size={18} />
+                      Verify & Login
+                    </>
+                  )}
+                </button>
+
+                <button
+                  id="btn_back_to_phone"
+                  type="button"
+                  onClick={() => {
+                    setOtpSent(false);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="w-full text-[#00A884] hover:underline text-xs block text-center font-bold mt-2"
+                >
+                  Change Phone Number
+                </button>
+              </form>
+            )}
+            
+            {/* Recaptcha container target */}
+            <div id="recaptcha-container" className="mt-4 flex justify-center scale-90 origin-center"></div>
           </div>
         )}
 

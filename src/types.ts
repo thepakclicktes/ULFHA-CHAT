@@ -11,6 +11,7 @@ export interface UserProfile {
   lastSeen: string;
   isVerified: boolean;
   isBanned: boolean;
+  isProfileSetupComplete?: boolean;
   bio?: string;
   isShadowBanned?: boolean;
   level: 'Bronze' | 'Silver' | 'Gold';
