@@ -6,7 +6,7 @@ import {
   updateProfile,
   sendEmailVerification
 } from 'firebase/auth';
-import { auth, googleProvider, db } from '../firebase';
+import { auth, googleProvider, appleProvider, db } from '../firebase';
 import { doc, setDoc, serverTimestamp, query, collection, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { LogIn, Mail, Lock, User, ArrowRight, Github, ImageIcon, AtSign, Eye, EyeOff, Key, ShieldCheck, Smartphone, CheckCircle2 } from 'lucide-react';
 import { cn } from '../utils';
@@ -65,6 +65,92 @@ export default function Auth() {
   };
 
   // Original Google Authentication & Custom Registration
+  const handleAppleLogin = async () => {
+    if (isRegistering) {
+      if (!displayName.trim()) {
+        setError('Please set your Full Name first.');
+        return;
+      }
+      if (!username.trim()) {
+        setError('Please set your Username first.');
+        return;
+      }
+      const usernameRegex = /^[a-zA-Z0-9_]+$/;
+      if (!usernameRegex.test(username.trim())) {
+        setError('Username can only contain letters, numbers, and underscores.');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase().trim()));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          setError('This username is already taken. Please choose another username.');
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking username:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    try {
+      setError(null);
+      setLoading(true);
+      const result = await signInWithPopup(auth, appleProvider);
+      const user = result.user;
+      
+      if (isRegistering) {
+        // Double check username to ensure uniqueness
+        const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase().trim()));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const existingUser = querySnapshot.docs[0];
+          if (existingUser.id !== user.uid) {
+            await auth.signOut();
+            setError('This username is already taken. Please choose another username.');
+            return;
+          }
+        }
+
+        // Setup the user profile document in Firestore
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email || '',
+          displayName: displayName.trim(),
+          username: username.toLowerCase().trim(),
+          photoURL: user.photoURL || '',
+          phoneNumber: user.phoneNumber || '',
+          balance: 0,
+          role: 'user',
+          isOnline: true,
+          lastSeen: new Date().toISOString(),
+          isVerified: false,
+          isBanned: false,
+          level: 'Bronze',
+          experience: 0,
+          createdAt: serverTimestamp()
+        }, { merge: true });
+      }
+    } catch (error: any) {
+      if (error.code === 'auth/popup-blocked') {
+        setError('Popup Blocked! Please allow popups or use "New Tab".');
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        setError('Login cancelled.');
+      } else {
+        setError(error.message || 'An unexpected error occurred.');
+      }
+      console.error('Apple Login error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleLogin = async () => {
     if (isRegistering) {
       if (!displayName.trim()) {
@@ -465,6 +551,24 @@ export default function Auth() {
                     </>
                   )}
                 </button>
+
+                <button
+                  id="btn_apple_register"
+                  onClick={handleAppleLogin}
+                  disabled={loading}
+                  className="w-full bg-black hover:bg-zinc-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-3 active:scale-95"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-zinc-700 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.05 20.28c-.96.95-2.04 1.72-3.23 1.72-1.16 0-1.54-.71-2.91-.71s-1.8.71-2.91.71c-1.19 0-2.31-.83-3.26-1.77C2.8 18.33 1.5 15.14 1.5 12.11c0-4.73 3.06-7.23 6.04-7.23 1.55 0 2.5.9 3.51.9.98 0 2.21-.93 3.65-.93 1.25 0 4.25.56 5.3 2.11-2.58 1.53-2.17 5.03.4 6.31-1.03 2.5-2.32 5.01-3.35 7.01zm-4.11-16.14c.04 0 .07 0 .11 0 2.05-.13 3.8-1.78 3.8-3.83 0-.1 0-.21-.01-.31-1.89.08-3.52 1.34-3.9 3.19-.07.33-.11.66-.11.99 0 .28 0 .54.11-.04z"/>
+                      </svg>
+                      Continue with Apple
+                    </>
+                  )}
+                </button>
               </div>
             ) : (
               <div className="w-full space-y-4">
@@ -497,6 +601,24 @@ export default function Auth() {
                         />
                       </svg>
                       Continue with Google
+                    </>
+                  )}
+                </button>
+
+                <button
+                  id="btn_apple_login"
+                  onClick={handleAppleLogin}
+                  disabled={loading}
+                  className="w-full bg-black hover:bg-zinc-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-3 active:scale-95"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-zinc-700 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.05 20.28c-.96.95-2.04 1.72-3.23 1.72-1.16 0-1.54-.71-2.91-.71s-1.8.71-2.91.71c-1.19 0-2.31-.83-3.26-1.77C2.8 18.33 1.5 15.14 1.5 12.11c0-4.73 3.06-7.23 6.04-7.23 1.55 0 2.5.9 3.51.9.98 0 2.21-.93 3.65-.93 1.25 0 4.25.56 5.3 2.11-2.58 1.53-2.17 5.03.4 6.31-1.03 2.5-2.32 5.01-3.35 7.01zm-4.11-16.14c.04 0 .07 0 .11 0 2.05-.13 3.8-1.78 3.8-3.83 0-.1 0-.21-.01-.31-1.89.08-3.52 1.34-3.9 3.19-.07.33-.11.66-.11.99 0 .28 0 .54.11-.04z"/>
+                      </svg>
+                      Continue with Apple
                     </>
                   )}
                 </button>

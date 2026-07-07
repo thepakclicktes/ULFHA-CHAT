@@ -109,6 +109,7 @@ export default function App() {
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showIOSInvite, setShowIOSInvite] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -117,6 +118,16 @@ export default function App() {
       e.preventDefault();
       setDeferredPrompt(e);
     };
+
+    // iOS Detection
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    
+    if (isIOS && !isStandalone) {
+      // Show iOS invite after a short delay
+      const timer = setTimeout(() => setShowIOSInvite(true), 3000);
+      return () => clearTimeout(timer);
+    }
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -791,6 +802,36 @@ export default function App() {
             >
               Install
             </button>
+          </div>
+        </div>
+      )}
+      
+      {/* iOS Install Guide */}
+      {showIOSInvite && (
+        <div className="fixed bottom-6 left-4 right-4 bg-white rounded-2xl p-5 shadow-2xl z-[1100] border border-gray-100 animate-in fade-in slide-in-from-bottom duration-700">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-[#00A884] rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
+               <img src={resolveLogo(appSettings?.appLogoUrl)} className="w-full h-full object-cover" alt="Logo" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-900 text-sm">Install on iPhone</h3>
+              <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                1. Tap the <span className="font-bold text-[#007AFF]">Share</span> button in Safari.
+                <br />
+                2. Select <span className="font-bold text-gray-900">"Add to Home Screen"</span>.
+              </p>
+            </div>
+            <button 
+              onClick={() => setShowIOSInvite(false)}
+              className="text-gray-400 hover:text-gray-600 p-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-center">
+             <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium bg-gray-50 px-3 py-1.5 rounded-full">
+                <span>Experience Ulfah Chat like a native app</span>
+             </div>
           </div>
         </div>
       )}
