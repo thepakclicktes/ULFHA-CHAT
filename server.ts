@@ -200,7 +200,7 @@ async function startServer() {
               const subscriptionObj = JSON.parse(subStr);
               const payload = JSON.stringify({
                 notification: {
-                  title: senderName || recipientData.displayName || `Message from ${senderUid}`,
+                  title: senderName || (senderProfile && senderProfile.displayName) || `Message from ${senderUid}`,
                   body: text,
                   icon: senderProfile?.photoURL || 'https://cdn-icons-png.flaticon.com/512/124/124034.png',
                   tag: 'chat',

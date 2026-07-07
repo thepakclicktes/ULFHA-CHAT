@@ -78,7 +78,14 @@ export default function App() {
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
-  const [nicknames, setNicknames] = useState<Record<string, string>>({});
+  const [nicknames, setNicknames] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('ulfha_nicknames');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   useEffect(() => {
     if (!profile?.uid) return;
@@ -88,9 +95,42 @@ export default function App() {
         map[d.id] = d.data().nickname;
       });
       setNicknames(map);
+      localStorage.setItem('ulfha_nicknames', JSON.stringify(map));
     });
     return () => unsubscribe();
   }, [profile?.uid]);
+
+  useEffect(() => {
+    // Request permissions proactively on first load (after splash) for better mobile integration
+    if (!showSplash && !loading && user) {
+      const requestAll = async () => {
+        try {
+          // Notifications
+          if (Notification.permission === 'default') {
+            await Notification.requestPermission();
+          }
+          
+          // Only request media if we haven't asked this session
+          const hasRequested = sessionStorage.getItem('ulfha_permissions_requested');
+          if (!hasRequested) {
+            // Geolocation
+            navigator.geolocation.getCurrentPosition(() => {}, () => {}, { timeout: 1000 });
+            
+            // Try to trigger camera/mic dialog if supported
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+               // We don't actually need to keep the stream, just trigger the prompt
+               const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).catch(() => null);
+               if (stream) stream.getTracks().forEach(t => t.stop());
+            }
+            sessionStorage.setItem('ulfha_permissions_requested', 'true');
+          }
+        } catch (e) {
+          console.warn('Proactive permission request failed:', e);
+        }
+      };
+      requestAll();
+    }
+  }, [showSplash, loading, user]);
 
   // Synchronize pending offline messages from IndexedDB / localStorage when coming online
   useEffect(() => {
