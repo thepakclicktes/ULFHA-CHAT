@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { estimateStorageUsage } from '../utils/StorageManager';
 import { 
   ArrowLeft, Search, User, Key, Lock, List as ListIcon, 
   MessageSquare, Radio, Bell, Accessibility, ChevronRight, 
@@ -38,15 +37,6 @@ export default function Settings({ profile }: SettingsProps) {
 
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const [storageInfo, setStorageInfo] = useState<{ usage: number; quota: number } | null>(null);
-
-  React.useEffect(() => {
-    const fetchStorage = async () => {
-      const info = await estimateStorageUsage();
-      setStorageInfo(info);
-    };
-    fetchStorage();
-  }, []);
 
   React.useEffect(() => {
     const syncBlocked = () => {
@@ -578,11 +568,6 @@ const cycleVisibility = (key: string, current: string) => {
           title="Chats" 
           subtitle="Theme, wallpapers, chat history" 
           onClick={() => setActiveTab('chats')} 
-        />
-        <SettingItem 
-          icon={Database} 
-          title="Storage and Data" 
-          subtitle={storageInfo ? `${(storageInfo.usage / 1024 / 1024).toFixed(2)} MB used of ${(storageInfo.quota / 1024 / 1024 / 1024).toFixed(2)} GB` : 'Checking storage...'}
         />
         <SettingItem 
           icon={Radio} 

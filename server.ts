@@ -655,17 +655,11 @@ async function startServer() {
     }
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
-      
       const response = await fetch(url, {
-        signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         }
       });
-      
-      clearTimeout(timeout);
 
       if (!response.ok) {
         return res.status(response.status).json({ error: `Failed to fetch external PDF: ${response.statusText}` });

@@ -23,9 +23,8 @@ import { db, auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getPDF, storePDF } from '../utils/pdfStorage';
-import { downloadBlobWithFileSystemAccess, fetchWithRetry } from '../utils/StorageManager';
+import { downloadBlobWithFileSystemAccess } from '../utils/StorageManager';
 import { resolveApiUrl } from '../utils';
-import { DownloadProgressBar } from './DownloadProgressBar';
 
 // Helper to dynamically load a script from CDN
 const loadScript = (src: string): Promise<void> => {
@@ -498,58 +497,85 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     renderPage();
   }, [pdfDoc, pageNum, scale]);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-
   // 4. Real Offline Download Implementation
-  const handleRealDownload = async () => {
+  const handleRealDownload = () => {
     if (isDownloading || isOffline) return;
 
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
-    
-    abortControllerRef.current = new AbortController();
 
     const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
+    const xhr = new XMLHttpRequest();
+    xhrRef.current = xhr;
 
-    try {
-      const blob = await fetchWithRetry(proxyUrl, abortControllerRef.current.signal);
-      
-      // Store PDF Blob in IndexedDB
-      await storePDF(bookUrl, blob);
-      
-      // Save to user selected location
-      const fileName = bookTitle ? `${bookTitle}.pdf` : 'book.pdf';
-      await downloadBlobWithFileSystemAccess(blob, fileName);
+    xhr.open('GET', proxyUrl, true);
+    xhr.responseType = 'blob';
 
-      // Add to local storage tracking list
-      const downloaded = JSON.parse(localStorage.getItem('downloaded_volumes_local') || '[]');
-      if (!downloaded.includes(bookUrl)) {
-        downloaded.push(bookUrl);
-        localStorage.setItem('downloaded_volumes_local', JSON.stringify(downloaded));
+    xhr.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        setDlProgress({
+          percent: pct,
+          loadedMB: (e.loaded / (1024 * 1024)).toFixed(1),
+          totalMB: (e.total / (1024 * 1024)).toFixed(1)
+        });
+      } else {
+        setDlProgress(prev => ({
+          ...prev,
+          percent: -1,
+          loadedMB: (e.loaded / (1024 * 1024)).toFixed(1)
+        }));
       }
+    };
 
-      setIsOffline(true);
-      setIsDownloading(false);
-      if (onCached) onCached(bookUrl);
-      
-      // Trigger custom event so other components (like Explore) refresh immediately
-      window.dispatchEvent(new Event('storage'));
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
-        console.error("Failed to download PDF:", err);
-        alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
+    xhr.onload = async () => {
+      if (xhr.status === 200) {
+        try {
+          const blob = xhr.response;
+          // Store PDF Blob in IndexedDB
+          await storePDF(bookUrl, blob);
+          
+          // Save to user selected location
+          const fileName = bookTitle ? `${bookTitle}.pdf` : 'book.pdf';
+          await downloadBlobWithFileSystemAccess(blob, fileName);
+
+          // Add to local storage tracking list
+          const downloaded = JSON.parse(localStorage.getItem('downloaded_volumes_local') || '[]');
+          if (!downloaded.includes(bookUrl)) {
+            downloaded.push(bookUrl);
+            localStorage.setItem('downloaded_volumes_local', JSON.stringify(downloaded));
+          }
+
+          setIsOffline(true);
+          setIsDownloading(false);
+          if (onCached) onCached(bookUrl);
+          
+          // Trigger custom event so other components (like Explore) refresh immediately
+          window.dispatchEvent(new Event('storage'));
+        } catch (err) {
+          console.error("Failed to save downloaded PDF:", err);
+          alert("ڈاؤنلوڈ محفوظ کرنے میں ناکامی ہوئی۔");
+          setIsDownloading(false);
+        }
+      } else {
+        alert("ڈاؤنلوڈ کرنے میں ناکامی پیش آئی۔");
+        setIsDownloading(false);
       }
+    };
+
+    xhr.onerror = () => {
+      alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
       setIsDownloading(false);
-    } finally {
-      abortControllerRef.current = null;
-    }
+    };
+
+    xhr.send();
   };
 
   const cancelRealDownload = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+    if (xhrRef.current) {
+      xhrRef.current.abort();
+      setIsDownloading(false);
     }
-    setIsDownloading(false);
   };
 
   // 5. Bookmarks sync
@@ -1179,9 +1205,6 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
               </div>
             </div>
           </div>
-        )}
-        {isDownloading && (
-          <DownloadProgressBar progress={dlProgress.percent} onCancel={cancelRealDownload} />
         )}
       </div>
     </div>

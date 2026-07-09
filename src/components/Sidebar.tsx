@@ -12,8 +12,7 @@ import {
   Youtube, 
   Facebook, 
   Instagram, 
-  ExternalLink,
-  Download
+  ExternalLink 
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../firebase';
@@ -72,7 +71,6 @@ export default function Sidebar({ profile, selectedChat }: SidebarProps) {
     { path: '/status', label: 'Updates', icon: CircleDashed },
     { path: '/contacts', label: 'Communities', icon: Users },
     { path: '/explore', label: 'Explore', icon: Compass },
-    { path: '/downloads', label: 'Downloads', icon: Download },
   ];
 
   if (profile.role === 'admin' || profile.email === 'abdulrehmanhabib.com@gmail.com' || profile.email === 'teemabdulrehman.com@gmail.com') {

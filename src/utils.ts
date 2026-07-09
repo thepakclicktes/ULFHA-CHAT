@@ -111,7 +111,7 @@ export function resolveApiUrl(apiPath: string): string {
   const isSandbox = hostname.includes('googleusercontent.com');
   
   if (isVercel || isSandbox) {
-    const baseUrl = 'https://ais-dev-ubxjjscbfuclhzfbawd7nd-85039836823.asia-east1.run.app';
+    const baseUrl = 'https://ais-pre-ubxjjscbfuclhzfbawd7nd-85039836823.asia-east1.run.app';
     const cleanPath = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
     return `${baseUrl}${cleanPath}`;
   }

@@ -21,39 +21,6 @@ export const verifyPersistentStoragePermission = async (): Promise<boolean> => {
   return await navigator.storage.persisted();
 };
 
-export const estimateStorageUsage = async (): Promise<{ usage: number; quota: number } | null> => {
-  if (!('storage' in navigator && 'estimate' in navigator.storage)) {
-    return null;
-  }
-  try {
-    const estimate = await navigator.storage.estimate();
-    return { usage: estimate.usage || 0, quota: estimate.quota || 0 };
-  } catch (error) {
-    console.error("Failed to estimate storage usage:", error);
-    return null;
-  }
-};
-
-export const fetchWithRetry = async (
-  url: string,
-  signal: AbortSignal,
-  retries = 3,
-  backoff = 1000
-): Promise<Blob> => {
-  try {
-    const response = await fetch(url, { signal });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return await response.blob();
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') throw error;
-    if (retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, backoff));
-      return fetchWithRetry(url, signal, retries - 1, backoff * 2);
-    }
-    throw error;
-  }
-};
-
 export const downloadBlobWithFileSystemAccess = async (
   blob: Blob,
   suggestedName: string
