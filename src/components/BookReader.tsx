@@ -290,8 +290,12 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           pdfData = { data: new Uint8Array(arrayBuffer) };
         } else {
           setIsOffline(false);
-          // Load online via proxy to prevent CORS issues
-          const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
+          // Bypass backend proxy on static deployments without a backend
+          const isStaticDeploy = window.location.hostname.includes('vercel.app') || 
+                                 window.location.hostname.includes('web.app') || 
+                                 window.location.hostname.includes('firebaseapp.com') ||
+                                 window.location.hostname.includes('github.io');
+          const proxyUrl = isStaticDeploy ? bookUrl : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
           pdfData = { url: proxyUrl };
         }
 
@@ -504,7 +508,14 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
-    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
+    // Bypass backend proxy on static deployments without a backend
+    const isStaticDeploy = window.location.hostname.includes('vercel.app') || 
+                           window.location.hostname.includes('web.app') || 
+                           window.location.hostname.includes('firebaseapp.com') ||
+                           window.location.hostname.includes('github.io');
+                           
+    const proxyUrl = isStaticDeploy ? bookUrl : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
+    
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
 
@@ -529,7 +540,9 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     };
 
     xhr.onload = async () => {
-      if (xhr.status === 200) {
+      // Check if we got HTML instead of a PDF (e.g. from an auth wall or 302 redirect)
+      const contentType = xhr.getResponseHeader('Content-Type') || '';
+      if (xhr.status === 200 && !contentType.includes('text/html')) {
         try {
           const blob = xhr.response;
           // Store PDF Blob in IndexedDB
@@ -558,13 +571,15 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           setIsDownloading(false);
         }
       } else {
-        alert("ڈاؤنلوڈ کرنے میں ناکامی پیش آئی۔");
+        console.warn("Proxy or download failed, falling back to direct browser download.");
+        window.open(bookUrl, '_blank');
         setIsDownloading(false);
       }
     };
 
     xhr.onerror = () => {
-      alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
+      console.warn("Network error during XHR, falling back to direct browser download.");
+      window.open(bookUrl, '_blank');
       setIsDownloading(false);
     };
 
