@@ -23,8 +23,9 @@ import { db, auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getPDF, storePDF } from '../utils/pdfStorage';
-import { downloadBlobWithFileSystemAccess } from '../utils/StorageManager';
+import { downloadBlobWithFileSystemAccess, fetchWithRetry } from '../utils/StorageManager';
 import { resolveApiUrl } from '../utils';
+import { DownloadProgressBar } from './DownloadProgressBar';
 
 // Helper to dynamically load a script from CDN
 const loadScript = (src: string): Promise<void> => {
@@ -497,26 +498,21 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     renderPage();
   }, [pdfDoc, pageNum, scale]);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // 4. Real Offline Download Implementation
   const handleRealDownload = async () => {
     if (isDownloading || isOffline) return;
 
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
+    
+    abortControllerRef.current = new AbortController();
 
     const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
 
     try {
-      const response = await fetch(proxyUrl);
-      if (!response.ok) {
-        throw new Error(`Network response was not ok: ${response.status}`);
-      }
-      
-      // Since we don't get progress with fetch easily without a readable stream, 
-      // we'll keep the progress at -1 (unknown) for now or use a basic approach.
-      setDlProgress(prev => ({ ...prev, percent: -1 }));
-
-      const blob = await response.blob();
+      const blob = await fetchWithRetry(proxyUrl, abortControllerRef.current.signal);
       
       // Store PDF Blob in IndexedDB
       await storePDF(bookUrl, blob);
@@ -539,17 +535,21 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
       // Trigger custom event so other components (like Explore) refresh immediately
       window.dispatchEvent(new Event('storage'));
     } catch (err) {
-      console.error("Failed to download PDF:", err);
-      alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
+      if ((err as Error).name !== 'AbortError') {
+        console.error("Failed to download PDF:", err);
+        alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
+      }
       setIsDownloading(false);
+    } finally {
+      abortControllerRef.current = null;
     }
   };
 
   const cancelRealDownload = () => {
-    if (xhrRef.current) {
-      xhrRef.current.abort();
-      setIsDownloading(false);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
+    setIsDownloading(false);
   };
 
   // 5. Bookmarks sync
@@ -1179,6 +1179,9 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
               </div>
             </div>
           </div>
+        )}
+        {isDownloading && (
+          <DownloadProgressBar progress={dlProgress.percent} onCancel={cancelRealDownload} />
         )}
       </div>
     </div>

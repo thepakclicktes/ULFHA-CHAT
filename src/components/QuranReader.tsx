@@ -24,7 +24,8 @@ import {
 } from 'lucide-react';
 import { cn, resolveApiUrl } from '../utils';
 import { getPDF, storePDF } from '../utils/pdfStorage';
-import { downloadBlobWithFileSystemAccess } from '../utils/StorageManager';
+import { downloadBlobWithFileSystemAccess, fetchWithRetry } from '../utils/StorageManager';
+import { DownloadProgressBar } from './DownloadProgressBar';
 
 // Helper to dynamically load a script from CDN
 const loadScript = (src: string): Promise<void> => {
@@ -430,25 +431,20 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
     }
   }, [isLibLoaded, isOffline, view, isDownloading]);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // 4. Download Quran Offline
   const startQuranDownload = async () => {
     if (isDownloading) return;
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
+    
+    abortControllerRef.current = new AbortController();
 
     const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
-    setIsDownloading(true);
-    setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
     try {
-      const response = await fetch(proxyUrl);
-      if (!response.ok) {
-        throw new Error(`Network response was not ok: ${response.status}`);
-      }
-
-      setDlProgress(prev => ({ ...prev, percent: -1 }));
-
-      const blob = await response.blob();
+      const blob = await fetchWithRetry(proxyUrl, abortControllerRef.current.signal);
       await storePDF(QURAN_URL, blob);
       
       // Also save to file system
@@ -459,17 +455,21 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
       // Auto load once downloaded
       loadPdfDoc('offline');
     } catch (err) {
-      console.error("Failed to download Quran PDF:", err);
-      alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
+      if ((err as Error).name !== 'AbortError') {
+        console.error("Failed to download Quran PDF:", err);
+        alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
+      }
       setIsDownloading(false);
+    } finally {
+      abortControllerRef.current = null;
     }
   };
 
   const cancelDownload = () => {
-    if (xhrRef.current) {
-      xhrRef.current.abort();
-      setIsDownloading(false);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
+    setIsDownloading(false);
   };
 
   // 5. Single-Page Canvas Rendering
@@ -1034,6 +1034,10 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
           </AnimatePresence>
 
         </div>
+      )}
+
+      {isDownloading && (
+        <DownloadProgressBar progress={dlProgress.percent} onCancel={cancelDownload} />
       )}
 
     </div>

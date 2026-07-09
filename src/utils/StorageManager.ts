@@ -34,6 +34,26 @@ export const estimateStorageUsage = async (): Promise<{ usage: number; quota: nu
   }
 };
 
+export const fetchWithRetry = async (
+  url: string,
+  signal: AbortSignal,
+  retries = 3,
+  backoff = 1000
+): Promise<Blob> => {
+  try {
+    const response = await fetch(url, { signal });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return await response.blob();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, backoff));
+      return fetchWithRetry(url, signal, retries - 1, backoff * 2);
+    }
+    throw error;
+  }
+};
+
 export const downloadBlobWithFileSystemAccess = async (
   blob: Blob,
   suggestedName: string

@@ -24,6 +24,7 @@ import { cn, resolveApiUrl } from './utils';
 import VoiceCall from './components/VoiceCall';
 import Header from './components/Header';
 import Settings from './components/Settings';
+import Downloads from './components/Downloads';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
 
@@ -1027,6 +1028,7 @@ return (
         } />
         <Route path="/status" element={<Status profile={profile} />} />
         <Route path="/explore" element={<Explore />} />
+        <Route path="/downloads" element={<Downloads onBack={() => navigate('/')} />} />
         <Route path="/settings" element={<Settings profile={profile} />} />
         <Route path="/admin" element={
           (profile.role === 'admin' || profile.email === 'abdulrehmanhabib.com@gmail.com' || profile.email === 'teemabdulrehman.com@gmail.com') ? 
