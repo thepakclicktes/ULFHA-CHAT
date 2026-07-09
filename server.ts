@@ -81,7 +81,7 @@ async function startServer() {
   const getDb = () => adminDb || db;
 
   // Gemini AI Setup with modern SDK guidelines
-  const aiKey = process.env.GEMINI_API_KEY || "AIzaSyAv8_8McxqeGWwVkezWUfcw5MiCj6D-kTw";
+  const aiKey = process.env.GEMINI_API_KEY;
   const ai = aiKey ? new GoogleGenAI({
     apiKey: aiKey,
     httpOptions: {
