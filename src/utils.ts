@@ -102,13 +102,20 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 
 export function resolveApiUrl(apiPath: string): string {
   const hostname = window.location.hostname;
-  const isCloudRun = hostname.endsWith('.run.app');
   
-  if (!isCloudRun) {
+  // If we are on Vercel or inside a sandboxed iframe like googleusercontent.com,
+  // we route to the hardcoded backend URL so that API requests find the hosted app.
+  // Otherwise, if we are on a custom domain, localhost, or any other direct host
+  // where our Express server handles the request, we must use relative paths.
+  const isVercel = hostname.endsWith('.vercel.app');
+  const isSandbox = hostname.includes('googleusercontent.com');
+  
+  if (isVercel || isSandbox) {
     const baseUrl = 'https://ais-pre-ubxjjscbfuclhzfbawd7nd-85039836823.asia-east1.run.app';
     const cleanPath = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
     return `${baseUrl}${cleanPath}`;
   }
   
+  // For localhost, direct .run.app urls, and custom domains, use the current server (relative paths)
   return apiPath;
 }
