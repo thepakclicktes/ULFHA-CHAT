@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, getDocs, or, orderBy, addDoc, updateDoc, doc, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, getDoc, or, orderBy, addDoc, updateDoc, doc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { UserProfile, GroupOrChannel } from '../types';
@@ -90,12 +90,12 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
 
       try {
         const userQueries = Array.from(activeUserIds).map(uid => 
-          getDocs(query(collection(db, 'users'), where('__name__', '==', uid)))
+          getDoc(doc(db, 'users', uid))
         );
         const userSnaps = await Promise.all(userQueries);
-        const activeUsers = userSnaps.flatMap(snap => 
-          snap.docs.map(docSnap => ({ uid: docSnap.id, ...docSnap.data() } as UserProfile))
-        );
+        const activeUsers = userSnaps
+          .filter(snap => snap.exists())
+          .map(snap => ({ uid: snap.id, ...snap.data() } as UserProfile));
         
         activeUsers.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
         setContacts(activeUsers);

@@ -81,7 +81,7 @@ async function startServer() {
   const getDb = () => adminDb || db;
 
   // Gemini AI Setup with modern SDK guidelines
-  const aiKey = process.env.GEMINI_API_KEY;
+  const aiKey = process.env.GEMINI_API_KEY || "AIzaSyAv8_8McxqeGWwVkezWUfcw5MiCj6D-kTw";
   const ai = aiKey ? new GoogleGenAI({
     apiKey: aiKey,
     httpOptions: {
@@ -518,7 +518,7 @@ async function startServer() {
       let usedSearch = true;
       try {
         response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-2.5-flash",
           contents: formattedContents,
           config: {
             systemInstruction: "You are Noor AI, a beautiful online Islamic Assistant integrated into this application. This app was developed by the talented developer Abdulrahman Habib. You specialize in Islamic teachings, Quran, Hadith, Fiqh, and guiding users about the features and books inside this application. Always answer politely, respectfully, and beautifully in Urdu or English (depending on user's preference). App Features & Guidance:\n1. Developer: Abdulrahman Habib.\n2. Quran Reader: Standard 16-Lines Taj Company (Pakistani Print) PDF. Users can download it for 100% offline reading or read online. Includes zoom, scroll mode, sync adjustment, and fully searchable Surah & Juz lists.\n3. Hadith Reader: Includes authentic Hadith books like Sahih Bukhari, Sahih Muslim, etc., with full search.\n4. Madrasa Reader: Dedicated Islamic textbooks and curriculum.\n5. Islamic Library & Offline Library: Extensive collection of search-friendly Islamic books. If they request a book, encourage them to search the Islamic Library or Offline Library.\n6. Other parts: Prayer Times, Tasbeeh Counter, Duas Viewer, and Voice Calls/Contacts to communicate with scholars. Mention Abdulrahman Habib beautifully as the creator when asked. For contemporary fatwas/questions, utilize Google Search to lookup authentic rulings (e.g. Darul Ifta Karachi, Binoria, Deoband, etc.), summarize nicely with sources, and recommend consulting local scholars.",
@@ -540,7 +540,7 @@ async function startServer() {
           console.warn("Retrying Noor AI without Google Search due to quota/rate limit error:", errStr);
           usedSearch = false;
           response = await ai.models.generateContent({
-            model: "gemini-3.5-flash",
+            model: "gemini-2.5-flash",
             contents: formattedContents,
             config: {
               systemInstruction: "You are Noor AI, a beautiful online Islamic Assistant integrated into this application. This app was developed by the talented developer Abdulrahman Habib. You specialize in Islamic teachings, Quran, Hadith, Fiqh, and guiding users about the features and books inside this application. Always answer politely, respectfully, and beautifully in Urdu or English. App Features & Guidance:\n1. Developer: Abdulrahman Habib.\n2. Quran Reader: 16-Lines Taj Company print PDF (Download for offline or read online). Fully searchable index.\n3. Hadith Reader, Madrasa Reader, Islamic Library & Offline Library (with search, download, and offline read modes), Prayer Times, Tasbeeh Counter, Duas, and Voice Calls. Mention Abdulrahman Habib beautifully when asked. For religious matters, verify against authentic references and advise consulting qualified local scholars.",
@@ -572,13 +572,18 @@ async function startServer() {
       const isQuotaError = 
         errorStr.toLowerCase().includes('quota') ||
         errorStr.toLowerCase().includes('resource-exhausted') ||
+        errorStr.toLowerCase().includes('resource_exhausted') ||
         errorStr.toLowerCase().includes('exceeded') ||
         errorStr.toLowerCase().includes('limit') ||
-        errorStr.includes('429');
+        errorStr.includes('429') ||
+        errorStr.includes('503') ||
+        errorStr.toLowerCase().includes('unavailable') ||
+        errorStr.toLowerCase().includes('high demand');
 
       if (isQuotaError) {
-        return res.status(429).json({
-          error: "پیارے صارف! جیمنی اے آئی (Gemini AI) کی فری سروس پر عارضی طور پر رش زیادہ ہے۔ براہ کرم ایک منٹ انتظار کر کے دوبارہ کوشش کریں۔ یہ مسئلہ خودکار طور پر حل ہو جائے گا، انشاء اللہ"
+        return res.json({
+          text: "پیارے صارف! جیمنی اے آئی (Gemini AI) کی فری سروس پر عارضی طور پر رش زیادہ ہے۔ براہ کرم ایک منٹ انتظار کر کے دوبارہ کوشش کریں۔ یہ مسئلہ خودکار طور پر حل ہو جائے گا، انشاء اللہ",
+          sources: []
         });
       }
 
