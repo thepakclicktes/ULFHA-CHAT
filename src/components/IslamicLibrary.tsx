@@ -18,6 +18,7 @@ import { cn } from '../utils';
 import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import BookReader from './BookReader';
+import { storePDF, deletePDF } from '../utils/pdfStorage';
 
 export interface Book {
   id: string;
@@ -31,7 +32,12 @@ export interface Book {
   category: string;
   url?: string;
   coverUrl?: string;
-  volumes?: { name: string; url: string; }[];
+  previewImages?: string[];
+  volumes?: { 
+    name: string; 
+    url: string; 
+    size?: string;
+  }[];
 }
 
 const CATEGORIES = [
@@ -83,7 +89,16 @@ const BOOKS_DATA_CORE: Book[] = [
     urduDescription: 'احادیث مبارکہ کا سب سے مستند مجموعہ جس کی صحت پر امت کا اجماع ہے۔',
     language: 'Urdu / Arabic / English',
     category: 'hadith',
-    url: 'https://sunnah.com/bukhari'
+    url: 'https://sunnah.com/bukhari',
+    previewImages: [
+      'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=400&q=80',
+      'https://images.unsplash.com/photo-1584281729155-3c17b79cc24a?auto=format&fit=crop&w=400&q=80',
+      'https://images.unsplash.com/photo-1609599006353-e629f1d50213?auto=format&fit=crop&w=400&q=80'
+    ],
+    volumes: [
+      { name: 'صحیح البخاری-1', url: 'https://archive.org/download/SahihAlBukhariUrduComplete8Volumes/Sahih-Al-Bukhari-Volume-1-Urdu.pdf', size: '52.5 MB' },
+      { name: 'صحیح البخاری-2', url: 'https://archive.org/download/SahihAlBukhariUrduComplete8Volumes/Sahih-Al-Bukhari-Volume-2-Urdu.pdf', size: '56.16 MB' }
+    ]
   },
   {
     id: 'h2',
@@ -434,14 +449,168 @@ export default function IslamicLibrary({
   const [downloadingBookVolumes, setDownloadingBookVolumes] = useState<Book | null>(null);
   const [cachedBooks, setCachedBooks] = useState<Set<string>>(new Set());
 
+  const [activeDownloads, setActiveDownloads] = useState<Record<string, { progress: number; isPaused: boolean }>>(() => {
+    try {
+      const saved = localStorage.getItem('library_active_downloads');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Track real download requests
+  const activeXHRs = React.useRef<Record<string, XMLHttpRequest>>({});
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('library_active_downloads', JSON.stringify(activeDownloads));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [activeDownloads]);
+
+  // Clean up any active downloads on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(activeXHRs.current).forEach((xhr: any) => {
+        if (xhr) xhr.abort();
+      });
+    };
+  }, []);
+
+  const startDownload = (bookId: string, volIndex: number, volUrl: string) => {
+    const downloadKey = `${bookId}_${volIndex}`;
+    
+    if (activeXHRs.current[downloadKey]) {
+      activeXHRs.current[downloadKey].abort();
+    }
+
+    setActiveDownloads(prev => ({
+      ...prev,
+      [downloadKey]: {
+        progress: 0,
+        isPaused: false
+      }
+    }));
+
+    const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(volUrl)}`;
+    const xhr = new XMLHttpRequest();
+    activeXHRs.current[downloadKey] = xhr;
+
+    xhr.open('GET', proxyUrl, true);
+    xhr.responseType = 'blob';
+
+    xhr.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        setActiveDownloads(prev => {
+          if (!prev[downloadKey]) return prev;
+          return {
+            ...prev,
+            [downloadKey]: {
+              ...prev[downloadKey],
+              progress: pct
+            }
+          };
+        });
+      } else {
+        setActiveDownloads(prev => {
+          if (!prev[downloadKey]) return prev;
+          return {
+            ...prev,
+            [downloadKey]: {
+              ...prev[downloadKey],
+              progress: -1 // Indeterminate fallback
+            }
+          };
+        });
+      }
+    };
+
+    xhr.onload = async () => {
+      if (xhr.status === 200) {
+        try {
+          const blob = xhr.response;
+          // Store PDF Blob in IndexedDB
+          await storePDF(volUrl, blob);
+
+          // Persist downloaded url in localStorage
+          const downloaded = JSON.parse(localStorage.getItem('downloaded_volumes_local') || '[]');
+          if (!downloaded.includes(volUrl)) {
+            downloaded.push(volUrl);
+            localStorage.setItem('downloaded_volumes_local', JSON.stringify(downloaded));
+          }
+
+          setCachedBooks(prevCached => {
+            const updated = new Set(prevCached);
+            updated.add(volUrl);
+            return updated;
+          });
+
+          // Remove download entry
+          setActiveDownloads(prev => {
+            const updated = { ...prev };
+            delete updated[downloadKey];
+            return updated;
+          });
+
+          delete activeXHRs.current[downloadKey];
+        } catch (err) {
+          console.error("Failed to save downloaded PDF:", err);
+          alert("ڈاؤنلوڈ محفوظ کرنے میں ناکامی ہوئی۔");
+          cancelDownload(bookId, volIndex);
+        }
+      } else {
+        alert("ڈاؤنلوڈ کرنے میں ناکامی پیش آئی۔");
+        cancelDownload(bookId, volIndex);
+      }
+    };
+
+    xhr.onerror = () => {
+      alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
+      cancelDownload(bookId, volIndex);
+    };
+
+    xhr.send();
+  };
+
+  const pauseDownload = (bookId: string, volIndex: number) => {
+    // Treat pause as cancel for native downloads
+    cancelDownload(bookId, volIndex);
+  };
+
+  const cancelDownload = (bookId: string, volIndex: number) => {
+    const downloadKey = `${bookId}_${volIndex}`;
+    if (activeXHRs.current[downloadKey]) {
+      activeXHRs.current[downloadKey].abort();
+      delete activeXHRs.current[downloadKey];
+    }
+    setActiveDownloads(prev => {
+      const updated = { ...prev };
+      delete updated[downloadKey];
+      return updated;
+    });
+  };
+
   useEffect(() => {
     const checkCache = async () => {
+      const urls = new Set<string>();
       if ('caches' in window) {
-        const cache = await caches.open('ulfha-books-cache');
-        const requests = await cache.keys();
-        const urls = new Set(requests.map(req => req.url));
-        setCachedBooks(urls);
+        try {
+          const cache = await caches.open('ulfha-books-cache');
+          const requests = await cache.keys();
+          requests.forEach(req => urls.add(req.url));
+        } catch (e) {
+          console.error(e);
+        }
       }
+      try {
+        const stored = JSON.parse(localStorage.getItem('downloaded_volumes_local') || '[]');
+        stored.forEach((url: string) => urls.add(url));
+      } catch (e) {
+        console.error(e);
+      }
+      setCachedBooks(urls);
     };
     checkCache();
   }, []);
@@ -628,6 +797,235 @@ export default function IslamicLibrary({
     return bgs[index];
   };
 
+  const renderBookDetailView = (book: Book) => {
+    const defaultPreviews = [
+      'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=400&q=80',
+      'https://images.unsplash.com/photo-1584281729155-3c17b79cc24a?auto=format&fit=crop&w=400&q=80',
+      'https://images.unsplash.com/photo-1609599006353-e629f1d50213?auto=format&fit=crop&w=400&q=80'
+    ];
+    const previews = book.previewImages && book.previewImages.length > 0 ? book.previewImages : defaultPreviews;
+    
+    // Auto generate volumes if not present
+    const bookVolumes = book.volumes && book.volumes.length > 0 
+      ? book.volumes 
+      : [{ name: book.urduTitle, url: book.url || 'https://archive.org/download/SahihAlBukhariUrduComplete8Volumes/Sahih-Al-Bukhari-Volume-1-Urdu.pdf', size: '48.5 MB' }];
+
+    return (
+      <div id="book-detail-screen" className="flex flex-col h-full bg-white dark:bg-[#0f172a] overflow-hidden relative">
+        {/* Header - pastel mint green */}
+        <div className="bg-[#e2f5ec] dark:bg-[#1e293b] p-4 pt-10 pb-4 shadow-sm z-10 flex items-center justify-between shrink-0 border-b border-teal-100 dark:border-slate-800">
+          <div className="flex items-center gap-3 w-full">
+            <button 
+              id="back-to-library-btn"
+              onClick={() => setSelectedBook(null)} 
+              className="p-2 hover:bg-teal-200/50 dark:hover:bg-slate-800 rounded-full transition-colors text-gray-700 dark:text-slate-200"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 Urdu text-center flex-1 pr-8 leading-tight">
+              {book.urduTitle}
+            </h2>
+          </div>
+        </div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollable-content">
+          {/* Cover & General Metadata Info Card */}
+          <div className="flex gap-4 items-start">
+            {/* Book Cover */}
+            <div className="w-28 sm:w-36 aspect-[3/4] rounded-2xl bg-gray-50 dark:bg-[#0f172a] border border-gray-100 dark:border-slate-800 shadow-md overflow-hidden shrink-0 flex items-center justify-center">
+              {book.coverUrl ? (
+                <img src={book.coverUrl} alt={book.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+              ) : (
+                <div className={cn(
+                  "w-full h-full flex flex-col items-center justify-center font-bold text-center Urdu select-none text-white",
+                  getCoverBg(book.id)
+                )}>
+                  <span className="text-2xl">{book.urduTitle.trim().charAt(0)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Metadata Info */}
+            <div className="space-y-2 py-1">
+              <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-[#00a884] dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 px-2.5 py-0.5 rounded-md Urdu">
+                {CATEGORIES.find(c => c.id === book.category)?.urdu || book.category}
+              </span>
+              <p className="text-sm text-gray-500 dark:text-slate-400 Urdu font-medium leading-relaxed">
+                مصنف: <strong className="font-bold text-gray-800 dark:text-slate-200">{book.urduAuthor}</strong>
+              </p>
+              <p className="text-xs text-gray-400 font-mono">
+                Language: <span className="font-semibold text-gray-600 dark:text-slate-300">{book.language}</span>
+              </p>
+              <p className="text-xs text-gray-400 font-mono">
+                Publisher: <span className="font-semibold text-gray-600 dark:text-slate-300">Dar-us-Salam / Custom</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Yellow Disclaimer Notice Box */}
+          <div className="p-4 bg-[#fffde6] dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 text-amber-900/85 dark:text-amber-200/90 rounded-2xl text-xs sm:text-sm leading-relaxed font-sans shadow-xs">
+            This book was brought from archive.org as under a Creative Commons licence, or the author or publishing house agrees to publish the book. If you object to the publication of the book, please contact us.
+          </div>
+
+          {/* Previews Section */}
+          <div className="space-y-2.5">
+            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+              Previews
+            </h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x">
+              {previews.map((url, idx) => (
+                <div key={idx} className="snap-start shrink-0">
+                  <img 
+                    src={url} 
+                    alt={`Preview Page ${idx + 1}`} 
+                    referrerPolicy="no-referrer"
+                    className="w-28 sm:w-36 aspect-[3/4] object-cover rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Volumes List & Actions */}
+          <div className="space-y-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 Urdu border-b border-gray-100 dark:border-slate-800 pb-2">
+              دستیاب جلدیں / حصے (Available Volumes / Parts)
+            </h3>
+            
+            <div className="space-y-4">
+              {bookVolumes.map((vol, idx) => {
+                const downloadKey = `${book.id}_${idx}`;
+                const dl = activeDownloads[downloadKey];
+                const isCached = cachedBooks.has(vol.url);
+
+                return (
+                  <div 
+                    key={idx}
+                    className="p-4 bg-gray-50 dark:bg-[#1e293b]/50 rounded-2xl border border-gray-100 dark:border-slate-800/60 space-y-3.5 transition-all"
+                  >
+                    {/* Volume Name & Info */}
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="space-y-1">
+                        <h4 className="text-base font-bold text-gray-900 dark:text-slate-100 Urdu">
+                          {vol.name}
+                        </h4>
+                        
+                        {dl ? (
+                          <p className="text-xs text-blue-600 dark:text-blue-400 font-bold animate-pulse">
+                            Downloading: {dl.progress >= 0 ? `${dl.progress}%` : 'Connecting...'}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500 dark:text-slate-400 font-mono">
+                            {vol.size || '52.5 MB'}
+                          </p>
+                        )}
+                      </div>
+
+                      {isCached && (
+                        <span className="text-[10px] bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded-md font-bold">
+                          Downloaded
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Progress Bar (Only shown while downloading) */}
+                    {dl && (
+                      <div className="w-full bg-gray-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-emerald-500 h-full transition-all duration-300" 
+                          style={{ width: `${dl.progress >= 0 ? dl.progress : 100}%` }} 
+                        />
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      {dl ? (
+                        <>
+                          <button
+                            onClick={() => cancelDownload(book.id, idx)}
+                            className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all text-xs"
+                          >
+                            Cancel Download
+                          </button>
+                        </>
+                      ) : isCached ? (
+                        <>
+                          <button
+                            onClick={() => handleReadBook({ ...book, url: vol.url })}
+                            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1"
+                          >
+                            <BookOpen size={14} /> offline پڑھیں (Read Offline)
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const downloaded = JSON.parse(localStorage.getItem('downloaded_volumes_local') || '[]');
+                                const filtered = downloaded.filter((url: string) => url !== vol.url);
+                                localStorage.setItem('downloaded_volumes_local', JSON.stringify(filtered));
+                                
+                                // Also delete PDF from IndexedDB
+                                await deletePDF(vol.url);
+                              } catch(e) {
+                                console.error(e);
+                              }
+                              setCachedBooks(prev => {
+                                const updated = new Set(prev);
+                                updated.delete(vol.url);
+                                return updated;
+                              });
+                            }}
+                            className="px-3 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400 rounded-xl transition-all font-bold text-xs"
+                            title="Delete downloaded file"
+                          >
+                            حذف
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleReadBook({ ...book, url: vol.url })}
+                            className="flex-1 py-2.5 bg-[#00a884] hover:bg-[#008f72] text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1 shadow-xs"
+                          >
+                            <BookOpen size={14} /> آن لائن پڑھیں (Online Read)
+                          </button>
+                          <button
+                            onClick={() => startDownload(book.id, idx, vol.url)}
+                            className="flex-1 py-2.5 bg-[#1a2536] hover:bg-slate-800 text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1 shadow-xs"
+                          >
+                            <Download size={14} /> ڈاؤنلوڈ (Download)
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Ensure full-screen embedded reader can show on top of this panel */}
+        <AnimatePresence>
+          {readingBook && (
+            <BookReader 
+              bookId={readingBook.id}
+              bookTitle={readingBook.urduTitle} 
+              bookUrl={readingBook.url!} 
+              onClose={() => setReadingBook(null)} 
+              onCached={(url) => setCachedBooks(prev => new Set(prev).add(url))}
+            />
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  if (selectedBook) {
+    return renderBookDetailView(selectedBook);
+  }
+
   return (
     <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-[#0f172a] overflow-hidden relative">
       {/* Arabic Decorative BG pattern */}
@@ -812,6 +1210,7 @@ export default function IslamicLibrary({
       <AnimatePresence>
         {readingBook && (
           <BookReader 
+            bookId={readingBook.id}
             bookTitle={readingBook.urduTitle} 
             bookUrl={readingBook.url!} 
             onClose={() => setReadingBook(null)} 

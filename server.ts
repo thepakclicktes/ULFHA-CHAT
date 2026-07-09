@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import webPush from "web-push";
 import fs from "fs";
+import { Readable } from "stream";
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { GoogleGenAI } from "@google/genai";
@@ -595,6 +596,46 @@ async function startServer() {
     }
 
     res.json({ success: true, processedUids });
+  });
+
+  // Secure PDF Proxy to fetch external books without CORS issues and support real downloads
+  app.get("/api/pdf-proxy", async (req, res) => {
+    const url = req.query.url as string;
+    if (!url) {
+      return res.status(400).json({ error: "Missing url parameter" });
+    }
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        }
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: `Failed to fetch external PDF: ${response.statusText}` });
+      }
+
+      const contentType = response.headers.get("content-type");
+      const contentLength = response.headers.get("content-length");
+
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Headers", "*");
+      res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Type");
+      
+      if (contentType) res.setHeader("Content-Type", contentType);
+      if (contentLength) res.setHeader("Content-Length", contentLength);
+
+      if (response.body) {
+        const nodeStream = Readable.fromWeb(response.body as any);
+        nodeStream.pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (err: any) {
+      console.error("PDF Proxy error:", err);
+      res.status(500).json({ error: err.message || "Failed to proxy PDF" });
+    }
   });
 
   // Vite development integration or static files serving

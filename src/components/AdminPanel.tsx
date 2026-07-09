@@ -98,7 +98,8 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
     }
   });
   const [selectedBookToEdit, setSelectedBookToEdit] = useState<any | null>(null);
-  const [formVolumes, setFormVolumes] = useState<{ name: string; url: string; }[]>([]);
+  const [formVolumes, setFormVolumes] = useState<{ name: string; url: string; size?: string; }[]>([]);
+  const [formPreviewImages, setFormPreviewImages] = useState<string[]>([]);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [bookCategoryFilter, setBookCategoryFilter] = useState('all');
   const [bookSearchQuery, setBookSearchQuery] = useState('');
@@ -166,6 +167,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
       url: (formData.get('url') as string || '').trim(),
       coverUrl: (formData.get('coverUrl') as string || '').trim(),
       volumes: formVolumes,
+      previewImages: formPreviewImages,
       createdAt: selectedBookToEdit?.createdAt || new Date().toISOString()
     };
 
@@ -1730,6 +1732,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                       onClick={() => {
                         setSelectedBookToEdit(null);
                         setFormVolumes([]);
+                        setFormPreviewImages([]);
                         setIsBookModalOpen(true);
                       }}
                       className="bg-[#00a884] hover:bg-[#008f72] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-md"
@@ -1836,6 +1839,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                                       onClick={() => {
                                         setSelectedBookToEdit(book);
                                         setFormVolumes(book.volumes || []);
+                                        setFormPreviewImages(book.previewImages || []);
                                         setIsBookModalOpen(true);
                                       }}
                                       className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-900/30 rounded text-[10px] font-bold transition-all"
@@ -2218,7 +2222,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                     <button
                       type="button"
                       onClick={() => {
-                        setFormVolumes([...formVolumes, { name: '', url: '' }]);
+                        setFormVolumes([...formVolumes, { name: '', url: '', size: '' }]);
                       }}
                       className="text-xs text-[#00a884] hover:underline flex items-center gap-1 font-bold"
                     >
@@ -2241,7 +2245,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                               updated[idx].name = e.target.value;
                               setFormVolumes(updated);
                             }}
-                            className="w-1/3 bg-[#252526] border border-[#333333] focus:border-[#00a884] rounded px-2 py-1.5 text-xs text-white outline-none Urdu"
+                            className="w-1/4 bg-[#252526] border border-[#333333] focus:border-[#00a884] rounded px-2 py-1.5 text-xs text-white outline-none Urdu"
                             required
                           />
                           <input
@@ -2256,10 +2260,69 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                             className="flex-1 bg-[#252526] border border-[#333333] focus:border-[#00a884] rounded px-2 py-1.5 text-xs text-white outline-none"
                             required
                           />
+                          <input
+                            type="text"
+                            placeholder="Size (e.g. 52.5 MB)"
+                            value={vol.size || ''}
+                            onChange={(e) => {
+                              const updated = [...formVolumes];
+                              updated[idx].size = e.target.value;
+                              setFormVolumes(updated);
+                            }}
+                            className="w-24 bg-[#252526] border border-[#333333] focus:border-[#00a884] rounded px-2 py-1.5 text-xs text-white outline-none"
+                          />
                           <button
                             type="button"
                             onClick={() => {
                               setFormVolumes(formVolumes.filter((_, i) => i !== idx));
+                            }}
+                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Book Previews Manager */}
+                <div className="bg-[#1e1e1e] border border-[#333333] p-4 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] text-gray-400 uppercase font-bold">Preview Images (کتاب کے صفحات کے پیش نظر لنکس)</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormPreviewImages([...formPreviewImages, '']);
+                      }}
+                      className="text-xs text-[#00a884] hover:underline flex items-center gap-1 font-bold"
+                    >
+                      <Plus size={14} /> Add Preview Image (صفحہ کا لنک شامل کریں)
+                    </button>
+                  </div>
+
+                  {formPreviewImages.length === 0 ? (
+                    <p className="text-[11px] text-gray-500 italic">No custom previews defined. Default previews will be shown.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {formPreviewImages.map((imgUrl, idx) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                          <input
+                            type="url"
+                            placeholder="Preview Image URL (https://...)"
+                            value={imgUrl}
+                            onChange={(e) => {
+                              const updated = [...formPreviewImages];
+                              updated[idx] = e.target.value;
+                              setFormPreviewImages(updated);
+                            }}
+                            className="flex-1 bg-[#252526] border border-[#333333] focus:border-[#00a884] rounded px-2 py-1.5 text-xs text-white outline-none"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormPreviewImages(formPreviewImages.filter((_, i) => i !== idx));
                             }}
                             className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors"
                           >

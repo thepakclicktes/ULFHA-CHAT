@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Book, 
@@ -15,7 +15,8 @@ import {
   Search,
   LayoutGrid,
   GraduationCap,
-  Sparkles
+  Sparkles,
+  Smartphone
 } from 'lucide-react';
 import { cn } from '../utils';
 import QuranReader from './QuranReader';
@@ -26,6 +27,7 @@ import IslamicLibrary from './IslamicLibrary';
 import TasbeehCounter from './TasbeehCounter';
 import DuasViewer from './DuasViewer';
 import PrayerTimesViewer from './PrayerTimesViewer';
+import OfflineLibrary from './OfflineLibrary';
 
 interface ExploreItem {
   id: string;
@@ -41,10 +43,31 @@ export default function Explore() {
   const [showMadrasa, setShowMadrasa] = useState(false);
   const [showNoorAI, setShowNoorAI] = useState(false);
   const [showIslamicLibrary, setShowIslamicLibrary] = useState(false);
+  const [showOfflineLibrary, setShowOfflineLibrary] = useState(false);
   const [showTasbeeh, setShowTasbeeh] = useState(false);
   const [showDuas, setShowDuas] = useState(false);
   const [showPrayer, setShowPrayer] = useState(false);
   const [libraryCategory, setLibraryCategory] = useState('all');
+
+  const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [downloadedCount, setDownloadedCount] = useState(0);
+
+  useEffect(() => {
+    const checkDownloads = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('downloaded_volumes_local') || '[]');
+        setHasDownloaded(stored.length > 0);
+        setDownloadedCount(stored.length);
+      } catch (e) {
+        console.error("Failed to check downloaded count on Explore:", e);
+      }
+    };
+    checkDownloads();
+    
+    window.addEventListener('storage', checkDownloads);
+    return () => window.removeEventListener('storage', checkDownloads);
+  }, []);
+
   const categories: ExploreItem[] = [
     {
       id: 'noorai',
@@ -59,6 +82,13 @@ export default function Explore() {
       urduTitle: 'اسلامی لائبریری',
       icon: <BookOpen size={32} />,
       color: 'bg-emerald-700',
+    },
+    {
+      id: 'offlinelibrary',
+      title: 'Offline Library',
+      urduTitle: 'آف لائن لائبریری',
+      icon: <Smartphone size={32} />,
+      color: 'bg-teal-700 shadow-sm border border-emerald-500/10',
     },
     {
       id: 'quran',
@@ -148,6 +178,9 @@ export default function Explore() {
         setLibraryCategory('all');
         setShowIslamicLibrary(true);
         break;
+      case 'offlinelibrary':
+        setShowOfflineLibrary(true);
+        break;
       case 'quran':
         setShowQuran(true);
         break;
@@ -186,6 +219,10 @@ export default function Explore() {
 
   if (showIslamicLibrary) {
     return <IslamicLibrary onBack={() => setShowIslamicLibrary(false)} defaultCategory={libraryCategory} />;
+  }
+
+  if (showOfflineLibrary) {
+    return <OfflineLibrary onBack={() => setShowOfflineLibrary(false)} />;
   }
 
   if (showQuran) {
@@ -254,6 +291,31 @@ export default function Explore() {
             </motion.button>
           ))}
         </div>
+
+        {/* Offline Library Active Banner */}
+        {hasDownloaded && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 p-6 bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-700 dark:to-teal-800 rounded-[32px] text-white shadow-md relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4"
+          >
+            <div className="absolute right-0 top-0 bottom-0 opacity-10 flex items-center pr-6 pointer-events-none">
+              <Smartphone size={100} />
+            </div>
+            <div className="relative z-10 space-y-1">
+              <h3 className="text-xl font-bold Urdu">آف لائن لائبریری (Offline Library)</h3>
+              <p className="text-sm opacity-90 Urdu">
+                آپ کے پاس <span className="font-bold underline decoration-2">{downloadedCount}</span> کتابیں/جلدیں آف لائن دستیاب ہیں جنہیں آپ بغیر انٹرنیٹ کے کہیں بھی پڑھ سکتے ہیں۔
+              </p>
+            </div>
+            <button
+              onClick={() => setShowOfflineLibrary(true)}
+              className="relative z-10 px-5 py-2.5 bg-white dark:bg-[#111b21] hover:bg-emerald-50 dark:hover:bg-[#202c33] text-emerald-700 dark:text-emerald-400 rounded-2xl text-xs font-bold transition-all shadow-sm active:scale-95 self-start md:self-auto shrink-0"
+            >
+              کتابیں کھولیں (Open Library)
+            </button>
+          </motion.div>
+        )}
 
         {/* Card of the Day */}
         <motion.div 
