@@ -21,6 +21,19 @@ export const verifyPersistentStoragePermission = async (): Promise<boolean> => {
   return await navigator.storage.persisted();
 };
 
+export const estimateStorageUsage = async (): Promise<{ usage: number; quota: number } | null> => {
+  if (!('storage' in navigator && 'estimate' in navigator.storage)) {
+    return null;
+  }
+  try {
+    const estimate = await navigator.storage.estimate();
+    return { usage: estimate.usage || 0, quota: estimate.quota || 0 };
+  } catch (error) {
+    console.error("Failed to estimate storage usage:", error);
+    return null;
+  }
+};
+
 export const downloadBlobWithFileSystemAccess = async (
   blob: Blob,
   suggestedName: string

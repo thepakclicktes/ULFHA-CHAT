@@ -431,65 +431,38 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
   }, [isLibLoaded, isOffline, view, isDownloading]);
 
   // 4. Download Quran Offline
-  const startQuranDownload = () => {
+  const startQuranDownload = async () => {
     if (isDownloading) return;
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
     const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
-    const xhr = new XMLHttpRequest();
-    xhrRef.current = xhr;
+    setIsDownloading(true);
+    setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
-    xhr.open('GET', proxyUrl, true);
-    xhr.responseType = 'blob';
-
-    xhr.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const pct = Math.round((e.loaded / e.total) * 100);
-        setDlProgress({
-          percent: pct,
-          loadedMB: (e.loaded / (1024 * 1024)).toFixed(1),
-          totalMB: (e.total / (1024 * 1024)).toFixed(1)
-        });
-      } else {
-        setDlProgress(prev => ({
-          ...prev,
-          percent: -1,
-          loadedMB: (e.loaded / (1024 * 1024)).toFixed(1)
-        }));
+    try {
+      const response = await fetch(proxyUrl);
+      if (!response.ok) {
+        throw new Error(`Network response was not ok: ${response.status}`);
       }
-    };
 
-    xhr.onload = async () => {
-      if (xhr.status === 200) {
-        try {
-          const blob = xhr.response;
-          await storePDF(QURAN_URL, blob);
-          
-          // Also save to file system
-          await downloadBlobWithFileSystemAccess(blob, 'Quran.pdf');
-          
-          setIsOffline(true);
-          setIsDownloading(false);
-          // Auto load once downloaded
-          loadPdfDoc('offline');
-        } catch (err) {
-          console.error(err);
-          alert("ڈاؤنلوڈ محفوظ کرنے میں ناکامی ہوئی۔");
-          setIsDownloading(false);
-        }
-      } else {
-        alert("ڈاؤنلوڈ کرنے میں ناکامی پیش آئی۔");
-        setIsDownloading(false);
-      }
-    };
+      setDlProgress(prev => ({ ...prev, percent: -1 }));
 
-    xhr.onerror = () => {
+      const blob = await response.blob();
+      await storePDF(QURAN_URL, blob);
+      
+      // Also save to file system
+      await downloadBlobWithFileSystemAccess(blob, 'Quran.pdf');
+      
+      setIsOffline(true);
+      setIsDownloading(false);
+      // Auto load once downloaded
+      loadPdfDoc('offline');
+    } catch (err) {
+      console.error("Failed to download Quran PDF:", err);
       alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
       setIsDownloading(false);
-    };
-
-    xhr.send();
+    }
   };
 
   const cancelDownload = () => {

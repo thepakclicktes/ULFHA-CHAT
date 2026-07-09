@@ -498,77 +498,51 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
   }, [pdfDoc, pageNum, scale]);
 
   // 4. Real Offline Download Implementation
-  const handleRealDownload = () => {
+  const handleRealDownload = async () => {
     if (isDownloading || isOffline) return;
 
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
     const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
-    const xhr = new XMLHttpRequest();
-    xhrRef.current = xhr;
 
-    xhr.open('GET', proxyUrl, true);
-    xhr.responseType = 'blob';
-
-    xhr.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const pct = Math.round((e.loaded / e.total) * 100);
-        setDlProgress({
-          percent: pct,
-          loadedMB: (e.loaded / (1024 * 1024)).toFixed(1),
-          totalMB: (e.total / (1024 * 1024)).toFixed(1)
-        });
-      } else {
-        setDlProgress(prev => ({
-          ...prev,
-          percent: -1,
-          loadedMB: (e.loaded / (1024 * 1024)).toFixed(1)
-        }));
+    try {
+      const response = await fetch(proxyUrl);
+      if (!response.ok) {
+        throw new Error(`Network response was not ok: ${response.status}`);
       }
-    };
+      
+      // Since we don't get progress with fetch easily without a readable stream, 
+      // we'll keep the progress at -1 (unknown) for now or use a basic approach.
+      setDlProgress(prev => ({ ...prev, percent: -1 }));
 
-    xhr.onload = async () => {
-      if (xhr.status === 200) {
-        try {
-          const blob = xhr.response;
-          // Store PDF Blob in IndexedDB
-          await storePDF(bookUrl, blob);
-          
-          // Save to user selected location
-          const fileName = bookTitle ? `${bookTitle}.pdf` : 'book.pdf';
-          await downloadBlobWithFileSystemAccess(blob, fileName);
+      const blob = await response.blob();
+      
+      // Store PDF Blob in IndexedDB
+      await storePDF(bookUrl, blob);
+      
+      // Save to user selected location
+      const fileName = bookTitle ? `${bookTitle}.pdf` : 'book.pdf';
+      await downloadBlobWithFileSystemAccess(blob, fileName);
 
-          // Add to local storage tracking list
-          const downloaded = JSON.parse(localStorage.getItem('downloaded_volumes_local') || '[]');
-          if (!downloaded.includes(bookUrl)) {
-            downloaded.push(bookUrl);
-            localStorage.setItem('downloaded_volumes_local', JSON.stringify(downloaded));
-          }
-
-          setIsOffline(true);
-          setIsDownloading(false);
-          if (onCached) onCached(bookUrl);
-          
-          // Trigger custom event so other components (like Explore) refresh immediately
-          window.dispatchEvent(new Event('storage'));
-        } catch (err) {
-          console.error("Failed to save downloaded PDF:", err);
-          alert("ڈاؤنلوڈ محفوظ کرنے میں ناکامی ہوئی۔");
-          setIsDownloading(false);
-        }
-      } else {
-        alert("ڈاؤنلوڈ کرنے میں ناکامی پیش آئی۔");
-        setIsDownloading(false);
+      // Add to local storage tracking list
+      const downloaded = JSON.parse(localStorage.getItem('downloaded_volumes_local') || '[]');
+      if (!downloaded.includes(bookUrl)) {
+        downloaded.push(bookUrl);
+        localStorage.setItem('downloaded_volumes_local', JSON.stringify(downloaded));
       }
-    };
 
-    xhr.onerror = () => {
+      setIsOffline(true);
+      setIsDownloading(false);
+      if (onCached) onCached(bookUrl);
+      
+      // Trigger custom event so other components (like Explore) refresh immediately
+      window.dispatchEvent(new Event('storage'));
+    } catch (err) {
+      console.error("Failed to download PDF:", err);
       alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
       setIsDownloading(false);
-    };
-
-    xhr.send();
+    }
   };
 
   const cancelRealDownload = () => {
