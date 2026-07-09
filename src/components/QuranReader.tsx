@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { cn, resolveApiUrl } from '../utils';
 import { getPDF, storePDF } from '../utils/pdfStorage';
+import { downloadBlobWithFileSystemAccess } from '../utils/StorageManager';
 
 // Helper to dynamically load a script from CDN
 const loadScript = (src: string): Promise<void> => {
@@ -464,6 +465,10 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
         try {
           const blob = xhr.response;
           await storePDF(QURAN_URL, blob);
+          
+          // Also save to file system
+          await downloadBlobWithFileSystemAccess(blob, 'Quran.pdf');
+          
           setIsOffline(true);
           setIsDownloading(false);
           // Auto load once downloaded

@@ -23,6 +23,7 @@ import { db, auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getPDF, storePDF } from '../utils/pdfStorage';
+import { downloadBlobWithFileSystemAccess } from '../utils/StorageManager';
 import { resolveApiUrl } from '../utils';
 
 // Helper to dynamically load a script from CDN
@@ -533,6 +534,10 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           const blob = xhr.response;
           // Store PDF Blob in IndexedDB
           await storePDF(bookUrl, blob);
+          
+          // Save to user selected location
+          const fileName = bookTitle ? `${bookTitle}.pdf` : 'book.pdf';
+          await downloadBlobWithFileSystemAccess(blob, fileName);
 
           // Add to local storage tracking list
           const downloaded = JSON.parse(localStorage.getItem('downloaded_volumes_local') || '[]');
