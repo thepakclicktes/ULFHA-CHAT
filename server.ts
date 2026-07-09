@@ -1,6 +1,9 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+// Prevent Node.js from rejecting self-signed or expired SSL certificates for external book archives
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -57,9 +60,11 @@ async function startServer() {
 
   // CORS middleware to allow cross-origin requests from Vercel/custom domains
   app.use((req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    const origin = req.headers.origin || "*";
+    res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
     }
@@ -663,8 +668,11 @@ async function startServer() {
       const contentType = response.headers.get("content-type");
       const contentLength = response.headers.get("content-length");
 
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Headers", "*");
+      const origin = req.headers.origin || "*";
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
       res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Type");
       
       if (contentType) res.setHeader("Content-Type", contentType);

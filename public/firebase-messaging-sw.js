@@ -60,13 +60,22 @@ const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/logo.png',
-  '/manifest.json'
+  '/manifest.json',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      // Use Map to avoid duplicate failures or cache gracefully
+      return Promise.all(
+        ASSETS_TO_CACHE.map(url => {
+          return cache.add(url).catch(err => {
+            console.warn('[Service Worker] Failed to pre-cache asset:', url, err);
+          });
+        })
+      );
     })
   );
   self.skipWaiting();
@@ -96,10 +105,14 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request).then((fetchResponse) => {
       // Network success! Cache it and return.
-      if (fetchResponse.status === 200) {
+      if (fetchResponse && fetchResponse.status === 200 && event.request.url.startsWith('http')) {
         const responseClone = fetchResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
+          cache.put(event.request, responseClone).catch(err => {
+            console.warn('[Service Worker] Failed to put in cache:', err);
+          });
+        }).catch(err => {
+          console.warn('[Service Worker] Failed to open cache:', err);
         });
       }
       return fetchResponse;
