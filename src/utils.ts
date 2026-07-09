@@ -103,19 +103,18 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 export function resolveApiUrl(apiPath: string): string {
   const hostname = window.location.hostname;
   
-  // If we are on Vercel or inside a sandboxed iframe like googleusercontent.com,
-  // we route to the hardcoded backend URL so that API requests find the hosted app.
-  // Otherwise, if we are on a custom domain, localhost, or any other direct host
-  // where our Express server handles the request, we must use relative paths.
-  const isVercel = hostname.endsWith('.vercel.app');
-  const isSandbox = hostname.includes('googleusercontent.com');
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isRunApp = hostname.endsWith('.run.app');
   
-  if (isVercel || isSandbox) {
+  // If we are NOT on localhost and NOT directly on the AI Studio .run.app container domain,
+  // we must route requests to the absolute backend URL.
+  // This covers Vercel, Firebase Hosting, custom domains, and sandboxed iframes.
+  if (!isLocal && !isRunApp) {
     const baseUrl = 'https://ais-pre-ubxjjscbfuclhzfbawd7nd-85039836823.asia-east1.run.app';
     const cleanPath = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
     return `${baseUrl}${cleanPath}`;
   }
   
-  // For localhost, direct .run.app urls, and custom domains, use the current server (relative paths)
+  // For localhost and direct .run.app urls, use relative paths
   return apiPath;
 }
