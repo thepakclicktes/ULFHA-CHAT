@@ -20,7 +20,7 @@ import { reload, updatePassword } from 'firebase/auth';
 import { db, messaging, auth } from './firebase';
 import { handleFirestoreError, OperationType } from './firebaseError';
 import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock } from 'lucide-react';
-import { cn } from './utils';
+import { cn, resolveApiUrl } from './utils';
 import VoiceCall from './components/VoiceCall';
 import Header from './components/Header';
 import Settings from './components/Settings';
@@ -382,7 +382,7 @@ useEffect(() => {
                 if (!navigator.onLine) {
                   console.warn('Skipping Web Push VAPID subscription registration because the client is offline.');
                 } else {
-                  const res = await fetch('/api/push-public-key');
+                  const res = await fetch(resolveApiUrl('/api/push-public-key'));
                   if (res.ok) {
                     const data = await res.json();
                     const publicKey = data.publicKey;

@@ -4,6 +4,7 @@ import { collection, addDoc, getDoc, doc, serverTimestamp, setDoc, query, where,
 import { db } from '../firebase';
 import { Send, CheckCircle2, MessageCircle, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
+import { resolveApiUrl } from '../utils';
 
 export default function ReplyBridge() {
   const [searchParams] = useSearchParams();
@@ -108,7 +109,7 @@ export default function ReplyBridge() {
         webPushSubscriptions: []
       };
 
-      const response = await fetch('/api/bridge/send', {
+      const response = await fetch(resolveApiUrl('/api/bridge/send'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -22,7 +22,7 @@ import {
   Layers,
   HelpCircle
 } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, resolveApiUrl } from '../utils';
 import { getPDF, storePDF } from '../utils/pdfStorage';
 
 // Helper to dynamically load a script from CDN
@@ -390,7 +390,7 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
         pdfData = { data: new Uint8Array(arrayBuffer) };
         setIsOffline(true);
       } else {
-        const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`;
+        const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
         pdfData = { url: proxyUrl };
         if (!cachedBlob) setIsOffline(false);
       }
@@ -434,7 +434,7 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
-    const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`;
+    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
 

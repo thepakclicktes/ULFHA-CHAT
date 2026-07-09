@@ -15,7 +15,7 @@ import {
   CheckCircle2,
   Trash2
 } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, resolveApiUrl } from '../utils';
 
 interface Source {
   title: string;
@@ -81,7 +81,7 @@ export default function NoorAIChat({ onBack }: { onBack: () => void }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/noor-ai', {
+      const res = await fetch(resolveApiUrl('/api/noor-ai'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: updatedMessages })

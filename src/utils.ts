@@ -99,3 +99,16 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     return false;
   }
 }
+
+export function resolveApiUrl(apiPath: string): string {
+  const hostname = window.location.hostname;
+  const isCloudRun = hostname.endsWith('.run.app');
+  
+  if (!isCloudRun && (hostname.includes('vercel.app') || hostname.includes('localhost') || hostname === '')) {
+    const baseUrl = 'https://ais-pre-ubxjjscbfuclhzfbawd7nd-85039836823.asia-east1.run.app';
+    const cleanPath = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
+    return `${baseUrl}${cleanPath}`;
+  }
+  
+  return apiPath;
+}

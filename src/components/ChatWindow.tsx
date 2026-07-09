@@ -5,7 +5,7 @@ import { db } from '../firebase';
 import { UserProfile, Message, AppSettings } from '../types';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { Send, Plus, Search, MoreVertical, Smile, Mic, Gamepad2, ArrowLeft, Image, BadgeCheck, XCircle, Phone, Play, Pause, Trash2, Share2, Check, Camera, Wallet, File, Video, FileText, Download, RefreshCw, Megaphone, Pin, Bookmark, Reply, CornerUpRight, Sparkles, CheckSquare, AlertTriangle, Copy } from 'lucide-react';
-import { formatMessageTime, cn, formatChatDate, toSafeDate, copyToClipboard } from '../utils';
+import { formatMessageTime, cn, formatChatDate, toSafeDate, copyToClipboard, resolveApiUrl } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { updateDoc, doc } from 'firebase/firestore';
 import VoiceCall from './VoiceCall';
@@ -668,7 +668,7 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
     setMetaSources([]);
 
     try {
-      const res = await fetch('/api/noor-ai', {
+      const res = await fetch(resolveApiUrl('/api/noor-ai'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

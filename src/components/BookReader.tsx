@@ -23,6 +23,7 @@ import { db, auth } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getPDF, storePDF } from '../utils/pdfStorage';
+import { resolveApiUrl } from '../utils';
 
 // Helper to dynamically load a script from CDN
 const loadScript = (src: string): Promise<void> => {
@@ -288,7 +289,7 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
         } else {
           setIsOffline(false);
           // Load online via proxy to prevent CORS issues
-          const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`;
+          const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
           pdfData = { url: proxyUrl };
         }
 
@@ -501,7 +502,7 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
-    const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`;
+    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
 

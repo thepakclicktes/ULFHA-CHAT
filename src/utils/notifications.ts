@@ -1,3 +1,5 @@
+import { resolveApiUrl } from '../utils';
+
 export async function triggerPushNotification(
   recipientUids: string[],
   title: string,
@@ -8,7 +10,7 @@ export async function triggerPushNotification(
   if (!recipientUids || recipientUids.length === 0) return;
 
   try {
-    const res = await fetch('/api/send-notification', {
+    const res = await fetch(resolveApiUrl('/api/send-notification'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

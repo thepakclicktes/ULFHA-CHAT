@@ -14,7 +14,7 @@ import {
   SearchX,
   Download
 } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, resolveApiUrl } from '../utils';
 import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import BookReader from './BookReader';
@@ -611,7 +611,7 @@ export default function IslamicLibrary({
       }
     }));
 
-    const proxyUrl = `/api/pdf-proxy?url=${encodeURIComponent(volUrl)}`;
+    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(volUrl)}`);
     const xhr = new XMLHttpRequest();
     activeXHRs.current[downloadKey] = xhr;
 

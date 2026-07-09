@@ -6,7 +6,7 @@ import { handleFirestoreError, OperationType } from '../firebaseError';
 import { UserProfile, GroupOrChannel } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, UserPlus, Circle, MoreVertical, Filter, BadgeCheck, Users, Megaphone, Plus, Globe, Check, X, ShieldAlert, Archive, Lock, VolumeX, Pin, CheckCheck, ListPlus, Ban, Eraser, Trash2, MessageSquare, Smartphone, Sparkles } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, resolveApiUrl } from '../utils';
 
 const ChatSkeleton = () => (
   <div className="flex items-center p-3 border-b border-[#F5F6F6] animate-pulse">
@@ -98,7 +98,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
         isWhatsApp: true
       };
 
-      const response = await fetch('/api/whatsapp/save-contact', {
+      const response = await fetch(resolveApiUrl('/api/whatsapp/save-contact'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -154,7 +154,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
         nickname: ulfhaNickname.trim()
       };
 
-      const response = await fetch('/api/whatsapp/save-contact', {
+      const response = await fetch(resolveApiUrl('/api/whatsapp/save-contact'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -599,7 +599,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
       try {
         const { isVirtual, ...profileData } = chatItem;
         
-        const response = await fetch('/api/whatsapp/save-contact', {
+        const response = await fetch(resolveApiUrl('/api/whatsapp/save-contact'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
