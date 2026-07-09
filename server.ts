@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -495,26 +498,56 @@ async function startServer() {
         parts: [{ text: m.content || m.text || '' }]
       }));
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: formattedContents,
-        config: {
-          systemInstruction: "You are Noor AI, an online Islamic Assistant. You specialize in Islamic teachings, Quran, Hadith, and Fiqh. You have access to Google Search to look up fatwas, reliable rulings, and accurate Islamic references. Always answer politely, respectfully, and beautifully. Use Urdu or English depending on how the user asks. When answering about a fatwa or religious matter, search Google if needed to verify contemporary fatwas (e.g., from Darul Ifta Karachi, Binoria, Deoband, etc.) and summarize accurately. Ensure you cite authentic sources and recommend consulting qualified local scholars for definitive personal rulings.",
-          tools: [{ googleSearch: {} }],
-          temperature: 0.5
+      let response;
+      let usedSearch = true;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: formattedContents,
+          config: {
+            systemInstruction: "You are Noor AI, a beautiful online Islamic Assistant integrated into this application. This app was developed by the talented developer Abdulrahman Habib. You specialize in Islamic teachings, Quran, Hadith, Fiqh, and guiding users about the features and books inside this application. Always answer politely, respectfully, and beautifully in Urdu or English (depending on user's preference). App Features & Guidance:\n1. Developer: Abdulrahman Habib.\n2. Quran Reader: Standard 16-Lines Taj Company (Pakistani Print) PDF. Users can download it for 100% offline reading or read online. Includes zoom, scroll mode, sync adjustment, and fully searchable Surah & Juz lists.\n3. Hadith Reader: Includes authentic Hadith books like Sahih Bukhari, Sahih Muslim, etc., with full search.\n4. Madrasa Reader: Dedicated Islamic textbooks and curriculum.\n5. Islamic Library & Offline Library: Extensive collection of search-friendly Islamic books. If they request a book, encourage them to search the Islamic Library or Offline Library.\n6. Other parts: Prayer Times, Tasbeeh Counter, Duas Viewer, and Voice Calls/Contacts to communicate with scholars. Mention Abdulrahman Habib beautifully as the creator when asked. For contemporary fatwas/questions, utilize Google Search to lookup authentic rulings (e.g. Darul Ifta Karachi, Binoria, Deoband, etc.), summarize nicely with sources, and recommend consulting local scholars.",
+            tools: [{ googleSearch: {} }],
+            temperature: 0.5
+          }
+        });
+      } catch (err: any) {
+        const errStr = err instanceof Error ? err.message : String(err);
+        const isQuotaOrSearchErr = 
+          errStr.toLowerCase().includes('quota') ||
+          errStr.toLowerCase().includes('resource_exhausted') ||
+          errStr.toLowerCase().includes('resource-exhausted') ||
+          errStr.toLowerCase().includes('exceeded') ||
+          errStr.toLowerCase().includes('limit') ||
+          errStr.includes('429');
+
+        if (isQuotaOrSearchErr) {
+          console.warn("Retrying Noor AI without Google Search due to quota/rate limit error:", errStr);
+          usedSearch = false;
+          response = await ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: formattedContents,
+            config: {
+              systemInstruction: "You are Noor AI, a beautiful online Islamic Assistant integrated into this application. This app was developed by the talented developer Abdulrahman Habib. You specialize in Islamic teachings, Quran, Hadith, Fiqh, and guiding users about the features and books inside this application. Always answer politely, respectfully, and beautifully in Urdu or English. App Features & Guidance:\n1. Developer: Abdulrahman Habib.\n2. Quran Reader: 16-Lines Taj Company print PDF (Download for offline or read online). Fully searchable index.\n3. Hadith Reader, Madrasa Reader, Islamic Library & Offline Library (with search, download, and offline read modes), Prayer Times, Tasbeeh Counter, Duas, and Voice Calls. Mention Abdulrahman Habib beautifully when asked. For religious matters, verify against authentic references and advise consulting qualified local scholars.",
+              temperature: 0.5
+            }
+          });
+        } else {
+          throw err;
         }
-      });
+      }
 
       const text = response.text || "";
       
       // Extract grounding sources
       const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-      const sources = groundingChunks
-        .filter((chunk: any) => chunk.web)
-        .map((chunk: any) => ({
-          title: chunk.web?.title || "Reference",
-          uri: chunk.web?.uri || ""
-        }));
+      const sources = usedSearch 
+        ? groundingChunks
+            .filter((chunk: any) => chunk.web)
+            .map((chunk: any) => ({
+              title: chunk.web?.title || "Reference",
+              uri: chunk.web?.uri || ""
+            }))
+        : [];
 
       res.json({ text, sources });
     } catch (error: any) {

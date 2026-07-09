@@ -5,7 +5,7 @@ import { db, auth } from '../firebase';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { UserProfile, GroupOrChannel } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, UserPlus, Circle, MoreVertical, Filter, BadgeCheck, Users, Megaphone, Plus, Globe, Check, X, ShieldAlert, Archive, Lock, VolumeX, Pin, CheckCheck, ListPlus, Ban, Eraser, Trash2, MessageSquare, Smartphone } from 'lucide-react';
+import { Search, UserPlus, Circle, MoreVertical, Filter, BadgeCheck, Users, Megaphone, Plus, Globe, Check, X, ShieldAlert, Archive, Lock, VolumeX, Pin, CheckCheck, ListPlus, Ban, Eraser, Trash2, MessageSquare, Smartphone, Sparkles } from 'lucide-react';
 import { cn } from '../utils';
 
 const ChatSkeleton = () => (
@@ -23,9 +23,10 @@ interface ChatListProps {
   selectedChat: any | null;
   searchQuery?: string;
   nicknames: Record<string, string>;
+  appLogoUrl?: string;
 }
 
-export default function ChatList({ onSelectChat, selectedChat, searchQuery = '', nicknames }: ChatListProps) {
+export default function ChatList({ onSelectChat, selectedChat, searchQuery = '', nicknames, appLogoUrl }: ChatListProps) {
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserProfile[]>(() => {
     try {
@@ -897,8 +898,20 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
     );
   };
 
+  // Virtual Noor AI Assistant Chat Item
+  const noorAIChatItem = {
+    uid: 'noorai_assistant',
+    displayName: 'Noor AI',
+    username: 'noorai',
+    isNoorAI: true,
+    photoURL: appLogoUrl || '/logo.png',
+    bio: '✨ Online Islamic Assistant - Talk to me!',
+    isOnline: true,
+    lastSeen: new Date().toISOString()
+  };
+
   // Combine both user profiles and group collections for unified display listing
-  const allChats = [...users, ...groups];
+  const allChats = [noorAIChatItem, ...users, ...groups];
 
   // Apply visual category filters - Default to showing all
   let filteredChats = allChats;
@@ -1247,12 +1260,17 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
                         <div className="flex justify-between items-baseline mb-0.5">
                           <h3 className="font-semibold text-[#111B21] truncate text-base flex items-center gap-1.5">
                             {nicknames[chatItem.uid] || chatItem.displayName}
+                            {chatItem.isNoorAI && (
+                              <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-0.5 animate-pulse">
+                                <Sparkles size={10} /> AI
+                              </span>
+                            )}
                             {chatItem.isWhatsAppContact && (
                               <span className="bg-[#25D366] text-white text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-0.5">
                                 <MessageSquare size={10} /> WA
                               </span>
                             )}
-                            {(chatItem.phoneNumber || (chatItem.isWhatsAppContact && chatItem.uid)) && (
+                            {!chatItem.isNoorAI && (chatItem.phoneNumber || (chatItem.isWhatsAppContact && chatItem.uid)) && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1270,7 +1288,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
                             {isChnl && <span className="bg-purple-50 text-purple-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Channel</span>}
                           </h3>
                           <span className="text-[10px] text-[#667781] font-semibold">
-                            {isGrp ? `${chatItem.members?.length || 0} members` : isChnl ? 'Megaphone Feed' : (chatItem.isOnline ? 'Online' : 'Offline')}
+                            {chatItem.isNoorAI ? '@noorai' : (isGrp ? `${chatItem.members?.length || 0} members` : isChnl ? 'Megaphone Feed' : (chatItem.isOnline ? 'Online' : 'Offline'))}
                           </span>
                         </div>
                         <div className="flex items-center justify-between mt-1">

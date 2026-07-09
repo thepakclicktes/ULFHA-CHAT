@@ -28,6 +28,8 @@ export function useTypingIndicator(chatUid: string, currentUserUid: string, isGr
         typistsRef.current = {};
         setTypingUsers([]);
       }
+    }, (error) => {
+      console.warn("Typing indicator snapshot error:", error);
     });
 
     const interval = setInterval(updateActiveTypists, 1000);

@@ -13,7 +13,10 @@ import {
   Download, 
   CheckCircle,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Scroll,
+  BookOpen,
+  Search
 } from 'lucide-react';
 import { collection, addDoc, deleteDoc, doc, query, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -24,10 +27,29 @@ import { getPDF, storePDF } from '../utils/pdfStorage';
 // Helper to dynamically load a script from CDN
 const loadScript = (src: string): Promise<void> => {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) {
-      resolve();
+    const existingScript = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement;
+    if (existingScript) {
+      if ((window as any).pdfjsLib) {
+        resolve();
+        return;
+      }
+      const handleLoad = () => {
+        cleanup();
+        resolve();
+      };
+      const handleError = (err: any) => {
+        cleanup();
+        reject(err);
+      };
+      const cleanup = () => {
+        existingScript.removeEventListener('load', handleLoad);
+        existingScript.removeEventListener('error', handleError);
+      };
+      existingScript.addEventListener('load', handleLoad);
+      existingScript.addEventListener('error', handleError);
       return;
     }
+
     const script = document.createElement('script');
     script.src = src;
     script.async = true;
@@ -36,6 +58,128 @@ const loadScript = (src: string): Promise<void> => {
     document.head.appendChild(script);
   });
 };
+
+interface PDFPageRendererProps {
+  key?: React.Key;
+  pdfDoc: any;
+  pageNum: number;
+  scale: number;
+  onVisible: (page: number) => void;
+}
+
+function PDFPageRenderer({ pdfDoc, pageNum, scale, onVisible }: PDFPageRendererProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+        if (entry.isIntersecting) {
+          onVisible(pageNum);
+        }
+      },
+      {
+        root: null,
+        rootMargin: '250px 0px 250px 0px',
+        threshold: 0.1,
+      }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [pageNum, onVisible]);
+
+  useEffect(() => {
+    if (!pdfDoc || !isVisible) return;
+
+    let isMounted = true;
+    const renderPage = async () => {
+      setLoading(true);
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+      }
+
+      try {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale });
+        const canvas = canvasRef.current;
+
+        if (canvas && isMounted) {
+          const context = canvas.getContext('2d');
+          if (context) {
+            const pixelRatio = window.devicePixelRatio || 1;
+            canvas.width = Math.floor(viewport.width * pixelRatio);
+            canvas.height = Math.floor(viewport.height * pixelRatio);
+            canvas.style.width = `${viewport.width}px`;
+            canvas.style.height = `${viewport.height}px`;
+
+            context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+            const renderContext = {
+              canvasContext: context,
+              viewport: viewport
+            };
+
+            const renderTask = page.render(renderContext);
+            renderTaskRef.current = renderTask;
+
+            await renderTask.promise;
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== 'RenderingCancelledException') {
+          console.error("Render Page Error:", err);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    renderPage();
+
+    return () => {
+      isMounted = false;
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+      }
+    };
+  }, [pdfDoc, pageNum, scale, isVisible]);
+
+  return (
+    <div 
+      ref={containerRef} 
+      id={`reader-page-${pageNum}`}
+      className="relative flex flex-col items-center justify-center p-4 bg-[#0e1320] min-w-full"
+      style={{ minHeight: `${600 * scale}px` }}
+    >
+      <div className="absolute top-2 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-full text-[10px] text-slate-300 font-semibold z-10 select-none shadow">
+        صفحہ {pageNum}
+      </div>
+      
+      <div className="shadow-2xl border border-slate-900/60 rounded-lg overflow-hidden bg-white max-w-full">
+        <canvas ref={canvasRef} className="max-w-full h-auto block" />
+      </div>
+
+      {loading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[1px] z-10 rounded-lg">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#00a884] border-t-transparent mb-2"></div>
+          <span className="text-[10px] text-slate-300 font-bold font-sans">لوڈ ہو رہا ہے...</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface BookmarkType {
   id?: string;
@@ -81,6 +225,15 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
   const [bookmarkPage, setBookmarkPage] = useState('');
   const [bookmarkNote, setBookmarkNote] = useState('');
   const [isSavingBookmark, setIsSavingBookmark] = useState(false);
+  const [isScrollMode, setIsScrollMode] = useState(false);
+
+  // Search & Resume States
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
+  const [readerSearchQuery, setReaderSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{ pageNum: number; text: string }[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [resumeNotice, setResumeNotice] = useState<string | null>(null);
 
   const { user } = useAuth();
   const readerRef = useRef<HTMLDivElement>(null);
@@ -93,12 +246,20 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     const initPdfJs = async () => {
       try {
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+        
+        // Safety polling to make sure the library is fully compiled and loaded into window space
+        let retries = 0;
+        while (!(window as any).pdfjsLib && retries < 30) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          retries++;
+        }
+
         const pdfjsLib = (window as any).pdfjsLib;
         if (pdfjsLib) {
           pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
           setIsLibLoaded(true);
         } else {
-          throw new Error("pdfjsLib not defined on window");
+          throw new Error("pdfjsLib not defined on window after script load");
         }
       } catch (err: any) {
         console.error("Failed to load PDF.js from CDN:", err);
@@ -151,7 +312,24 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
 
         setPdfDoc(doc);
         setNumPages(doc.numPages);
-        setPageNum(1);
+        
+        let initialPage = 1;
+        try {
+          const savedProgress = localStorage.getItem(`book_progress_${bookId}`);
+          if (savedProgress) {
+            const parsed = JSON.parse(savedProgress);
+            if (parsed && typeof parsed.page === 'number' && parsed.page >= 1 && parsed.page <= doc.numPages) {
+              initialPage = parsed.page;
+              setResumeNotice(`آخری بار پڑھے گئے صفحہ ${initialPage} سے دوبارہ شروع کیا گیا ہے`);
+              setTimeout(() => {
+                setResumeNotice(null);
+              }, 4000);
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to retrieve book progress from localstorage", e);
+        }
+        setPageNum(initialPage);
       } catch (err: any) {
         console.error("Error loading PDF document:", err);
         if (isMounted) {
@@ -171,9 +349,103 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     };
   }, [isLibLoaded, bookUrl]);
 
+  // Save reading progress & recently read metadata
+  useEffect(() => {
+    if (!bookId || pageNum < 1 || numPages < 1) return;
+    
+    const saveProgress = () => {
+      try {
+        localStorage.setItem(`book_progress_${bookId}`, JSON.stringify({
+          page: pageNum,
+          updatedAt: Date.now()
+        }));
+
+        // Update recently read list
+        const recentsRaw = localStorage.getItem('recently_read_books');
+        let recents: any[] = [];
+        if (recentsRaw) {
+          try {
+            recents = JSON.parse(recentsRaw);
+          } catch {
+            recents = [];
+          }
+        }
+
+        // Remove existing if any
+        recents = recents.filter((item: any) => item.bookId !== bookId);
+
+        // Add to the front
+        recents.unshift({
+          bookId,
+          bookTitle,
+          bookUrl,
+          lastReadPage: pageNum,
+          numPages,
+          updatedAt: Date.now()
+        });
+
+        // Limit to top 10
+        recents = recents.slice(0, 10);
+
+        localStorage.setItem('recently_read_books', JSON.stringify(recents));
+      } catch (e) {
+        console.warn("Error saving recently read books:", e);
+      }
+    };
+
+    const timer = setTimeout(saveProgress, 500);
+    return () => clearTimeout(timer);
+  }, [bookId, pageNum, numPages, bookTitle, bookUrl]);
+
+  // PDF Text Search function
+  const handlePdfSearch = async (queryStr: string) => {
+    if (!queryStr.trim() || !pdfDoc) return;
+    setIsSearching(true);
+    setSearchError(null);
+    setSearchResults([]);
+
+    const results: { pageNum: number; text: string }[] = [];
+    const limitResults = 50;
+
+    try {
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        const page = await pdfDoc.getPage(p);
+        const textContent = await page.getTextContent();
+        const textItems = textContent.items.map((item: any) => item.str).join(' ');
+        
+        if (textItems.toLowerCase().includes(queryStr.toLowerCase())) {
+          const index = textItems.toLowerCase().indexOf(queryStr.toLowerCase());
+          const start = Math.max(0, index - 30);
+          const end = Math.min(textItems.length, index + queryStr.length + 30);
+          let snippet = textItems.substring(start, end).trim();
+          if (start > 0) snippet = '...' + snippet;
+          if (end < textItems.length) snippet = snippet + '...';
+
+          results.push({
+            pageNum: p,
+            text: snippet
+          });
+
+          if (results.length >= limitResults) {
+            break;
+          }
+        }
+      }
+      setSearchResults(results);
+      if (results.length === 0) {
+        setSearchError("کوئی مماثلت نہیں ملی (No matches found)");
+      }
+    } catch (err) {
+      console.error("Error searching PDF:", err);
+      setSearchError("سرچ کرنے میں کوئی خرابی پیش آئی ہے۔");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   // 3. Render Page onto Canvas (High-DPI supported)
   useEffect(() => {
-    if (!pdfDoc) return;
+    if (!pdfDoc || isScrollMode) return;
 
     const renderPage = async () => {
       setIsRenderLoading(true);
@@ -415,13 +687,32 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     }
   };
 
+  const scrollToPage = (p: number) => {
+    const el = document.getElementById(`reader-page-${p}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   // Handle page navigation
   const goToNextPage = () => {
-    if (pageNum < numPages) setPageNum(p => p + 1);
+    if (pageNum < numPages) {
+      const next = pageNum + 1;
+      setPageNum(next);
+      if (isScrollMode) {
+        scrollToPage(next);
+      }
+    }
   };
 
   const goToPrevPage = () => {
-    if (pageNum > 1) setPageNum(p => p - 1);
+    if (pageNum > 1) {
+      const prev = pageNum - 1;
+      setPageNum(prev);
+      if (isScrollMode) {
+        scrollToPage(prev);
+      }
+    }
   };
 
   return (
@@ -467,9 +758,28 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
             </button>
           )}
 
+          {/* Search Toggle */}
+          <button
+            onClick={() => {
+              setShowSearchPanel(!showSearchPanel);
+              setShowBookmarksPanel(false);
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
+              showSearchPanel 
+                ? 'bg-[#00a884] border-[#00c298] text-white' 
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+            }`}
+          >
+            <Search size={14} />
+            <span className="hidden xs:inline">تلاش (Search)</span>
+          </button>
+
           {/* Bookmarks Toggle */}
           <button
-            onClick={() => setShowBookmarksPanel(!showBookmarksPanel)}
+            onClick={() => {
+              setShowBookmarksPanel(!showBookmarksPanel);
+              setShowSearchPanel(false);
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
               showBookmarksPanel 
                 ? 'bg-[#00a884] border-[#00c298] text-white' 
@@ -553,7 +863,13 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
         )}
 
         {/* Canvas Display Viewport */}
-        <div className="flex-1 h-full flex flex-col overflow-y-auto items-center p-4 scrollable-content select-none bg-[#0e1320]">
+        <div className="flex-1 h-full flex flex-col overflow-y-auto items-center p-4 pb-24 scrollable-content select-none bg-[#0e1320] relative">
+          {resumeNotice && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00a884]/95 border border-[#00c298]/30 backdrop-blur text-white px-4 py-2 rounded-2xl shadow-xl z-30 text-xs font-semibold Urdu flex items-center gap-2 animate-bounce">
+              <CheckCircle size={14} className="text-white shrink-0" />
+              <span>{resumeNotice}</span>
+            </div>
+          )}
           {libError ? (
             <div className="my-auto text-center space-y-4 max-w-md p-6 bg-slate-900/60 rounded-3xl border border-slate-800">
               <AlertCircle className="mx-auto text-red-400" size={48} />
@@ -576,14 +892,75 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
               )}
             </div>
           ) : (
-            <div className="my-auto flex flex-col items-center justify-center space-y-4">
-              {/* Actual Canvas */}
-              <div className="shadow-2xl border border-slate-900 rounded-lg overflow-hidden bg-white max-w-full">
-                <canvas ref={canvasRef} className="max-w-full h-auto block" />
-              </div>
+            <>
+              {isScrollMode ? (
+                <div className="w-full flex flex-col items-center gap-8 py-4">
+                  {Array.from({ length: numPages }, (_, index) => (
+                    <PDFPageRenderer
+                      key={index + 1}
+                      pdfDoc={pdfDoc}
+                      pageNum={index + 1}
+                      scale={scale}
+                      onVisible={(p) => setPageNum(p)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="my-auto flex flex-col items-center justify-center py-4">
+                  {/* Actual Canvas */}
+                  <div className="shadow-2xl border border-slate-900 rounded-lg overflow-hidden bg-white max-w-full">
+                    <canvas ref={canvasRef} className="max-w-full h-auto block" />
+                  </div>
+                </div>
+              )}
 
-              {/* Bottom Pagination & Zoom Bar inside stage */}
-              <div className="bg-[#121b2d]/95 backdrop-blur border border-slate-800/80 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-4 max-w-md w-full shadow-lg z-10 shrink-0">
+              {/* Bottom Pagination & Zoom Bar - Left Aligned inside stage */}
+              <div className="fixed sm:absolute bottom-6 left-6 bg-[#121b2d]/95 backdrop-blur border border-slate-800/80 rounded-2xl px-4 py-2.5 flex items-center justify-start gap-4 max-w-lg w-[calc(100%-3rem)] sm:w-auto shadow-xl z-20 shrink-0 select-none">
+                {/* Page Navigation */}
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    onClick={goToPrevPage}
+                    disabled={pageNum <= 1}
+                    className="p-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-lg text-slate-300 transition-all active:scale-90"
+                    title="Previous Page"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  
+                  <div className="flex items-center gap-1 text-xs">
+                    <input 
+                      type="number"
+                      value={pageNum}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (val >= 1 && val <= numPages) {
+                          setPageNum(val);
+                          if (isScrollMode) {
+                            scrollToPage(val);
+                          }
+                        }
+                      }}
+                      className="w-12 bg-slate-900 text-white border border-slate-800 rounded px-1.5 py-0.5 text-center font-bold font-mono outline-none focus:border-[#00a884]"
+                      min="1"
+                      max={numPages}
+                    />
+                    <span className="text-slate-400">/</span>
+                    <span className="text-slate-300 font-mono font-semibold">{numPages}</span>
+                  </div>
+
+                  <button 
+                    onClick={goToNextPage}
+                    disabled={pageNum >= numPages}
+                    className="p-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-lg text-slate-300 transition-all active:scale-90"
+                    title="Next Page"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                {/* Vertical Divider */}
+                <div className="h-5 w-[1px] bg-slate-800/80" />
+
                 {/* Scale Zoom Controls */}
                 <div className="flex items-center gap-1">
                   <button 
@@ -605,42 +982,26 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
                   </button>
                 </div>
 
-                {/* Page Navigation */}
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={goToPrevPage}
-                    disabled={pageNum <= 1}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-lg text-slate-300 transition-all active:scale-90"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  
-                  <div className="flex items-center gap-1 text-xs">
-                    <input 
-                      type="number"
-                      value={pageNum}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        if (val >= 1 && val <= numPages) setPageNum(val);
-                      }}
-                      className="w-12 bg-slate-900 text-white border border-slate-800 rounded px-1.5 py-0.5 text-center font-bold font-mono outline-none focus:border-[#00a884]"
-                      min="1"
-                      max={numPages}
-                    />
-                    <span className="text-slate-400">/</span>
-                    <span className="text-slate-300 font-mono font-semibold">{numPages}</span>
-                  </div>
+                {/* Vertical Divider */}
+                <div className="h-5 w-[1px] bg-slate-800/80" />
 
-                  <button 
-                    onClick={goToNextPage}
-                    disabled={pageNum >= numPages}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-lg text-slate-300 transition-all active:scale-90"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
+                {/* Scroll Mode Toggle */}
+                <button
+                  onClick={() => setIsScrollMode(!isScrollMode)}
+                  className={`p-1.5 rounded-lg flex items-center gap-1.5 text-[11px] font-bold transition-all border ${
+                    isScrollMode 
+                      ? 'bg-[#00a884]/20 border-[#00c298]/30 text-[#00c298] hover:bg-[#00a884]/30' 
+                      : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
+                  }`}
+                  title={isScrollMode ? "صفحہ بہ صفحہ موڈ" : "مسلسل اسکرول موڈ"}
+                >
+                  {isScrollMode ? <BookOpen size={14} /> : <Scroll size={14} />}
+                  <span className="hidden xs:inline Urdu">
+                    {isScrollMode ? 'صفحہ بہ صفحہ' : 'اسکرول موڈ'}
+                  </span>
+                </button>
               </div>
-            </div>
+            </>
           )}
         </div>
 
@@ -687,7 +1048,7 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
                   />
                 </div>
                 <button 
-                  type="submit"
+                   type="submit"
                   disabled={isSavingBookmark}
                   className="w-full bg-[#00a884] hover:bg-[#008d6f] disabled:opacity-40 text-white rounded-xl py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow"
                 >
@@ -731,6 +1092,106 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
                           <Trash2 size={13} />
                         </button>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Search Drawer */}
+        {showSearchPanel && (
+          <div className="w-full sm:w-80 bg-[#101726] border-l border-slate-900 h-full flex flex-col z-30 absolute sm:relative right-0 top-0 shadow-2xl shrink-0">
+            <div className="p-4 border-b border-slate-800/80 flex items-center justify-between bg-[#0a0f1a]">
+              <div className="flex items-center gap-2">
+                <Search className="text-[#00a884]" size={18} />
+                <h4 className="font-bold text-sm text-slate-100 Urdu">کتاب میں تلاش (Search in Book)</h4>
+              </div>
+              <button 
+                onClick={() => setShowSearchPanel(false)}
+                className="p-1 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar text-slate-200">
+              {/* Search Form */}
+              <div className="space-y-3 bg-[#0a0f1a] p-3.5 rounded-2xl border border-slate-800/60 shadow-md">
+                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">الفاظ تلاش کریں (Find Specific Text)</p>
+                <div className="flex gap-2">
+                  <input 
+                    type="text"
+                    placeholder="کوشش کریں: نماز، حدیث، روزه..."
+                    value={readerSearchQuery}
+                    onChange={(e) => setReaderSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handlePdfSearch(readerSearchQuery);
+                      }
+                    }}
+                    className="flex-1 bg-[#111827] border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:border-[#00a884] outline-none Urdu text-right"
+                  />
+                  <button
+                    onClick={() => handlePdfSearch(readerSearchQuery)}
+                    disabled={isSearching}
+                    className="bg-[#00a884] hover:bg-[#008d6f] disabled:opacity-40 text-white rounded-lg px-3 py-1.5 text-xs font-bold transition-all flex items-center justify-center cursor-pointer shadow"
+                  >
+                    {isSearching ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    ) : (
+                      <Search size={14} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Search Results List */}
+              <div className="space-y-3">
+                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">تلاش کے نتائج (Results: {searchResults.length})</p>
+                
+                {isSearching && (
+                  <div className="flex flex-col items-center justify-center py-12 text-slate-400 space-y-2">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#00a884] border-t-transparent"></div>
+                    <span className="text-[10px] Urdu">صفحات میں تلاش جاری ہے...</span>
+                  </div>
+                )}
+
+                {!isSearching && searchError && (
+                  <div className="text-center py-8 text-xs text-amber-500/90 Urdu">
+                    {searchError}
+                  </div>
+                )}
+
+                {!isSearching && searchResults.length === 0 && !searchError && (
+                  <div className="text-center py-8 text-xs text-slate-500 italic Urdu">
+                    تلاش کرنے کے لیے اوپر الفاظ لکھیں۔
+                  </div>
+                )}
+
+                {!isSearching && searchResults.length > 0 && (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    {searchResults.map((res, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => {
+                          setPageNum(res.pageNum);
+                          if (isScrollMode) {
+                            scrollToPage(res.pageNum);
+                          }
+                        }}
+                        className="w-full text-right bg-[#0a0f1a] border border-slate-800/60 p-2.5 rounded-2xl flex flex-col gap-1.5 hover:border-slate-700 transition-all text-xs"
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="bg-[#00a884]/15 text-[#00a884] px-1.5 py-0.5 rounded text-[9px] font-mono font-bold">
+                            Page {res.pageNum}
+                          </span>
+                        </div>
+                        <p className="text-slate-300 text-right Urdu font-light leading-relaxed text-[11px] break-all w-full select-none">
+                          {res.text}
+                        </p>
+                      </button>
                     ))}
                   </div>
                 )}

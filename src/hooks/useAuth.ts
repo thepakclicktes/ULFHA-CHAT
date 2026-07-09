@@ -85,6 +85,8 @@ export function useAuth() {
                 setProfile(mergedProfile);
                 localStorage.setItem('ulfha_user_profile', JSON.stringify(mergedProfile));
               }
+            }, (error) => {
+              handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
             });
           }
         } catch (error) {

@@ -16,7 +16,10 @@ import {
   LayoutGrid,
   GraduationCap,
   Sparkles,
-  Smartphone
+  Smartphone,
+  ArrowLeft,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '../utils';
 import QuranReader from './QuranReader';
@@ -48,6 +51,20 @@ export default function Explore() {
   const [showDuas, setShowDuas] = useState(false);
   const [showPrayer, setShowPrayer] = useState(false);
   const [libraryCategory, setLibraryCategory] = useState('all');
+
+  // Embedded viewer states
+  const [showEmbedded, setShowEmbedded] = useState(false);
+  const [embeddedUrl, setEmbeddedUrl] = useState('');
+  const [embeddedTitle, setEmbeddedTitle] = useState('');
+  const [embeddedUrduTitle, setEmbeddedUrduTitle] = useState('');
+  const [iframeLoading, setIframeLoading] = useState(true);
+
+  // Reset loading whenever URL or visibility changes
+  useEffect(() => {
+    if (showEmbedded) {
+      setIframeLoading(true);
+    }
+  }, [showEmbedded, embeddedUrl]);
 
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [downloadedCount, setDownloadedCount] = useState(0);
@@ -200,13 +217,22 @@ export default function Explore() {
         setShowPrayer(true);
         break;
       case 'qibla':
-        window.open('https://qiblafinder.withgoogle.com/', '_blank');
+        setEmbeddedUrl('https://qiblafinder.withgoogle.com/');
+        setEmbeddedTitle('Qibla Finder');
+        setEmbeddedUrduTitle('قبلہ رخ (Qibla Direction)');
+        setShowEmbedded(true);
         break;
       case 'calendar':
-        window.open('https://www.islamicfinder.org/islamic-calendar/', '_blank');
+        setEmbeddedUrl('https://www.islamicfinder.org/islamic-calendar/');
+        setEmbeddedTitle('Islamic Calendar');
+        setEmbeddedUrduTitle('اسلامی کیلنڈر (Islamic Calendar)');
+        setShowEmbedded(true);
         break;
       case 'mosques':
-        window.open('https://www.google.com/maps/search/mosques+near+me', '_blank');
+        setEmbeddedUrl('https://www.google.com/maps/search/mosques+near+me');
+        setEmbeddedTitle('Nearby Mosques');
+        setEmbeddedUrduTitle('قریبی مساجد (Nearby Mosques)');
+        setShowEmbedded(true);
         break;
       default:
         alert(`${id.charAt(0).toUpperCase() + id.slice(1)} feature coming soon!`);
@@ -247,6 +273,71 @@ export default function Explore() {
 
   if (showPrayer) {
     return <PrayerTimesViewer onBack={() => setShowPrayer(false)} />;
+  }
+
+  if (showEmbedded) {
+    return (
+      <div className="flex flex-col h-full bg-[#f0f2f5] dark:bg-[#111b21] overflow-hidden">
+        {/* Header */}
+        <div className="bg-[#00a884] dark:bg-[#202c33] p-4 flex items-center justify-between shadow-md z-10 safe-area-top">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowEmbedded(false)}
+              className="p-2 hover:bg-white/10 text-white rounded-full transition-all duration-200 cursor-pointer"
+            >
+              <ArrowLeft size={22} className="rotate-180" />
+            </button>
+            <div>
+              <h2 className="text-xs sm:text-sm md:text-base font-bold text-white Urdu leading-snug">{embeddedUrduTitle}</h2>
+              <p className="text-[9px] text-white/85 font-mono font-bold uppercase tracking-wider">{embeddedTitle}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1.5">
+            {/* Refresh Button */}
+            <button
+              onClick={() => {
+                setIframeLoading(true);
+                const iframe = document.getElementById('embedded-iframe') as HTMLIFrameElement;
+                if (iframe) iframe.src = embeddedUrl;
+              }}
+              className="p-2 hover:bg-white/10 text-white rounded-full transition-all cursor-pointer"
+              title="Refresh"
+            >
+              <RefreshCw size={16} className={cn(iframeLoading && "animate-spin")} />
+            </button>
+            {/* Fallback external link */}
+            <a
+              href={embeddedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 text-white text-[10px] sm:text-xs font-bold rounded-xl transition-all flex items-center gap-1 Urdu"
+            >
+              <ExternalLink size={12} />
+              <span className="hidden xs:inline">براؤزر (Browser)</span>
+            </a>
+          </div>
+        </div>
+
+        {/* Embedded Viewport with Loading State */}
+        <div className="flex-1 w-full h-full bg-[#0e1320] relative flex flex-col">
+          {iframeLoading && (
+            <div className="absolute inset-0 bg-[#0e1320] flex flex-col items-center justify-center z-20 space-y-4">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#00a884] border-t-transparent"></div>
+              <p className="text-slate-400 text-xs font-semibold Urdu">برائے مہربانی انتظار کریں، لوڈ ہو رہا ہے...</p>
+            </div>
+          )}
+          <iframe
+            id="embedded-iframe"
+            src={embeddedUrl}
+            className="w-full flex-1 border-none bg-white"
+            allow="geolocation; camera; microphone; magnetometer; gyro; accelerometer"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-top-navigation-by-user-activation"
+            onLoad={() => setIframeLoading(false)}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (

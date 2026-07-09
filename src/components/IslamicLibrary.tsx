@@ -478,6 +478,124 @@ export default function IslamicLibrary({
     };
   }, []);
 
+  const [recentlyRead, setRecentlyRead] = useState<any[]>([]);
+
+  const loadRecentlyRead = () => {
+    try {
+      const recentsRaw = localStorage.getItem('recently_read_books');
+      if (recentsRaw) {
+        const parsed = JSON.parse(recentsRaw);
+        if (Array.isArray(parsed)) {
+          setRecentlyRead(parsed);
+          return;
+        }
+      }
+      setRecentlyRead([]);
+    } catch {
+      setRecentlyRead([]);
+    }
+  };
+
+  useEffect(() => {
+    loadRecentlyRead();
+  }, [readingBook]);
+
+  const renderRecentlyReadCard = (item: any) => {
+    // Find the full book details if available
+    const book = allBooks.find(b => b.id === item.bookId);
+    
+    // Fallback if full book object is not found
+    const displayTitle = book ? book.urduTitle : item.bookTitle;
+    const displayAuthor = book ? book.urduAuthor : 'مطالعہ جاری ہے';
+    const progressPercent = Math.round((item.lastReadPage / item.numPages) * 100);
+
+    const handleRecentClick = () => {
+      if (book) {
+        setReadingBook(book);
+      } else {
+        // Fallback reading action
+        setReadingBook({
+          id: item.bookId,
+          title: item.bookTitle,
+          urduTitle: item.bookTitle,
+          author: 'Unknown',
+          urduAuthor: 'نامعلوم مصنف',
+          description: '',
+          urduDescription: '',
+          language: 'Urdu',
+          category: 'general',
+          url: item.bookUrl
+        });
+      }
+    };
+
+    return (
+      <div
+        key={item.bookId}
+        onClick={handleRecentClick}
+        className="snap-start cursor-pointer bg-white dark:bg-[#1e293b] p-3 rounded-2xl border border-gray-100/85 dark:border-slate-800/60 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between select-none flex-shrink-0 w-40 sm:w-64"
+      >
+        {/* Book Cover Container */}
+        <div className="relative aspect-[3/4] w-full mb-2 rounded-xl overflow-hidden bg-gray-50 dark:bg-[#0f172a] border border-gray-100 dark:border-slate-800 shadow-inner flex items-center justify-center group-hover:shadow transition-all duration-300">
+          {book && book.coverUrl ? (
+            <img 
+              src={book.coverUrl} 
+              alt={displayTitle} 
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            /* Fallback book style */
+            <div className={cn(
+              "w-full h-full p-4 flex flex-col justify-between text-left select-none relative overflow-hidden",
+              getCoverBg(item.bookId)
+            )}>
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-black/10 backdrop-blur-xs" />
+              <div className="absolute right-2 top-2 opacity-10 text-4xl font-serif">﷽</div>
+              
+              <div className="text-[9px] uppercase font-bold tracking-wider opacity-75 Urdu">
+                حالیہ (Recent)
+              </div>
+              
+              <div className="my-auto space-y-1 py-1 text-center">
+                <h5 className="text-sm font-bold Urdu leading-tight line-clamp-3 text-white">
+                  {displayTitle}
+                </h5>
+                <p className="text-[10px] opacity-85 Urdu line-clamp-1">
+                  {displayAuthor}
+                </p>
+              </div>
+
+              <div className="flex justify-between items-center text-[9px] opacity-75 font-mono">
+                <span>PAGE {item.lastReadPage}</span>
+                <span>{progressPercent}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Progress bar overlay at the bottom of cover */}
+          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
+            <div 
+              className="bg-[#00a884] h-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Title & Progress */}
+        <div className="space-y-1 flex-1">
+          <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100 Urdu group-hover:text-[#00a884] transition-colors leading-snug line-clamp-1">
+            {displayTitle}
+          </h4>
+          <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 font-medium">
+            <span className="Urdu">صفحہ {item.lastReadPage} / {item.numPages}</span>
+            <span className="font-mono">{progressPercent}%</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const startDownload = (bookId: string, volIndex: number, volUrl: string) => {
     const downloadKey = `${bookId}_${volIndex}`;
     
@@ -1149,32 +1267,57 @@ export default function IslamicLibrary({
             </p>
           </div>
         ) : activeCategory === 'all' ? (
-          CATEGORIES.map(category => {
-            const catBooks = getFilteredBooks(category.id);
-            if (catBooks.length === 0) return null; // Smart section hiding
-
-            return (
-              <div key={category.id} className="space-y-3.5">
-                {/* Category Header */}
+          <>
+            {/* Recently Read Section */}
+            {!searchQuery && recentlyRead.length > 0 && (
+              <div className="space-y-3.5 mb-6">
+                {/* Section Header */}
                 <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
                   <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-6 rounded bg-[#00a884]" />
+                    <span className="w-1.5 h-6 rounded bg-[#00a884] animate-pulse" />
                     <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 Urdu">
-                      {category.urdu} <span className="text-xs font-normal text-gray-400 ml-1.5">({category.title})</span>
+                      حالیہ پڑھی گئی کتب (Recently Read)
                     </h3>
                   </div>
                   <span className="text-xs text-[#00a884] font-medium bg-teal-50 dark:bg-teal-950/40 px-2.5 py-1 rounded-full">
-                    {catBooks.length} کتب
+                    {recentlyRead.length} کتب
                   </span>
                 </div>
 
-                {/* Horizontal Scrolling Box (LazyRow emulation) */}
+                {/* Horizontal Scrolling Row */}
                 <div className="flex gap-4 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800 -mx-4 px-4 snap-x">
-                  {catBooks.map(book => renderBookCard(book, false))}
+                  {recentlyRead.map(item => renderRecentlyReadCard(item))}
                 </div>
               </div>
-            );
-          })
+            )}
+
+            {CATEGORIES.map(category => {
+              const catBooks = getFilteredBooks(category.id);
+              if (catBooks.length === 0) return null; // Smart section hiding
+
+              return (
+                <div key={category.id} className="space-y-3.5">
+                  {/* Category Header */}
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-6 rounded bg-[#00a884]" />
+                      <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 Urdu">
+                        {category.urdu} <span className="text-xs font-normal text-gray-400 ml-1.5">({category.title})</span>
+                      </h3>
+                    </div>
+                    <span className="text-xs text-[#00a884] font-medium bg-teal-50 dark:bg-teal-950/40 px-2.5 py-1 rounded-full">
+                      {catBooks.length} کتب
+                    </span>
+                  </div>
+
+                  {/* Horizontal Scrolling Box (LazyRow emulation) */}
+                  <div className="flex gap-4 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800 -mx-4 px-4 snap-x">
+                    {catBooks.map(book => renderBookCard(book, false))}
+                  </div>
+                </div>
+              );
+            })}
+          </>
         ) : (
           (() => {
             const catInfo = CATEGORIES.find(c => c.id === activeCategory);

@@ -12,6 +12,7 @@ import Contacts from './components/Contacts';
 import CallHistory from './components/CallHistory';
 import AdminPanel from './components/AdminPanel';
 import ReplyBridge from './components/ReplyBridge';
+import NoorAIChat from './components/NoorAIChat';
 import { UserProfile, AppSettings, Announcement, Call } from './types';
 import { doc, setDoc, onSnapshot, collection, query, orderBy, where, updateDoc, limit, getDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
@@ -975,22 +976,26 @@ return (
               "w-full xl:w-[400px] border-r border-[#D1D7DB] bg-white flex flex-col shrink-0",
               selectedChat ? "hidden xl:flex" : "flex"
             )}>
-              <ChatList onSelectChat={setSelectedChat} selectedChat={selectedChat} searchQuery={searchQuery} nicknames={nicknames} />
+              <ChatList onSelectChat={setSelectedChat} selectedChat={selectedChat} searchQuery={searchQuery} nicknames={nicknames} appLogoUrl={resolveLogo(appSettings?.appLogoUrl)} />
             </div>
             <div className={cn(
               "flex-1 min-h-0 bg-[#F8F9FA] relative",
               selectedChat ? "flex" : "hidden xl:flex"
             )}>
               {selectedChat ? (
-                <ChatWindow 
-                  key={selectedChat.uid}
-                  chat={selectedChat} 
-                  currentUser={profile} 
-                  onBack={() => setSelectedChat(null)} 
-                  appSettings={appSettings} 
-                  onStartCall={handleStartCall}
-                  nicknames={nicknames}
-                />
+                selectedChat.uid === 'noorai_assistant' || selectedChat.isNoorAI ? (
+                  <NoorAIChat onBack={() => setSelectedChat(null)} />
+                ) : (
+                  <ChatWindow 
+                    key={selectedChat.uid}
+                    chat={selectedChat} 
+                    currentUser={profile} 
+                    onBack={() => setSelectedChat(null)} 
+                    appSettings={appSettings} 
+                    onStartCall={handleStartCall}
+                    nicknames={nicknames}
+                  />
+                )
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center p-10 bg-[#f8f9fa]">
                   <div className="w-64 h-64 bg-gray-200 rounded-full mb-8 flex items-center justify-center opacity-70 shadow-inner overflow-hidden border-4 border-white">
