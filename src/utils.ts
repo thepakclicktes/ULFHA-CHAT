@@ -101,20 +101,5 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 export function resolveApiUrl(apiPath: string): string {
-  const hostname = window.location.hostname;
-  
-  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
-  const isRunApp = hostname.endsWith('.run.app');
-  
-  // If we are NOT on localhost and NOT directly on the AI Studio .run.app container domain,
-  // we must route requests to the absolute backend URL.
-  // This covers Vercel, Firebase Hosting, custom domains, and sandboxed iframes.
-  if (!isLocal && !isRunApp) {
-    const baseUrl = 'https://ais-pre-ubxjjscbfuclhzfbawd7nd-85039836823.asia-east1.run.app';
-    const cleanPath = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
-    return `${baseUrl}${cleanPath}`;
-  }
-  
-  // For localhost and direct .run.app urls, use relative paths
   return apiPath;
 }

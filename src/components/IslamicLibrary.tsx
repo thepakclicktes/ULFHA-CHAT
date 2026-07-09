@@ -611,13 +611,7 @@ export default function IslamicLibrary({
       }
     }));
 
-    // Bypass backend proxy on static deployments without a backend
-    const isStaticDeploy = window.location.hostname.includes('vercel.app') || 
-                           window.location.hostname.includes('web.app') || 
-                           window.location.hostname.includes('firebaseapp.com') ||
-                           window.location.hostname.includes('github.io');
-                           
-    const proxyUrl = isStaticDeploy ? volUrl : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(volUrl)}`);
+    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(volUrl)}`);
     
     const xhr = new XMLHttpRequest();
     activeXHRs.current[downloadKey] = xhr;
@@ -687,15 +681,15 @@ export default function IslamicLibrary({
           cancelDownload(bookId, volIndex);
         }
       } else {
-        console.warn("Proxy or download failed, falling back to direct browser download.");
-        window.open(volUrl, '_blank');
+        console.warn("Proxy or download failed.");
+        alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ کرنے میں ناکامی ہوئی۔");
         cancelDownload(bookId, volIndex);
       }
     };
 
     xhr.onerror = () => {
-      console.warn("Network error during XHR, falling back to direct browser download.");
-      window.open(volUrl, '_blank');
+      console.warn("Network error during XHR.");
+      alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
       cancelDownload(bookId, volIndex);
     };
 

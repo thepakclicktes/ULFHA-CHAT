@@ -392,12 +392,7 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
         pdfData = { data: new Uint8Array(arrayBuffer) };
         setIsOffline(true);
       } else {
-        // Bypass backend proxy on static deployments without a backend
-        const isStaticDeploy = window.location.hostname.includes('vercel.app') || 
-                               window.location.hostname.includes('web.app') || 
-                               window.location.hostname.includes('firebaseapp.com') ||
-                               window.location.hostname.includes('github.io');
-        const proxyUrl = isStaticDeploy ? QURAN_URL : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
+        const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
         pdfData = { url: proxyUrl };
         if (!cachedBlob) setIsOffline(false);
       }
@@ -441,13 +436,7 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
-    // Bypass backend proxy on static deployments without a backend
-    const isStaticDeploy = window.location.hostname.includes('vercel.app') || 
-                           window.location.hostname.includes('web.app') || 
-                           window.location.hostname.includes('firebaseapp.com') ||
-                           window.location.hostname.includes('github.io');
-                           
-    const proxyUrl = isStaticDeploy ? QURAN_URL : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
+    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
     
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
@@ -492,15 +481,15 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
           setIsDownloading(false);
         }
       } else {
-        console.warn("Proxy or download failed, falling back to direct browser download.");
-        window.open(QURAN_URL, '_blank');
+        console.warn("Proxy or download failed.");
+        alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ کرنے میں ناکامی ہوئی۔");
         setIsDownloading(false);
       }
     };
 
     xhr.onerror = () => {
-      console.warn("Network error during XHR, falling back to direct browser download.");
-      window.open(QURAN_URL, '_blank');
+      console.warn("Network error during XHR.");
+      alert("نیٹ ورک کا مسئلہ پیش آیا۔ ڈاؤنلوڈ منقطع ہو گیا ہے۔");
       setIsDownloading(false);
     };
 
