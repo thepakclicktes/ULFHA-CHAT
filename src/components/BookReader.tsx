@@ -290,9 +290,12 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           pdfData = { data: new Uint8Array(arrayBuffer) };
         } else {
           setIsOffline(false);
-          // Load online via proxy to prevent CORS issues
-          const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
-          pdfData = { url: proxyUrl };
+          const isDirectHost = bookUrl.includes('archive.org') || bookUrl.includes('quran.com') || bookUrl.includes('qurancdn.com');
+          const proxyUrl = isDirectHost ? bookUrl : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
+          pdfData = { 
+            url: proxyUrl,
+            ...(isDirectHost && { disableRange: true, disableStream: true })
+          };
         }
 
         const pdfjsLib = (window as any).pdfjsLib;
@@ -504,7 +507,8 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
-    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
+    const isDirectHost = bookUrl.includes('archive.org') || bookUrl.includes('quran.com') || bookUrl.includes('qurancdn.com');
+    const proxyUrl = isDirectHost ? bookUrl : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
     
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;

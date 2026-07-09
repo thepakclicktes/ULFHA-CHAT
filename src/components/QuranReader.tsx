@@ -392,8 +392,12 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
         pdfData = { data: new Uint8Array(arrayBuffer) };
         setIsOffline(true);
       } else {
-        const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
-        pdfData = { url: proxyUrl };
+        const isDirectHost = QURAN_URL.includes('archive.org') || QURAN_URL.includes('quran.com') || QURAN_URL.includes('qurancdn.com');
+        const proxyUrl = isDirectHost ? QURAN_URL : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
+        pdfData = { 
+          url: proxyUrl,
+          ...(isDirectHost && { disableRange: true, disableStream: true })
+        };
         if (!cachedBlob) setIsOffline(false);
       }
 
@@ -436,7 +440,8 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
-    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
+    const isDirectHost = QURAN_URL.includes('archive.org') || QURAN_URL.includes('quran.com') || QURAN_URL.includes('qurancdn.com');
+    const proxyUrl = isDirectHost ? QURAN_URL : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(QURAN_URL)}`);
     
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
