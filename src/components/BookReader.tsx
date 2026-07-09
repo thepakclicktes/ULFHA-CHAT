@@ -292,10 +292,7 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           setIsOffline(false);
           const isDirectHost = bookUrl.includes('archive.org') || bookUrl.includes('quran.com') || bookUrl.includes('qurancdn.com');
           const proxyUrl = isDirectHost ? bookUrl : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
-          pdfData = { 
-            url: proxyUrl,
-            ...(isDirectHost && { disableRange: true, disableStream: true })
-          };
+          pdfData = { url: proxyUrl };
         }
 
         const pdfjsLib = (window as any).pdfjsLib;
@@ -507,8 +504,7 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
     setIsDownloading(true);
     setDlProgress({ percent: 0, loadedMB: '0.0', totalMB: '0.0' });
 
-    const isDirectHost = bookUrl.includes('archive.org') || bookUrl.includes('quran.com') || bookUrl.includes('qurancdn.com');
-    const proxyUrl = isDirectHost ? bookUrl : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
+    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
     
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;

@@ -611,8 +611,7 @@ export default function IslamicLibrary({
       }
     }));
 
-    const isDirectHost = volUrl.includes('archive.org') || volUrl.includes('quran.com') || volUrl.includes('qurancdn.com');
-    const proxyUrl = isDirectHost ? volUrl : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(volUrl)}`);
+    const proxyUrl = resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(volUrl)}`);
     
     const xhr = new XMLHttpRequest();
     activeXHRs.current[downloadKey] = xhr;
