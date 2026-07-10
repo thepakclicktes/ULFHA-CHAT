@@ -321,6 +321,76 @@ async function startServer() {
     }
   });
 
+  // In-memory real-time message backup/fallback when Firestore is exhausted
+  const inMemoryMessages: any[] = [];
+  let sseClients: any[] = [];
+
+  app.post("/api/messages/send", (req, res) => {
+    const { senderId, senderName, receiverId, text, type, replyTo, isGroupMode, isChannelMode } = req.body;
+    
+    const newMsg = {
+      id: "mem_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11),
+      senderId,
+      senderName: senderName || 'User',
+      receiverId,
+      text,
+      timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+      status: 'sent',
+      type: type || 'text',
+      replyTo: replyTo || null,
+      isGroupMode: !!isGroupMode,
+      isChannelMode: !!isChannelMode,
+      isInMemory: true
+    };
+
+    inMemoryMessages.push(newMsg);
+    
+    // Keep last 2000 messages
+    if (inMemoryMessages.length > 2000) {
+      inMemoryMessages.shift();
+    }
+
+    // Broadcast via SSE to all active web clients
+    const data = `data: ${JSON.stringify(newMsg)}\n\n`;
+    sseClients.forEach(client => {
+      try {
+        client.write(data);
+      } catch (err) {
+        // Handled below
+      }
+    });
+
+    res.json({ success: true, message: newMsg });
+  });
+
+  app.get("/api/messages/stream", (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    sseClients.push(res);
+
+    req.on('close', () => {
+      sseClients = sseClients.filter(client => client !== res);
+    });
+  });
+
+  app.get("/api/messages/history", (req, res) => {
+    const { chatUid, userUid } = req.query;
+    if (!chatUid || !userUid) {
+      return res.status(400).json({ error: "Missing parameters" });
+    }
+    
+    const filtered = inMemoryMessages.filter(msg => {
+      const isForThisChat = msg.receiverId === chatUid || msg.senderId === chatUid;
+      const isUserInvolved = msg.senderId === userUid || msg.receiverId === userUid;
+      return isForThisChat && (msg.isGroupMode || msg.isChannelMode || isUserInvolved);
+    });
+
+    res.json({ messages: filtered });
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });

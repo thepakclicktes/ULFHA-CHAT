@@ -880,6 +880,65 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
       setMessageMap({});
     }
 
+    // Load backup / in-memory history when Firestore is exhausted
+    const loadBackupHistory = async () => {
+      try {
+        const response = await fetch(resolveApiUrl(`/api/messages/history?chatUid=${chat.uid}&userUid=${currentUser.uid}`));
+        const data = await response.json();
+        if (data && data.messages) {
+          setMessages(prev => {
+            const combined = [...prev];
+            data.messages.forEach((m: any) => {
+              if (!combined.some(existing => existing.id === m.id)) {
+                combined.push(m);
+              }
+            });
+            combined.sort((a, b) => {
+              const tA = (a.timestamp?.seconds || 0) * 1000;
+              const tB = (b.timestamp?.seconds || 0) * 1000;
+              return tA - tB;
+            });
+            return combined;
+          });
+          setTimeout(() => {
+            scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+          }, 100);
+        }
+      } catch (err) {
+        console.error("Failed to fetch backup messages history:", err);
+      }
+    };
+
+    // Always load backup history alongside Firestore
+    loadBackupHistory();
+
+    // Setup EventSource for real-time backup messages (bypass Firestore quota limit exhaustion)
+    const eventSource = new EventSource(resolveApiUrl('/api/messages/stream'));
+    eventSource.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        const isForThisChat = msg.receiverId === chat.uid || msg.senderId === chat.uid;
+        const isUserInvolved = msg.senderId === currentUser.uid || msg.receiverId === currentUser.uid;
+        if (isForThisChat && (msg.isGroupMode || msg.isChannelMode || isUserInvolved)) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === msg.id)) return prev;
+            const combined = [...prev, msg];
+            combined.sort((a, b) => {
+              const tA = (a.timestamp?.seconds || 0) * 1000;
+              const tB = (b.timestamp?.seconds || 0) * 1000;
+              return tA - tB;
+            });
+            return combined;
+          });
+          setTimeout(() => {
+            scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+          }, 100);
+        }
+      } catch (err) {
+        console.error("Error parsing backup stream message:", err);
+      }
+    };
+
     // For groups & channels, query by receiverId matching the group/channel unique ID directly
     const isGroupOrChannel = chat.isGroup || chat.isChannel;
     const q = isGroupOrChannel
@@ -913,7 +972,23 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
         const tB = (b.timestamp?.seconds || 0) * 1000 + Math.floor((b.timestamp?.nanoseconds || 0) / 1000000);
         return tA - tB;
       });
-      setMessages(msgs);
+      setMessages(prev => {
+        const combined = [...prev];
+        msgs.forEach(m => {
+          const index = combined.findIndex(existing => existing.id === m.id);
+          if (index !== -1) {
+            combined[index] = m;
+          } else {
+            combined.push(m);
+          }
+        });
+        combined.sort((a, b) => {
+          const tA = (a.timestamp?.seconds || 0) * 1000 + Math.floor((a.timestamp?.nanoseconds || 0) / 1000000);
+          const tB = (b.timestamp?.seconds || 0) * 1000 + Math.floor((b.timestamp?.nanoseconds || 0) / 1000000);
+          return tA - tB;
+        });
+        return combined;
+      });
       
       const map: Record<string, Message> = {};
       msgs.forEach(m => { if (m.id) map[m.id] = m; });
@@ -947,10 +1022,14 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
       }, 100);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'messages');
+      console.warn("Firestore snapshot failed (possibly exhausted). Using real-time SSE backup instead:", error);
+      // Don't show hard error block on screen to prevent interruption
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      eventSource.close();
+    };
   }, [chat.uid, currentUser.uid]);
 
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
@@ -987,7 +1066,29 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
       await addDoc(collection(db, 'messages'), enrichMessageObject(msg));
       sendPushForMessage(messageText);
     } catch (error) {
-      console.warn('Failed to send message immediately, queueing to IndexedDB:', error);
+      console.warn('Failed to send message to Firestore, using backup Express API:', error);
+      
+      try {
+        const response = await fetch(resolveApiUrl('/api/messages/send'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(enrichMessageObject(msg))
+        });
+        const data = await response.json();
+        if (data.success) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === data.message.id)) return prev;
+            return [...prev, data.message];
+          });
+          setTimeout(() => {
+            scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+          }, 100);
+          return;
+        }
+      } catch (backupErr) {
+        console.error("Backup send message API failed:", backupErr);
+      }
+
       await queuePendingMessage(msg);
       // Add to local state for immediate feedback
       setMessages(prev => [...prev, { ...msg, id: 'temp-' + Date.now(), status: 'sent', timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } } as Message]);
