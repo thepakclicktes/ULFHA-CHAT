@@ -39,6 +39,7 @@ export interface Book {
     url: string; 
     size?: string;
   }[];
+  bookType?: 'book' | 'sharh';
 }
 
 export const CATEGORIES = [
@@ -51,7 +52,22 @@ export const CATEGORIES = [
   { id: 'duas', title: 'Duas & Azkar', urdu: 'دعائیں اور اذکار' },
   { id: 'uloom', title: 'Quranic Sciences', urdu: 'علوم القرآن' },
   { id: 'economics', title: 'Islamic Economics', urdu: 'اسلامی معیشت و مالیات' },
-  { id: 'emadrasa', title: 'e-Madrasa', urdu: 'ای مدرسہ' }
+  { id: 'emadrasa', title: 'e-Madrasa', urdu: 'ای مدرسہ' },
+  
+  // New e-Madrasa categories
+  { id: 'dora_hadith', title: 'Dora e Hadith (8th Year)', urdu: 'دورہ حدیث', parent: 'emadrasa' },
+  { id: 'maoqoof_alai', title: 'Maoqoof Alai (7th Year)', urdu: 'موقوف علیہ', parent: 'emadrasa' },
+  { id: 'al_sadesa', title: 'Al Sadesa (6th Year)', urdu: 'درجہ سادسہ', parent: 'emadrasa' },
+  { id: 'al_khamesa', title: 'Al Khamesa (5th Year)', urdu: 'درجہ خامسہ', parent: 'emadrasa' },
+  { id: 'al_rabia', title: 'Al Rabia (4th Year)', urdu: 'درجہ رابعہ', parent: 'emadrasa' },
+  { id: 'al_salesa', title: 'Al Salesa (3rd Year)', urdu: 'درجہ ثالثہ', parent: 'emadrasa' },
+  { id: 'al_sania', title: 'Al Sania (2nd Year)', urdu: 'درجہ ثانیہ', parent: 'emadrasa' },
+  { id: 'al_aula', title: 'Al Aula (1st Year)', urdu: 'درجہ اولی', parent: 'emadrasa' },
+  { id: 'mutafarriq_dars', title: 'Mutafarriq Dars e Nizami', urdu: 'متفرق درس نظامی', parent: 'emadrasa' },
+  { id: 'mantiq_falsafa', title: 'Mantiq o Falsafa', urdu: 'منطق و فلسفہ', parent: 'emadrasa' },
+  { id: 'tajweed_course', title: 'Tajweed Course', urdu: 'تجوید کورس وفاق المدارس پاکستان', parent: 'emadrasa' },
+  { id: 'dirasat_deeniyah', title: 'Dirasat-e-Deeniyah Course', urdu: 'دراسات دینیہ کورس وفاق المدارس', parent: 'emadrasa' },
+  { id: 'dars_e_nizami_banat', title: 'Dars-e-Nizami Banat', urdu: 'درس نظامی بنات / طالبات', parent: 'emadrasa' }
 ];
 
 const BOOKS_DATA_CORE: Book[] = [
@@ -195,29 +211,656 @@ const BOOKS_DATA_CORE: Book[] = [
     language: 'Urdu / Persian',
     category: 'aqaid'
   },
+  // e-Madrasa Subcategories Books
+  // Dora e Hadith
   {
-    id: 'em1',
-    title: 'Dora-e-Hadith Book 1',
-    urduTitle: 'دورہ حدیث - جلد ۱',
-    author: 'Author Name',
-    urduAuthor: 'مصنف کا نام',
-    description: 'Dora-e-Hadith books.',
-    urduDescription: 'دورہ حدیث کی کتابیں۔',
-    language: 'Urdu',
-    category: 'emadrasa',
-    url: 'https://archive.org/download/SahihAlBukhariUrduComplete8Volumes/Sahih-Al-Bukhari-Volume-1-Urdu.pdf'
+    id: 'dh1',
+    title: 'Sahih al-Bukhari Volume 1',
+    urduTitle: 'صحیح البخاری (جلد اول)',
+    author: 'Imam Muhammad al-Bukhari',
+    urduAuthor: 'امام محمد بن اسماعیل بخاری',
+    description: 'First volume of the most authentic collection of Hadith.',
+    urduDescription: 'احادیث مبارکہ کا سب سے مستند مجموعہ جس کی صحت پر امت کا اجماع ہے (جلد اول)۔',
+    language: 'Urdu / Arabic',
+    category: 'dora_hadith',
+    url: 'https://archive.org/download/SahihAlBukhariUrduComplete8Volumes/Sahih-Al-Bukhari-Volume-1-Urdu.pdf',
+    bookType: 'book'
   },
   {
-    id: 'em2',
-    title: 'Maufuf Alaih Book 1',
-    urduTitle: 'موقوف علیہ - جلد ۱',
-    author: 'Author Name',
-    urduAuthor: 'مصنف کا نام',
-    description: 'Maufuf Alaih books.',
-    urduDescription: 'موقوف علیہ کی کتابیں۔',
+    id: 'dh2',
+    title: 'Sahih al-Bukhari Volume 2',
+    urduTitle: 'صحیح البخاری (جلد دوم)',
+    author: 'Imam Muhammad al-Bukhari',
+    urduAuthor: 'امام محمد بن اسماعیل بخاری',
+    description: 'Second volume of the most authentic collection of Hadith.',
+    urduDescription: 'احادیث مبارکہ کا سب سے مستند مجموعہ جس کی صحت پر امت کا اجماع ہے (جلد دوم)۔',
+    language: 'Urdu / Arabic',
+    category: 'dora_hadith',
+    url: 'https://archive.org/download/SahihAlBukhariUrduComplete8Volumes/Sahih-Al-Bukhari-Volume-2-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'dh3',
+    title: 'Sahih Muslim Volume 1',
+    urduTitle: 'صحیح مسلم (جلد اول)',
+    author: 'Imam Muslim al-Naysaburi',
+    urduAuthor: 'امام مسلم بن حجاج قشیری',
+    description: 'The second book of the Sahihayn, highly appreciated for its categorization.',
+    urduDescription: 'صحیحین کا دوسرا اہم حصہ جو اپنی بہترین ترتیب اور اسناد کی مضبوطی کے لیے ممتاز ہے (جلد اول)۔',
+    language: 'Urdu / Arabic',
+    category: 'dora_hadith',
+    url: 'https://archive.org/download/SahihMuslimUrduComplete6Volumes/Sahih-Muslim-Volume-1-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'dh4',
+    title: 'Jami at-Tirmidhi Volume 1',
+    urduTitle: 'جامع الترمذی (جلد اول)',
+    author: 'Imam Abu Isa at-Tirmidhi',
+    urduAuthor: 'امام ابو عیسیٰ ترمذی',
+    description: 'One of the six major Hadith collections containing valuable jurisprudence remarks.',
+    urduDescription: 'سنن اربعہ کی مشہور ترین کتاب جو فقہی ابواب کی تفصیلی بحث اور فوائد کے لیے ممتاز ہے (جلد اول)۔',
+    language: 'Urdu / Arabic',
+    category: 'dora_hadith',
+    url: 'https://archive.org/download/JamiAtTirmidhiUrduComplete3Volumes/Jami-At-Tirmidhi-Volume-1-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'dh_s1',
+    title: 'Faiz al-Bari Sharh Bukhari Vol 1',
+    urduTitle: 'فیض الباری شرح صحیح البخاری (جلد اول)',
+    author: 'Allama Anwar Shah Kashmiri',
+    urduAuthor: 'علامہ انور شاہ کشمیری',
+    description: 'Superb and highly intellectual academic commentary of Bukhari.',
+    urduDescription: 'صحیح بخاری کی نہایت مایہ ناز، دقیق اور علمی شرح (جلد اول)۔',
+    language: 'Urdu / Arabic',
+    category: 'dora_hadith',
+    url: 'https://archive.org/download/FaizAlBariSharhSahihAlBukhari/Faiz-Al-Bari-1.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'dh_s2',
+    title: 'Nuzhat al-Qari Sharh Bukhari Vol 1',
+    urduTitle: 'نزہۃ القاری شرح صحیح البخاری (جلد اول)',
+    author: 'Mufti Shareef-ul-Haq Amjadi',
+    urduAuthor: 'مفتی شریف الحق امجدی',
+    description: 'Popular comprehensive Urdu commentary of Sahih al-Bukhari.',
+    urduDescription: 'صحیح البخاری کی انتہائی آسان، تفصیلی اور مدلل اردو شرح (جلد اول)۔',
     language: 'Urdu',
-    category: 'emadrasa',
-    url: 'https://archive.org/download/SahihAlBukhariUrduComplete8Volumes/Sahih-Al-Bukhari-Volume-2-Urdu.pdf'
+    category: 'dora_hadith',
+    url: 'https://archive.org/download/NuzhatAlQariComplete/Nuzhat-Al-Qari-Vol-1.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'dh_s3',
+    title: 'Dars-e-Tirmidhi Vol 1',
+    urduTitle: 'درس ترمذی (جلد اول)',
+    author: 'Mufti Muhammad Taqi Usmani',
+    urduAuthor: 'مفتی محمد تقی عثمانی',
+    description: 'Lectures and explanations of Jami at-Tirmidhi compiled into written book.',
+    urduDescription: 'جامع الترمذی کے اسباق کا دلکش مجموعہ اور فقہی شرح (جلد اول)۔',
+    language: 'Urdu',
+    category: 'dora_hadith',
+    url: 'https://archive.org/download/DarsETirmidhiComplete/Dars-e-Tirmidhi-Vol-1.pdf',
+    bookType: 'sharh'
+  },
+  // Maoqoof Alai
+  {
+    id: 'ma1',
+    title: 'Mishkat al-Masabih Volume 1',
+    urduTitle: 'مشکوٰۃ المصابیح (جلد اول)',
+    author: 'Imam Wali-ud-Din Al-Tabrizi',
+    urduAuthor: 'امام ولی الدین تبریزی',
+    description: 'An expanded compilation of Hadith from Bukhari, Muslim, and other sources.',
+    urduDescription: 'احادیثِ طیبہ کا انتہائی مقبول اور جامع مجموعہ جو درسی نظامی میں شامل ہے (جلد اول)۔',
+    language: 'Urdu / Arabic',
+    category: 'maoqoof_alai',
+    url: 'https://archive.org/download/MishkatAlMasabihUrduComplete3Volumes/Mishkat-Al-Masabih-Volume-1-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'ma2',
+    title: 'Tafseer al-Jalalayn',
+    urduTitle: 'تفسیر جلالین (اردو ترجمہ)',
+    author: 'Jalaluddin al-Mahalli & Jalaluddin al-Suyuti',
+    urduAuthor: 'علامہ جلال الدین محلی و سیوطی',
+    description: 'A classical Sunni Tafsir of the Quran, taught across almost all madrasas.',
+    urduDescription: 'قرآن کریم کی انتہائی جامع، مختصر اور مقبول ترین تفسیر جو مدارس کا لازمی نصاب ہے۔',
+    language: 'Urdu / Arabic',
+    category: 'maoqoof_alai',
+    url: 'https://archive.org/download/TafseerAlJalalaynUrdu/Tafseer-Al-Jalalayn-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'ma3',
+    title: 'Al-Hidayah Volume 1',
+    urduTitle: 'الہدایہ (جلد اول)',
+    author: 'Imam Burhanuddin al-Marghinani',
+    urduAuthor: 'امام برہان الدین مرغینانی',
+    description: 'The foundational manual of Hanafi jurisprudence.',
+    urduDescription: 'فقہ حنفی کی سب سے مشہور، جامع اور مدلل درسی کتاب جس کی شرح اور افادیت بے مثال ہے (جلد اول)۔',
+    language: 'Urdu / Arabic',
+    category: 'maoqoof_alai',
+    url: 'https://archive.org/download/AlHidayahUrdu/Al-Hidayah-Volume-1-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'ma_s1',
+    title: 'Ashraful Hidayah Vol 1',
+    urduTitle: 'اشرف الہدایہ شرح الہدایہ (جلد اول)',
+    author: 'Maulana Jamil Ahmad Sakrodhwi',
+    urduAuthor: 'مولانا جمیل احمد سکروڈوی',
+    description: 'The best and most comprehensive Urdu commentary on Al-Hidayah.',
+    urduDescription: 'الہدایہ کی سب سے مستند، تفصیلی اور مشہور اردو شرح (جلد اول)۔',
+    language: 'Urdu',
+    category: 'maoqoof_alai',
+    url: 'https://archive.org/download/AshrafulHidayahUrdu/Ashraful-Hidayah-Volume-1-Urdu.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'ma_s2',
+    title: 'Mazahir-e-Haq Sharh Mishkat Vol 1',
+    urduTitle: 'مظاہر حق شرح مشکوٰۃ المصابیح (جلد اول)',
+    author: 'Allama Qutbuddin Khan Dehlawi',
+    urduAuthor: 'علامہ قطب الدین خان دہلوی',
+    description: 'Classic and widely acclaimed Urdu commentary of Mishkat al-Masabih.',
+    urduDescription: 'مشکوٰۃ المصابیح کی قدیمی اور نہایت مقبول اردو شرح (جلد اول)۔',
+    language: 'Urdu',
+    category: 'maoqoof_alai',
+    url: 'https://archive.org/download/MazahirEHaqSharhMishkatAlMasabihUrdu/Mazahir-e-Haq-Volume-1-Urdu.pdf',
+    bookType: 'sharh'
+  },
+  // Al Sadesa
+  {
+    id: 'sd2',
+    title: 'Riyad as-Salihin (Urdu)',
+    urduTitle: 'ریاض الصالحین (اردو ترجمہ)',
+    author: 'Imam Yahya bin Sharaf an-Nawawi',
+    urduAuthor: 'امام یحییٰ بن شرف نووی',
+    description: 'A collection of verses and Hadith covering ethical, moral and social aspects.',
+    urduDescription: 'اخلاق، آداب، حسنِ کردار اور باطنی اصلاح کے لیے احادیث کا لاجواب مجموعہ۔',
+    language: 'Urdu',
+    category: 'al_sadesa',
+    url: 'https://archive.org/download/RiyadAsSalihinUrdu/Riyad-As-Salihin-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'sd_b1',
+    title: 'Al-Waqayah (Matan)',
+    urduTitle: 'الوقایہ (متن)',
+    author: 'Imam Taj al-Shariah',
+    urduAuthor: 'امام تاج الشریعہ محمود المحبوبی',
+    description: 'The original classical Arabic text manual of Hanafi rulings.',
+    urduDescription: 'فقہ حنفی کے مسائل کا بنیادی اور قدیمی متن جو نصاب میں شامل ہے۔',
+    language: 'Arabic / Urdu',
+    category: 'al_sadesa',
+    url: 'https://archive.org/download/AlWaqayahMatan/Al-Waqayah-Matan.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'sd1',
+    title: 'Sharh al-Waqayah Volume 1',
+    urduTitle: 'شرح الوقایہ (جلد اول)',
+    author: 'Sadr al-Shariah al-Thani',
+    urduAuthor: 'علامہ عبید اللہ بن مسعود صدر الشریعہ',
+    description: 'An important advanced text of Hanafi jurisprudence.',
+    urduDescription: 'فقہ حنفی کے مسائل پر مشتمل وقایہ کی مشہور ترین شرح جو مدارس میں پڑھائی جاتی ہے (جلد اول)۔',
+    language: 'Urdu',
+    category: 'al_sadesa',
+    url: 'https://archive.org/download/SharhAlWaqayahUrdu/Sharh-Al-Waqayah-Volume-1-Urdu.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'sd_s1',
+    title: 'Dalil al-Falihin Sharh Riyad as-Salihin Vol 1',
+    urduTitle: 'دلیل الفالحین شرح ریاض الصالحین (جلد اول)',
+    author: 'Ibn Illan al-Siddiqi',
+    urduAuthor: 'علامہ ابن علان الصدیقی',
+    description: 'Comprehensive classical commentary explaining Riyad us-Salihin.',
+    urduDescription: 'ریاض الصالحین کی عظیم اور مفصل درسی و علمی شرح (جلد اول)۔',
+    language: 'Urdu',
+    category: 'al_sadesa',
+    url: 'https://archive.org/download/DalilAlFalihinUrdu/Dalil-al-Falihin-Vol-1.pdf',
+    bookType: 'sharh'
+  },
+  // Al Khamesa
+  {
+    id: 'kh1',
+    title: 'Hidayat an-Nahw',
+    urduTitle: 'ہدایۃ النحو (متن و ترجمہ)',
+    author: 'Sirajuddin al-Uthmani',
+    urduAuthor: 'علامہ سراج الدین عثمانی',
+    description: 'Standard textbook on Arabic syntax (Nahw) rules.',
+    urduDescription: 'عربی زبان اور قواعد کو سیکھنے کے لیے نحو کی نہایت معتبر اور درسی درجات کی پسندیدہ کتاب۔',
+    language: 'Urdu',
+    category: 'al_khamesa',
+    url: 'https://archive.org/download/HidayatAnNahwUrdu/Hidayat-An-Nahw-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'kh2',
+    title: 'Usool ash-Shashy',
+    urduTitle: 'اصول الشاشی (متن)',
+    author: 'Imam Ishaq ash-Shashy',
+    urduAuthor: 'امام اسحاق شاشی',
+    description: 'A well-known classical manual on Hanafi principles of jurisprudence.',
+    urduDescription: 'فقہ حنفی کے اصول و قواعد پر لکھی گئی نہایت مدلل اور آسان درسی کتاب۔',
+    language: 'Urdu',
+    category: 'al_khamesa',
+    url: 'https://archive.org/download/UsoolAshShashyUrdu/Usool-Ash-Shashy-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'kh_s1',
+    title: 'Ghayat ut-Tahqeeq Sharh Hidayat an-Nahw',
+    urduTitle: 'غایۃ التحقیق شرح ہدایۃ النحو',
+    author: 'Maulana Abdul Hameed',
+    urduAuthor: 'مولانا عبد الحمید',
+    description: 'A detailed Urdu commentary explaining Arabic grammar rules in Hidayat an-Nahw.',
+    urduDescription: 'ہدایۃ النحو کی بہترین اور آسان ترین تفصیلی اردو شرح۔',
+    language: 'Urdu',
+    category: 'al_khamesa',
+    url: 'https://archive.org/download/GhayatUtTahqeeqSharhHidayatAnNahw/Ghayat-ut-Tahqeeq-Urdu.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'kh_s2',
+    title: 'Husulul Ma`mul Sharh Usool ash-Shashi',
+    urduTitle: 'حصول المأمول شرح اصول الشاشی',
+    author: 'Maulana Tariq Ali',
+    urduAuthor: 'مولانا طارق علی',
+    description: 'A beautifully written Urdu explanation of Hanafi jurisprudential rules in Usool ash-Shashi.',
+    urduDescription: 'اصول الشاشی کے قواعد کو حل کرنے والی مقبول اور جدید ترین اردو شرح۔',
+    language: 'Urdu',
+    category: 'al_khamesa',
+    url: 'https://archive.org/download/HusululMamoolSharhUsoolAshShashi/Husulul-Mamool.pdf',
+    bookType: 'sharh'
+  },
+  // Al Rabia
+  {
+    id: 'rb1',
+    title: 'Mukhtasar al-Qudoori',
+    urduTitle: 'القدوری (مختصر القدوری اردو)',
+    author: 'Abul Husayn Ahmad al-Qudoori',
+    urduAuthor: 'ابو الحسین احمد القدوری',
+    description: 'The definitive Hanafi jurisprudence primer of basic rules.',
+    urduDescription: 'فقہ حنفی کی وہ بنیادی اور مستند کتاب جو تمام فقہی مسائل کے لیے خشتِ اول کی حیثیت رکھتی ہے۔',
+    language: 'Urdu',
+    category: 'al_rabia',
+    url: 'https://archive.org/download/MukhtasarAlQudooriUrdu/Mukhtasar-Al-Qudoori-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'rb2',
+    title: 'Noor al-Idah',
+    urduTitle: 'نور الایضاح (متن)',
+    author: 'Hasan Shurunbulali',
+    urduAuthor: 'علامہ حسن شرنبلالی',
+    description: 'A basic manual of Islamic worship laws in Hanafi fiqh.',
+    urduDescription: 'عبادات (طہارت، نماز، روزہ) کے بنیادی مسائل پر مبنی ایک بے نظیر درسی فقہی کتاب۔',
+    language: 'Urdu',
+    category: 'al_rabia',
+    url: 'https://archive.org/download/NoorAlIdahUrdu/Noor-Al-Idah-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'rb_s1',
+    title: 'At-Tashil al-Daroori Sharh Qudoori Vol 1',
+    urduTitle: 'التسہیل الضروری شرح قدوری (جلد اول)',
+    author: 'Maulana Ashiq Ilahi Al-Barni',
+    urduAuthor: 'مولانا عاشق الہیٰ بلند شہری',
+    description: 'The classic highly recommended Urdu commentary on Al-Qudoori.',
+    urduDescription: 'مختصر القدوری کی سب سے مشہور، عام فہم اور لاجواب درسی اردو شرح (جلد اول)۔',
+    language: 'Urdu',
+    category: 'al_rabia',
+    url: 'https://archive.org/download/AtTashilAlDarooriSharhQudoori/Tashil-Daroori-Vol-1.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'rb_s2',
+    title: 'Anwar al-Idah Sharh Noor al-Idah',
+    urduTitle: 'انوار الایضاح شرح نور الایضاح',
+    author: 'Maulana Azam Ali',
+    urduAuthor: 'مولانا اعظم علی',
+    description: 'The ultimate textbook guide resolving the complexities of Noor al-Idah.',
+    urduDescription: 'نور الایضاح کی حل طلب بحثوں کو واضح کرنے والی آسان درسی اردو شرح۔',
+    language: 'Urdu',
+    category: 'al_rabia',
+    url: 'https://archive.org/download/AnwarAlIdahSharhNoorAlIdah/Anwar-al-Idah-Urdu.pdf',
+    bookType: 'sharh'
+  },
+  // Al Salesa
+  {
+    id: 'sl1',
+    title: 'Kafiyah',
+    urduTitle: 'کافیہ (متن و ترجمہ)',
+    author: 'Ibn al-Hajib',
+    urduAuthor: 'علامہ ابن حاجب',
+    description: 'A textbook containing principles of Arabic grammar and syntax.',
+    urduDescription: 'علمِ نحو کے مشکل ترین قوانین کو خوبصورت ترتیب اور جامعیت سے پیش کرنے والی عظیم کتاب۔',
+    language: 'Urdu',
+    category: 'al_salesa',
+    url: 'https://archive.org/download/KafiyahUrdu/Kafiyah-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'sl2',
+    title: 'Sharh Jami',
+    urduTitle: 'شرح جامی (اردو)',
+    author: 'Mullah Abdur Rahman Jami',
+    urduAuthor: 'ملا عبد الرحمن جامی',
+    description: 'An exhaustive commentary on the grammatical treatise Al-Kafiyah.',
+    urduDescription: 'کافیہ کی سب سے مفصل اور علمی شرح جو عربی زبان کے طلبہ کے لیے علم کا سمندر ہے۔',
+    language: 'Urdu',
+    category: 'al_salesa',
+    url: 'https://archive.org/download/SharhJamiUrdu/Sharh-Jami-Urdu.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'sl_s1',
+    title: 'Al-Bashir al-Kamil Sharh Kafiyah',
+    urduTitle: 'البشیر الکامل شرح کافیہ',
+    author: 'Maulana Bashir Ahmad',
+    urduAuthor: 'مولانا بشیر احمد قادری',
+    description: 'One of the most trusted student companions of Al-Kafiyah Arabic syntax.',
+    urduDescription: 'کافیہ ابن حاجب کی مایہ ناز اردو شرح جو گرائمر کے مغلق ابواب کو آسان بناتی ہے۔',
+    language: 'Urdu',
+    category: 'al_salesa',
+    url: 'https://archive.org/download/AlBashirAlKamilSharhKafiyah/Al-Bashir-al-Kamil.pdf',
+    bookType: 'sharh'
+  },
+  // Al Sania
+  {
+    id: 'sn1',
+    title: 'Ilm as-Sarf',
+    urduTitle: 'علم الصرف (مکمل)',
+    author: 'Mufti Muhammad Mushtaq Tajrawi',
+    urduAuthor: 'مفتی محمد مشتاق تجاروی',
+    description: 'A textbook detailing rules of Arabic word morphology.',
+    urduDescription: 'عربی الفاظ کے اوزان، ابواب اور گردانوں کے قواعد پر مشتمل نہایت آسان کتاب۔',
+    language: 'Urdu',
+    category: 'al_sania',
+    url: 'https://archive.org/download/IlmAsSarfComplete/Ilm-As-Sarf.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'sn2',
+    title: 'Ilm an-Nahw',
+    urduTitle: 'علم النحو (مکمل)',
+    author: 'Mufti Muhammad Mushtaq Tajrawi',
+    urduAuthor: 'مفتی محمد مشتاق تجاروی',
+    description: 'A textbook detailing rules of Arabic sentence construction.',
+    urduDescription: 'عربی زبان میں جملہ بنانے اور اعراب کے قواعد کو سمجھنے کی بنیادی کتاب۔',
+    language: 'Urdu',
+    category: 'al_sania',
+    url: 'https://archive.org/download/IlmAnNahwComplete/Ilm-An-Nahw.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'sn_s1',
+    title: 'Tasheel us-Sarf Sharh Ilm us-Sarf',
+    urduTitle: 'تسہیل الصرف شرح علم الصرف',
+    author: 'Wifaq-ul-Madaris Scholars',
+    urduAuthor: 'وفاق المدارس علماء',
+    description: 'An easy-to-digest Urdu workbook guide to Arabic morphology.',
+    urduDescription: 'علم الصرف کی آسان تفہیم اور تمرینات کا لاجواب مجموعہ۔',
+    language: 'Urdu',
+    category: 'al_sania',
+    url: 'https://archive.org/download/TasheelUsSarf/Tasheel-us-Sarf.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'sn_s2',
+    title: 'Tasheel un-Nahw Sharh Ilm un-Nahw',
+    urduTitle: 'تسہیل النحو شرح علم النحو',
+    author: 'Wifaq-ul-Madaris Scholars',
+    urduAuthor: 'وفاق المدارس علماء',
+    description: 'An easy-to-digest Urdu workbook guide to Arabic syntax rules.',
+    urduDescription: 'علم النحو کے قواعد اور ان کی مشقیں حل کرنے کا بہترین معاون کتابچہ۔',
+    language: 'Urdu',
+    category: 'al_sania',
+    url: 'https://archive.org/download/TasheelUnNahw/Tasheel-un-Nahw.pdf',
+    bookType: 'sharh'
+  },
+  // Al Aula
+  {
+    id: 'au1',
+    title: 'Taleem al-Islam',
+    urduTitle: 'تعلیم الاسلام (مکمل)',
+    author: 'Mufti Kifayatullah',
+    urduAuthor: 'مفتی کفایت اللہ دہلوی',
+    description: 'The fundamental guide to basic Islamic beliefs and practices in QA format.',
+    urduDescription: 'عقائد، ارکانِ اسلام اور روزمرہ کے مسائل پر سوالاً جواباً لکھی گئی مشہورِ زمانہ کتاب۔',
+    language: 'Urdu',
+    category: 'al_aula',
+    url: 'https://archive.org/download/TaleemAlIslamUrdu/Taleem-Al-Islam.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'au2',
+    title: 'Asan Arbi Grammar',
+    urduTitle: 'آسان عربی گرامر',
+    author: 'Lateefur Rahman Pathan',
+    urduAuthor: 'لطیف الرحمن پٹھان',
+    description: 'An easy guide to learn Quranic Arabic grammar.',
+    urduDescription: 'قرآن پاک کی زبان کو سمجھنے کے لیے نہایت آسان اور عام فہم انداز میں لکھی گئی عربی گرامر۔',
+    language: 'Urdu',
+    category: 'al_aula',
+    url: 'https://archive.org/download/AsanArbiGrammar/Asan-Arbi-Grammar.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'au_s1',
+    title: 'Tasheel al-Islam Sharh Taleem al-Islam',
+    urduTitle: 'تسہیل الاسلام شرح تعلیم الاسلام',
+    author: 'Maulana Saeed Ahmad',
+    urduAuthor: 'مولانا سعید احمد صدیقی',
+    description: 'An interactive workbook of Islamic fundamentals for first year students.',
+    urduDescription: 'تعلیم الاسلام کے عقائد و مسائل کو مزید آسان کر کے پیش کرنے والی نصابی شرح۔',
+    language: 'Urdu',
+    category: 'al_aula',
+    url: 'https://archive.org/download/TasheelAlIslamUrdu/Tasheel-al-Islam.pdf',
+    bookType: 'sharh'
+  },
+  // Mutafarriq Dars e Nizami
+  {
+    id: 'md2',
+    title: 'Alfiyah Ibn Malik',
+    urduTitle: 'الفیہ ابن مالک',
+    author: 'Ibn Malik al-Andalusi',
+    urduAuthor: 'ابن مالک اندلسی',
+    description: 'The famous rhymed grammar of Arabic in a thousand lines.',
+    urduDescription: 'عربی گرامر کے قواعد کا ایک ہزار اشعار پر مشتمل مشہور و مقبول عالمی منظوم مجموعہ۔',
+    language: 'Arabic / Urdu Notes',
+    category: 'mutafarriq_dars',
+    url: 'https://archive.org/download/AlfyahIbnMalik/Alfyah-Ibn-Malik.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'md1',
+    title: 'Al-Mirqat',
+    urduTitle: 'المرقات (شرح اردو)',
+    author: 'Mullah Fazal-e-Ilahi',
+    urduAuthor: 'ملا فضل الہیٰ',
+    description: 'Commentary on the textbook of logic and science.',
+    urduDescription: 'درسِ نظامی کی منطق کی درسی کتاب میرقات کی آسان اور عام فہم اردو شرح۔',
+    language: 'Urdu',
+    category: 'mutafarriq_dars',
+    url: 'https://archive.org/download/AlMirqatUrdu/Al-Mirqat-Urdu.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'md_s1',
+    title: 'Sharh Ibn Aqeel ala Alfiyah Ibn Malik',
+    urduTitle: 'شرح ابن عقیل علی الفیہ ابن مالک',
+    author: 'Imam Bahauddin Ibn Aqeel',
+    urduAuthor: 'امام بہاء الدین ابن عقیل',
+    description: 'The classic Arabic commentary explaining Alfiyah Ibn Malik rules.',
+    urduDescription: 'الفیہ ابن مالک کے قواعدِ نحو کی سب سے مایہ ناز، مستند اور درسی شرح۔',
+    language: 'Arabic / Urdu',
+    category: 'mutafarriq_dars',
+    url: 'https://archive.org/download/SharhIbnAqeelUrdu/Sharh-Ibn-Aqeel.pdf',
+    bookType: 'sharh'
+  },
+  // Mantiq o Falsafa
+  {
+    id: 'mf1',
+    title: 'Isaghoji (Logic)',
+    urduTitle: 'ایساغوجی (شرح منطق)',
+    author: 'Atheer-ud-Din Al-Abhari',
+    urduAuthor: 'اثیر الدین ابہری',
+    description: 'A foundational book of classical logic.',
+    urduDescription: 'علمِ منطق کی ابجدیات اور اصطلاحات کو سکھانے والی مشہور زمانہ بنیادی نصابی کتاب۔',
+    language: 'Urdu',
+    category: 'mantiq_falsafa',
+    url: 'https://archive.org/download/IsaghojiUrdu/Isaghoji-Urdu.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'mf2',
+    title: 'Tahzib al-Mantiq',
+    urduTitle: 'تہذیب المنطق (شرح اردو)',
+    author: 'Allama Taftazani',
+    urduAuthor: 'علامہ تفتازانی',
+    description: 'A highly advanced book of classical Islamic logic.',
+    urduDescription: 'علمِ منطق کے مشکل ابواب اور باریکیوں پر علامہ تفتازانی کا مایہ ناز درسی مقالہ۔',
+    language: 'Urdu',
+    category: 'mantiq_falsafa',
+    url: 'https://archive.org/download/TahzibAlMantiqUrdu/Tahzib-Al-Mantiq-Urdu.pdf',
+    bookType: 'sharh'
+  },
+  {
+    id: 'mf_s1',
+    title: 'Al-Mughni Sharh Isaghoji',
+    urduTitle: 'المغنی شرح ایساغوجی',
+    author: 'Shamsuddin Al-Harawi',
+    urduAuthor: 'شمس الدین ہروی',
+    description: 'Detailed analysis of basic logic principles in Isaghoji.',
+    urduDescription: 'ایساغوجی کے مشکل قوانین اور تصدیقات کو واضح کرنے والی بہترین درسی اردو شرح۔',
+    language: 'Urdu',
+    category: 'mantiq_falsafa',
+    url: 'https://archive.org/download/AlMughniSharhIsaghoji/Al-Mughni.pdf',
+    bookType: 'sharh'
+  },
+  // Tajweed Course
+  {
+    id: 'tc1',
+    title: 'Jamal al-Quran',
+    urduTitle: 'جمال القرآن (علمِ تجوید)',
+    author: 'Qari Muhammad Shareef',
+    urduAuthor: 'قاری محمد شریف',
+    description: 'A very popular primer for studying the rules of reciting Quran.',
+    urduDescription: 'قرآن کریم کو خوبصورت اور درست لہجے میں پڑھنے کے قواعد پر مشتمل نہایت آسان کتاب۔',
+    language: 'Urdu',
+    category: 'tajweed_course',
+    url: 'https://archive.org/download/JamalAlQuranTajweed/Jamal-Al-Quran.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'tc_b1',
+    title: 'Al-Qawaid al-Tajweediyyah',
+    urduTitle: 'القواعد التجویریہ (قواعد قراءت)',
+    author: 'Qari Idrees Asim',
+    urduAuthor: 'قاری ادریس عاصم',
+    description: 'Practical rules of Tajweed with diagrams and instructions.',
+    urduDescription: 'قرآن مجید کی بہترین قراءت اور اعراب کے مخارج کو سمجھنے کا رہنما خاکہ۔',
+    language: 'Urdu',
+    category: 'tajweed_course',
+    url: 'https://archive.org/download/AlQawaidAlTajweediyyah/Qawaid-Tajweed.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'tc2',
+    title: 'Fawaid Makkiyah',
+    urduTitle: 'فوائد مکیہ (شرح اردو)',
+    author: 'Qari Abdur Rahman Makki',
+    urduAuthor: 'قاری عبد الرحمن مکی',
+    description: 'Rules of Tajweed explaining vocal articulation and vowel lengths.',
+    urduDescription: 'علمِ تجوید و قراءت کے قواعد کا سب سے جامع اور مستند نصابی کتابچہ۔',
+    language: 'Urdu',
+    category: 'tajweed_course',
+    url: 'https://archive.org/download/FawaidMakkiyah/Fawaid-Makkiyah.pdf',
+    bookType: 'sharh'
+  },
+  // Dirasat-e-Deeniyah
+  {
+    id: 'dd1',
+    title: 'Dirasate Deeniyah Year 1',
+    urduTitle: 'دراسات دینیہ (سالِ اول)',
+    author: 'Wifaq-ul-Madaris Pakistan',
+    urduAuthor: 'وفاق المدارس پاکستان',
+    description: 'Syllabus textbook for the first year of Dirasat-e-Deeniyah course.',
+    urduDescription: 'وفاق المدارس پاکستان کے تحت خواتین و حضرات کے لیے دراساتِ دینیہ کورس کی درسی کتاب (سالِ اول)۔',
+    language: 'Urdu',
+    category: 'dirasat_deeniyah',
+    url: 'https://archive.org/download/DirasateDeeniyah1/Dirasate-Deeniyah-1.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'dd2',
+    title: 'Dirasate Deeniyah Year 2',
+    urduTitle: 'دراسات دینیہ (سالِ دوم)',
+    author: 'Wifaq-ul-Madaris Pakistan',
+    urduAuthor: 'وفاق المدارس پاکستان',
+    description: 'Syllabus textbook for the second year of Dirasat-e-Deeniyah course.',
+    urduDescription: 'وفاق المدارس پاکستان کے تحت دراساتِ دینیہ کورس کی درسی کتاب (سالِ دوم)۔',
+    language: 'Urdu',
+    category: 'dirasat_deeniyah',
+    url: 'https://archive.org/download/DirasateDeeniyah2/Dirasate-Deeniyah-2.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'dd_s1',
+    title: 'Tashil ud-Dirasat Year 1 & 2',
+    urduTitle: 'تسہیل الدراسات شرح دراسات دینیہ',
+    author: 'Wifaq-ul-Madaris Scholars',
+    urduAuthor: 'وفاق المدارس علماء',
+    description: 'Complete explanation guidebook for students of Dirasat-e-Deeniyah course.',
+    urduDescription: 'دراساتِ دینیہ کے نصاب کو سلجھانے اور امتحانات کی تیاری کی بہترین شرح۔',
+    language: 'Urdu',
+    category: 'dirasat_deeniyah',
+    url: 'https://archive.org/download/TashilUdDirasatComplete/Tashil-ud-Dirasat.pdf',
+    bookType: 'sharh'
+  },
+  // Dars-e-Nizami Banat
+  {
+    id: 'bn1',
+    title: 'Bahishti Zewar',
+    urduTitle: 'بہشتی زیور (مکمل)',
+    author: 'Molana Ashraf Ali Thanvi',
+    urduAuthor: 'مولانا اشرف علی تھانوی',
+    description: 'The monumental manual of Islamic beliefs, rulings and moral guide.',
+    urduDescription: 'خواتین کے روزمرہ مسائل، اسلامی عقائد اور اصلاحِ اخلاق پر حکیم الامت کا لازوال شاہکار۔',
+    language: 'Urdu',
+    category: 'dars_e_nizami_banat',
+    url: 'https://archive.org/download/BahishtiZewarComplete/Bahishti-Zewar.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'bn2',
+    title: 'Talibat ka Asan Deen',
+    urduTitle: 'طالبات کا آسان دین',
+    author: 'Mufti Muhammad Shafi',
+    urduAuthor: 'مفتی محمد شفیع عثمانی',
+    description: 'An easy-to-understand book of Islamic beliefs and acts of worship for girls.',
+    urduDescription: 'طالباتِ مدارس اور خواتین کے لیے دینِ اسلام کو سمجھنے کی نہایت پیاری درسی کتاب۔',
+    language: 'Urdu',
+    category: 'dars_e_nizami_banat',
+    url: 'https://archive.org/download/TalibatKaAsanDeen/Talibat-Ka-Asan-Deen.pdf',
+    bookType: 'book'
+  },
+  {
+    id: 'bn_s1',
+    title: 'Tuhfatul Banat Sharh Bahishti Zewar',
+    urduTitle: 'تحفۃ البنات شرح بہشتی زیور',
+    author: 'Maulana Saeed Ahmad',
+    urduAuthor: 'مولانا سعید احمد صدیقی',
+    description: 'Interactive and practical answers addressing modern questions of Bahishti Zewar.',
+    urduDescription: 'بہشتی زیور کے فقہی موضوعات کو حل کرنے والی خواتین کی لاجواب درسی شرح۔',
+    language: 'Urdu',
+    category: 'dars_e_nizami_banat',
+    url: 'https://archive.org/download/TuhfatulBanatComplete/Tuhfat-ul-Banat.pdf',
+    bookType: 'sharh'
   }
 ];
 
@@ -503,6 +1146,7 @@ export default function IslamicLibrary({
   }, []);
 
   const [recentlyRead, setRecentlyRead] = useState<any[]>([]);
+  const [subFilter, setSubFilter] = useState<'all' | 'book' | 'sharh'>('all');
 
   const loadRecentlyRead = () => {
     try {
@@ -751,6 +1395,10 @@ export default function IslamicLibrary({
   useEffect(() => {
     setActiveCategory(defaultCategory);
   }, [defaultCategory]);
+
+  useEffect(() => {
+    setSubFilter('all');
+  }, [activeCategory]);
 
   const toggleFavorite = (bookId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -1166,7 +1814,7 @@ export default function IslamicLibrary({
           >
             تمام کتب (All)
           </button>
-          {CATEGORIES.map(cat => (
+          {CATEGORIES.filter(cat => !cat.parent || activeCategory === cat.id).map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
@@ -1177,7 +1825,7 @@ export default function IslamicLibrary({
                   : "bg-gray-50 dark:bg-slate-800 border-gray-100 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-100"
               )}
             >
-              {cat.urdu}
+              {cat.urdu} {cat.parent ? ' ↩' : ''}
             </button>
           ))}
         </div>
@@ -1301,8 +1949,85 @@ export default function IslamicLibrary({
             const catBooks = getFilteredBooks(activeCategory);
             if (!catInfo) return null;
 
+            if (activeCategory === 'emadrasa') {
+              const subcategories = CATEGORIES.filter(c => c.parent === 'emadrasa');
+              
+              return (
+                <div className="space-y-6 max-w-4xl mx-auto pb-8 animate-fade-in">
+                  {/* Category Header */}
+                  <div className="text-center py-5 bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-slate-900/40 dark:to-emerald-950/20 p-6 rounded-3xl border border-teal-100/50 dark:border-emerald-900/10 shadow-sm">
+                    <h3 className="text-2xl sm:text-3xl font-black text-[#008069] dark:text-emerald-400 Urdu">
+                      ای مدرسہ (e-Madrasa)
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-2 font-bold Urdu max-w-lg mx-auto">
+                      درسِ نظامی (بنین و بنات)، تجوید و قرآت اور دیگر تعلیمی درجات کی نصابی کتب
+                    </p>
+                  </div>
+
+                  {/* Subcategories Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {subcategories.map((sub, idx) => {
+                      const count = allBooks.filter(b => b.category === sub.id).length;
+                      return (
+                        <motion.div
+                          key={sub.id}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setActiveCategory(sub.id)}
+                          className="cursor-pointer bg-white dark:bg-[#1e293b] p-5 rounded-2xl border border-gray-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md hover:border-[#00a884]/30 transition-all group relative overflow-hidden shadow-xs"
+                        >
+                          <div className="space-y-2 relative z-10 text-right">
+                            <div className="flex justify-between items-start">
+                              <span className="text-[10px] font-bold text-emerald-600 dark:text-teal-400 bg-emerald-50 dark:bg-teal-950/40 px-2 py-0.5 rounded-md font-mono">
+                                {idx + 1}
+                              </span>
+                              <span className="text-[10px] text-gray-400 font-bold bg-gray-50 dark:bg-slate-800/60 px-2 py-0.5 rounded-full">
+                                {count} کتب
+                              </span>
+                            </div>
+                            <h4 className="text-base font-bold text-[#111b21] dark:text-[#e9edef] Urdu leading-tight pt-1">
+                              {sub.urdu}
+                            </h4>
+                            <p className="text-[10px] text-gray-400 font-medium font-mono text-left">
+                              {sub.title}
+                            </p>
+                          </div>
+                          
+                          <div className="mt-4 pt-2 border-t border-gray-50 dark:border-slate-800/40 flex items-center justify-between text-xs text-[#00a884] font-bold group-hover:translate-x-1 transition-all">
+                            <span className="Urdu text-[11px]">کتابیں دیکھیں</span>
+                            <ChevronRight size={14} className="rotate-180" />
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
+            const isSubCategory = catInfo.parent === 'emadrasa';
+            const displayedBooks = isSubCategory 
+              ? catBooks.filter(book => {
+                  if (subFilter === 'all') return true;
+                  if (subFilter === 'book') return book.bookType === 'book' || !book.bookType;
+                  if (subFilter === 'sharh') return book.bookType === 'sharh';
+                  return true;
+                })
+              : catBooks;
+
             return (
-              <div className="space-y-4">
+              <div className="space-y-6 max-w-5xl mx-auto">
+                {/* Back button/Breadcrumb for subcategories */}
+                {isSubCategory && (
+                  <button
+                    onClick={() => setActiveCategory('emadrasa')}
+                    className="inline-flex items-center gap-1.5 text-xs text-[#00a884] dark:text-emerald-400 font-bold bg-white dark:bg-[#1e293b] hover:bg-emerald-50 dark:hover:bg-slate-800 px-3.5 py-2 rounded-xl border border-gray-150 dark:border-slate-800 transition-all hover:-translate-y-0.5 shadow-xs cursor-pointer"
+                  >
+                    <ArrowLeft size={14} />
+                    <span className="Urdu font-bold">واپس ای مدرسہ (Back to e-Madrasa)</span>
+                  </button>
+                )}
+
                 {/* Category Header */}
                 <div className="text-center py-4">
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100 Urdu">
@@ -1313,10 +2038,57 @@ export default function IslamicLibrary({
                   </p>
                 </div>
 
+                {/* subFilter Tabs for e-Madrasa subcategories */}
+                {isSubCategory && (
+                  <div className="flex justify-center gap-2 mb-4 bg-gray-100/50 dark:bg-slate-800/40 p-1 rounded-2xl max-w-sm mx-auto border border-gray-200/50 dark:border-slate-800/30">
+                    <button
+                      onClick={() => setSubFilter('all')}
+                      className={cn(
+                        "flex-1 py-1.5 rounded-xl text-xs font-bold transition-all Urdu cursor-pointer text-center",
+                        subFilter === 'all'
+                          ? "bg-[#00a884] text-white shadow-xs"
+                          : "text-gray-600 dark:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      تمام (All)
+                    </button>
+                    <button
+                      onClick={() => setSubFilter('book')}
+                      className={cn(
+                        "flex-1 py-1.5 rounded-xl text-xs font-bold transition-all Urdu cursor-pointer text-center",
+                        subFilter === 'book'
+                          ? "bg-[#00a884] text-white shadow-xs"
+                          : "text-gray-600 dark:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      کتب (Books)
+                    </button>
+                    <button
+                      onClick={() => setSubFilter('sharh')}
+                      className={cn(
+                        "flex-1 py-1.5 rounded-xl text-xs font-bold transition-all Urdu cursor-pointer text-center",
+                        subFilter === 'sharh'
+                          ? "bg-[#00a884] text-white shadow-xs"
+                          : "text-gray-600 dark:text-slate-300 hover:bg-gray-200/50 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      شروحات (Commentaries)
+                    </button>
+                  </div>
+                )}
+
                 {/* Vertical Grid for specific category books */}
-                <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {catBooks.map(book => renderBookCard(book, true))}
-                </div>
+                {displayedBooks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center bg-white dark:bg-[#1e293b] rounded-2xl border border-gray-100 dark:border-slate-800 p-6 shadow-xs">
+                    <p className="text-sm font-bold text-gray-500 dark:text-slate-400 Urdu">
+                      اس درجے میں کوئی {subFilter === 'book' ? 'کتاب' : 'شرح'} دستیاب نہیں ہے۔
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {displayedBooks.map(book => renderBookCard(book, true))}
+                  </div>
+                )}
               </div>
             );
           })()

@@ -361,7 +361,7 @@ export default function Explore() {
       </div>
 
       {/* Grid Content */}
-      <div className="scrollable-content p-3 sm:p-4 md:p-6 bg-[#e7f5f1] dark:bg-[#111b21]">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-[#e7f5f1] dark:bg-[#111b21] custom-scrollbar">
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 md:gap-6">
           {categories.map((item, index) => (

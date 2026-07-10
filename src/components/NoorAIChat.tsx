@@ -13,7 +13,8 @@ import {
   User,
   Compass,
   CheckCircle2,
-  Trash2
+  Trash2,
+  Download
 } from 'lucide-react';
 import { cn, resolveApiUrl } from '../utils';
 
@@ -131,6 +132,98 @@ export default function NoorAIChat({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const renderParsedContent = (content: string) => {
+    const regex = /\$\$DOWNLOAD_CARD\$\$\[(.*?)\]\$\$DOWNLOAD_CARD\$\_/g;
+    // We will support both $$DOWNLOAD_CARD$$[...]$$DOWNLOAD_CARD$$ and with a trailing _ if there are typos
+    const cleanContent = content.replace(/\$\$DOWNLOAD_CARD\$\_/g, '$$DOWNLOAD_CARD$$');
+    const actualRegex = /\$\$DOWNLOAD_CARD\$\$\[(.*?)\]\$\$DOWNLOAD_CARD\$\$/g;
+    
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = actualRegex.exec(cleanContent)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({
+          type: 'text',
+          content: cleanContent.substring(lastIndex, match.index)
+        });
+      }
+
+      parts.push({
+        type: 'card',
+        content: match[1]
+      });
+
+      lastIndex = actualRegex.lastIndex;
+    }
+
+    if (lastIndex < cleanContent.length) {
+      parts.push({
+        type: 'text',
+        content: cleanContent.substring(lastIndex)
+      });
+    }
+
+    if (parts.length === 0) {
+      return <span className="Urdu whitespace-pre-line">{content}</span>;
+    }
+
+    return (
+      <div className="space-y-3">
+        {parts.map((part, idx) => {
+          if (part.type === 'text') {
+            return (
+              <span key={idx} className="Urdu whitespace-pre-line block">
+                {part.content}
+              </span>
+            );
+          } else {
+            const cardParts = part.content.split('|').map(p => p.trim());
+            const title = cardParts[0] || 'کتاب (Book)';
+            const url = cardParts[1] || '';
+            const size = cardParts[2] || 'مفت پی ڈی ایف (Free PDF)';
+            const author = cardParts[3] || 'مصنف (Islamic Scholar)';
+
+            return (
+              <div 
+                key={idx}
+                className="my-3 p-4 bg-emerald-50 dark:bg-[#1a2e26]/60 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm hover:shadow transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-[#00a884]/10 dark:bg-[#00a884]/20 flex items-center justify-center text-[#00a884] shrink-0">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div className="text-right sm:text-left">
+                    <h4 className="font-bold text-[#111b21] dark:text-[#e9edef] text-sm Urdu leading-snug line-clamp-2">
+                      {title}
+                    </h4>
+                    <p className="text-[11px] text-[#667781] dark:text-[#8696a0] Urdu mt-0.5">
+                      {author}
+                    </p>
+                    <span className="inline-block mt-1 text-[9px] bg-[#00a884]/10 text-[#00a884] px-2 py-0.5 rounded font-bold">
+                      {size}
+                    </span>
+                  </div>
+                </div>
+
+                {url && (
+                  <button
+                    onClick={() => window.open(url, '_blank')}
+                    className="w-full sm:w-auto px-4 py-2 bg-[#00a884] hover:bg-[#008f72] text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 shrink-0"
+                  >
+                    <Download size={14} />
+                    <span className="Urdu font-bold text-xs">ڈاؤنلوڈ (Download)</span>
+                  </button>
+                )}
+              </div>
+            );
+          }
+        })}
+      </div>
+    );
+  };
+
   const samplePrompts = [
     { text: 'آج کی ایک اچھی بات بتائیں', urdu: 'آج کی ایک اچھی بات بتائیں' },
     { text: 'قرآن پاک میں صبر کی کیا تعلیمات ہیں؟', urdu: 'قرآن پاک میں صبر کی کیا تعلیمات ہیں؟' },
@@ -238,7 +331,7 @@ export default function NoorAIChat({ onBack }: { onBack: () => void }) {
                           : "bg-white dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] rounded-tl-none border border-gray-100 dark:border-white/5"
                       )}
                     >
-                      <span className="Urdu">{m.content}</span>
+                      {m.role === 'assistant' ? renderParsedContent(m.content) : <span className="Urdu">{m.content}</span>}
 
                       {/* Cited Sources section */}
                       {m.sources && m.sources.length > 0 && (

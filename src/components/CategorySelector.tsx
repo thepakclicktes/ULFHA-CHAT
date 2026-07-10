@@ -10,7 +10,7 @@ interface CategorySelectorProps {
 
 export default function CategorySelector({ onSelect, onBack }: CategorySelectorProps) {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#111b21] p-4 md:p-8">
+    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-[#111b21] p-4 md:p-8 custom-scrollbar">
       <div className="max-w-4xl mx-auto">
         <button 
           onClick={onBack}
