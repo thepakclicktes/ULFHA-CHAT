@@ -677,8 +677,21 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                                     <div className="text-white font-medium flex items-center gap-1">
                                       <input
                                         type="text"
-                                        value={u.displayName || ''}
-                                        onChange={(e) => updateDoc(doc(db, 'users', u.uid), { displayName: e.target.value })}
+                                        defaultValue={u.displayName || ''}
+                                        onBlur={(e) => {
+                                          if (e.target.value !== u.displayName) {
+                                            updateDoc(doc(db, 'users', u.uid), { displayName: e.target.value });
+                                          }
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            const target = e.target as HTMLInputElement;
+                                            if (target.value !== u.displayName) {
+                                              updateDoc(doc(db, 'users', u.uid), { displayName: target.value });
+                                            }
+                                            target.blur();
+                                          }
+                                        }}
                                         className="bg-transparent border-b border-transparent hover:border-[#333333] focus:border-[#700122] outline-none text-xs font-bold text-white w-32"
                                       />
                                       {u.isVerified && <BadgeCheck size={14} className="text-[#3b82f6] fill-[#3b82f6]/20" />}

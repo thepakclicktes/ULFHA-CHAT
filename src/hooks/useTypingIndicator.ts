@@ -43,8 +43,8 @@ export function useTypingIndicator(chatUid: string, currentUserUid: string, isGr
   const lastTypingUpdate = useRef(0);
   const handleTyping = useCallback(async () => {
     const now = Date.now();
-    // Throttle updates to every 2 seconds
-    if (now - lastTypingUpdate.current > 2000) {
+    // Throttle updates to every 4 seconds to save quota
+    if (now - lastTypingUpdate.current > 4000) {
       lastTypingUpdate.current = now;
       try {
         await setDoc(doc(db, 'typingStates', typingDocId), {

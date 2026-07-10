@@ -378,7 +378,14 @@ useEffect(() => {
                     serviceWorkerRegistration: registration
                   });
                   if (token) {
-                    await updateDoc(doc(db, 'users', user.uid), { fcmToken: token });
+                    const userRef = doc(db, 'users', user.uid);
+                    const userSnap = await getDoc(userRef);
+                    if (userSnap.exists() && userSnap.data().fcmToken !== token) {
+                      await updateDoc(userRef, { fcmToken: token });
+                    } else if (!userSnap.exists()) {
+                      // Handle case where profile might not exist yet (though useAuth usually handles this)
+                      await setDoc(userRef, { fcmToken: token }, { merge: true });
+                    }
                   }
                 }
               } catch (fcmErr) {

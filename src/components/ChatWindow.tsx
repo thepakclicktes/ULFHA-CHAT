@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, or, and, runTransaction, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, or, and, runTransaction, getDocs, limit, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { UserProfile, Message, AppSettings } from '../types';
 import { handleFirestoreError, OperationType } from '../firebaseError';
@@ -704,12 +704,14 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
     if (!confirmDelete) return;
 
     try {
+      const batch = writeBatch(db);
       for (const msgId of selectedMessageIds) {
-        await updateDoc(doc(db, 'messages', msgId), { 
+        batch.update(doc(db, 'messages', msgId), { 
           isDeletedForEveryone: true,
           text: 'This message was deleted' 
         });
       }
+      await batch.commit();
       showToast(`${selectedMessageIds.length} message(s) deleted`);
       setIsSelectionMode(false);
       setSelectedMessageIds([]);
@@ -927,16 +929,18 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
       // Mark unread messages as read (Read Receipts Logic)
       const readReceiptsEnabled = currentUser.userSettings?.readReceipts !== false;
       if (readReceiptsEnabled) {
-        snapshot.docs.forEach(async (d) => {
+        const unreadDocs = snapshot.docs.filter(d => {
           const data = d.data();
-          if (data.receiverId === currentUser.uid && data.status !== 'read') {
-            try {
-              await updateDoc(d.ref, { status: 'read' });
-            } catch (e) {
-              console.error('Failed to update read status:', e);
-            }
-          }
+          return data.receiverId === currentUser.uid && data.status !== 'read';
         });
+
+        if (unreadDocs.length > 0) {
+          const batch = writeBatch(db);
+          unreadDocs.forEach(d => {
+            batch.update(d.ref, { status: 'read' });
+          });
+          batch.commit().catch(e => console.error('Failed to update read status batch:', e));
+        }
       }
 
       setTimeout(() => {
