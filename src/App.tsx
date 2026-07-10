@@ -348,83 +348,78 @@ useEffect(() => {
           console.log('Notification permission granted.');
           
           // Get FCM Token
-          const vapidKey = appSettings?.vapidKey || DEFAULT_VAPID_KEY;
+          // Fetch VAPID key from server or use fallback
+          let vapidKey = appSettings?.vapidKey || DEFAULT_VAPID_KEY;
+          try {
+            if (navigator.onLine) {
+              const res = await fetch(resolveApiUrl('/api/push-public-key'));
+              if (res.ok) {
+                const data = await res.json();
+                if (data.publicKey) {
+                  vapidKey = data.publicKey;
+                }
+              }
+            }
+          } catch (err) {
+            console.warn('Could not fetch public key from server:', err);
+          }
+
           if (vapidKey && vapidKey !== 'BPE-YOUR-VAPID-KEY-HERE') {
             try {
               // Explicitly register service worker to ensure it's ready
               const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-              console.log('Service Worker registered:', registration);
-
-              // Wait for service worker to be active
               await navigator.serviceWorker.ready;
-              console.log('Service Worker ready');
 
+              // 1. FCM Token setup
               try {
                 if (navigator.onLine) {
                   const token = await getToken(messaging, { 
                     vapidKey: vapidKey,
                     serviceWorkerRegistration: registration
                   });
-                  
                   if (token) {
-                    console.log('FCM Token:', token);
                     await updateDoc(doc(db, 'users', user.uid), { fcmToken: token });
                   }
-                } else {
-                  console.warn('Skipping FCM Token registration because the client is offline.');
                 }
               } catch (fcmErr) {
-                console.warn('FCM registration failed (skipping):', fcmErr);
+                console.warn('FCM registration failed:', fcmErr);
               }
 
-              // Rely on standard Web Push VAPID Registration for the bridge
+              // 2. Standard Web Push Registration
               try {
-                if (!navigator.onLine) {
-                  console.warn('Skipping Web Push VAPID subscription registration because the client is offline.');
-                } else {
-                  const res = await fetch(resolveApiUrl('/api/push-public-key'));
-                  if (res.ok) {
-                    const data = await res.json();
-                    const publicKey = data.publicKey;
-                    if (publicKey) {
-                      const existingSubscription = await registration.pushManager.getSubscription();
-                      if (existingSubscription) {
-                        await existingSubscription.unsubscribe();
-                        console.log('Unsubscribed from existing push subscription.');
-                      }
-                      const subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(publicKey)
+                if (navigator.onLine) {
+                  const existingSubscription = await registration.pushManager.getSubscription();
+                  if (existingSubscription) {
+                    // Check if key matches by comparing it to the new one
+                    // But for simplicity and to ensure things work, we can just use the existing or re-subscribe
+                    // Re-subscribing ensures we are using the latest server key
+                    await existingSubscription.unsubscribe();
+                  }
+
+                  const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(vapidKey)
+                  });
+                  
+                  const subStr = JSON.stringify(subscription);
+                  const userRef = doc(db, 'users', user.uid);
+                  const userSnap = await getDoc(userRef);
+                  if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    const existingSubs: string[] = userData.webPushSubscriptions || [];
+                    if (!existingSubs.includes(subStr)) {
+                      await updateDoc(userRef, {
+                        webPushSubscriptions: [...existingSubs, subStr]
                       });
-                      const subStr = JSON.stringify(subscription);
-                      const userRef = doc(db, 'users', user.uid);
-                      const userSnap = await getDoc(userRef);
-                      if (userSnap.exists()) {
-                        const userData = userSnap.data();
-                        const existingSubs: string[] = userData.webPushSubscriptions || [];
-                        if (!existingSubs.includes(subStr)) {
-                          await updateDoc(userRef, {
-                            webPushSubscriptions: [...existingSubs, subStr]
-                          });
-                          console.log('Registered Web Push Subscription successfully');
-                        }
-                      }
+                      console.log('Registered Web Push Subscription successfully');
                     }
                   }
                 }
               } catch (pushSubErr) {
-                if (!navigator.onLine || (pushSubErr instanceof Error && pushSubErr.message.includes('offline'))) {
-                  console.warn('Skipped Web Push VAPID subscription registration (client is offline):', pushSubErr);
-                } else {
-                  console.error('Failed to register Web Push VAPID subscription:', pushSubErr);
-                }
+                console.error('Web Push registration failed:', pushSubErr);
               }
-            } catch (err) {
-              if (!navigator.onLine) {
-                console.warn('Skipped getting notification configuration because the client is offline.');
-              } else {
-                console.error('Failed to get notifications configuration:', err);
-              }
+            } catch (swErr) {
+              console.error('Service worker setup failed:', swErr);
             }
           }
 

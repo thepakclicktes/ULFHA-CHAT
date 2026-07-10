@@ -92,23 +92,26 @@ async function startServer() {
     }
   }) : null;
 
-  // Helper to validate if a key is a valid URL-safe base64 string
-  const isValidVapidKey = (key: any) => {
-    if (typeof key !== 'string' || !key) return false;
-    // URL-safe base64 contains only A-Z, a-z, 0-9, -, _ and no padding "="
+  // Helper to validate and normalize VAPID keys
+  const normalizeVapidKey = (key: any) => {
+    if (typeof key !== 'string' || !key) return null;
+    // Convert standard base64 to URL-safe if needed
+    let normalized = key.trim()
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    
     const base64UrlRegex = /^[A-Za-z0-9\-_]+$/;
-    return base64UrlRegex.test(key) && key.length > 20;
+    if (base64UrlRegex.test(normalized) && normalized.length > 20) {
+      return normalized;
+    }
+    return null;
   };
 
   // VAPID keys setup
   const VAPID_KEYS_FILE = path.join(process.cwd(), 'vapid-keys.json');
-  let vapidPublic = process.env.VAPID_PUBLIC_KEY;
-  let vapidPrivate = process.env.VAPID_PRIVATE_KEY;
-
-  if (!isValidVapidKey(vapidPublic) || !isValidVapidKey(vapidPrivate)) {
-    vapidPublic = undefined;
-    vapidPrivate = undefined;
-  }
+  let vapidPublic = normalizeVapidKey(process.env.VAPID_PUBLIC_KEY);
+  let vapidPrivate = normalizeVapidKey(process.env.VAPID_PRIVATE_KEY);
 
   if (!vapidPublic || !vapidPrivate) {
     if (fs.existsSync(VAPID_KEYS_FILE)) {
