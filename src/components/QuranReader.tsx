@@ -873,9 +873,9 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
                       ))}
                     </div>
                   ) : (
-                    <div className="my-auto flex flex-col items-center justify-center w-full h-full">
-                      <div className="shadow-2xl bg-white w-full flex justify-center">
-                        <canvas ref={canvasRef} className="w-full h-auto block" />
+                    <div className="flex-1 w-full min-h-full flex flex-col items-center justify-center p-2 sm:p-4">
+                      <div className="shadow-2xl bg-white m-auto rounded-2xl overflow-hidden flex items-center justify-center max-w-full">
+                        <canvas ref={canvasRef} className="max-w-full h-auto block" />
                       </div>
                     </div>
                   )}

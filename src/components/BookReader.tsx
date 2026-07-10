@@ -527,8 +527,8 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
             const pixelRatio = window.devicePixelRatio || 1;
             canvas.width = Math.floor(viewport.width * pixelRatio);
             canvas.height = Math.floor(viewport.height * pixelRatio);
-            canvas.style.width = `100%`;
-            canvas.style.height = `auto`;
+            canvas.style.width = `${viewport.width}px`;
+            canvas.style.height = `${viewport.height}px`;
 
             context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
@@ -1023,10 +1023,9 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
                   ))}
                 </div>
               ) : (
-                <div className="my-auto flex flex-col items-center justify-center w-full h-full min-h-0">
-                  {/* Actual Canvas - Edge-to-Edge */}
-                  <div className="shadow-2xl bg-white w-full flex items-center justify-center">
-                    <canvas ref={canvasRef} className="w-full h-auto block" />
+                <div className="flex-1 w-full min-h-full flex flex-col items-center justify-center p-2 sm:p-4">
+                  <div className="shadow-2xl bg-white m-auto rounded-2xl overflow-hidden flex items-center justify-center max-w-full">
+                    <canvas ref={canvasRef} className="max-w-full h-auto block" />
                   </div>
                 </div>
               )}
