@@ -5,7 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 // Vercel serverless functions will read GEMINI_API_KEY from environment.
 const aiKey = process.env.GEMINI_API_KEY;
 const ai = aiKey ? new GoogleGenAI({
-  apiKey: aiKey,
+  apiKey: AQ.Ab8RN6K_Ni8kpyaHBSZ9uwzqFcysa_-ObilKDP0mdMIMT24UYA ,
   httpOptions: {
     headers: {
       'User-Agent': 'aistudio-build',

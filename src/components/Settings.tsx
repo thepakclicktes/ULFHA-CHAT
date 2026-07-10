@@ -124,6 +124,15 @@ export default function Settings({ profile }: SettingsProps) {
       
       // Update local storage cache immediately
       try {
+        const primaryCached = localStorage.getItem('ulfha_user_profile');
+        if (primaryCached) {
+          const parsed = JSON.parse(primaryCached);
+          parsed.displayName = editName.trim();
+          parsed.username = cleanUsername;
+          parsed.bio = editBio.trim();
+          localStorage.setItem('ulfha_user_profile', JSON.stringify(parsed));
+        }
+
         const cached = localStorage.getItem(`user_profile_backup_${profile.uid}`);
         const currentData = cached ? JSON.parse(cached) : {};
         localStorage.setItem(`user_profile_backup_${profile.uid}`, JSON.stringify({

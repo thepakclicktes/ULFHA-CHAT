@@ -70,25 +70,25 @@ export function useAuth() {
             await setDoc(userRef, newProfile);
             setProfile(newProfile);
             localStorage.setItem('ulfha_user_profile', JSON.stringify(newProfile));
-          } else {
-            // Listen for real-time profile updates
-            unsubProfile = onSnapshot(userRef, (docSnap) => {
-              if (docSnap.exists()) {
-                const data = docSnap.data() as UserProfile;
-                const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
-                const mergedProfile = { 
-                  ...data, 
-                  role: isAdminEmail ? 'admin' : data.role,
-                  username: data.username || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5))
-                } as UserProfile;
-
-                setProfile(mergedProfile);
-                localStorage.setItem('ulfha_user_profile', JSON.stringify(mergedProfile));
-              }
-            }, (error) => {
-              handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-            });
           }
+
+          // Listen for real-time profile updates for all logged-in users (newly registered or existing)
+          unsubProfile = onSnapshot(userRef, (docSnap) => {
+            if (docSnap.exists()) {
+              const data = docSnap.data() as UserProfile;
+              const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
+              const mergedProfile = { 
+                ...data, 
+                role: isAdminEmail ? 'admin' : data.role,
+                username: data.username || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5))
+              } as UserProfile;
+
+              setProfile(mergedProfile);
+              localStorage.setItem('ulfha_user_profile', JSON.stringify(mergedProfile));
+            }
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+          });
         } catch (error) {
           handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
         }

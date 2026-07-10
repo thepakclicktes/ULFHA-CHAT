@@ -121,6 +121,19 @@ export default function Header({ profile, onSearch, logoUrl }: HeaderProps) {
       await updateDoc(doc(db, 'users', profile.uid), {
         bio: newBio
       });
+      
+      // Update local storage cache immediately
+      try {
+        const primaryCached = localStorage.getItem('ulfha_user_profile');
+        if (primaryCached) {
+          const parsed = JSON.parse(primaryCached);
+          parsed.bio = newBio;
+          localStorage.setItem('ulfha_user_profile', JSON.stringify(parsed));
+        }
+      } catch (e) {
+        console.warn('Failed to update local storage in Header bio:', e);
+      }
+
       setIsEditingBio(false);
     } catch (error) {
       console.error('Failed to update bio:', error);
@@ -133,6 +146,19 @@ export default function Header({ profile, onSearch, logoUrl }: HeaderProps) {
       await updateDoc(doc(db, 'users', profile.uid), {
         displayName: newName
       });
+      
+      // Update local storage cache immediately
+      try {
+        const primaryCached = localStorage.getItem('ulfha_user_profile');
+        if (primaryCached) {
+          const parsed = JSON.parse(primaryCached);
+          parsed.displayName = newName;
+          localStorage.setItem('ulfha_user_profile', JSON.stringify(parsed));
+        }
+      } catch (e) {
+        console.warn('Failed to update local storage in Header name:', e);
+      }
+
       setIsEditingName(false);
     } catch (error) {
       console.error('Failed to update name:', error);
@@ -156,6 +182,14 @@ export default function Header({ profile, onSearch, logoUrl }: HeaderProps) {
           parsed.userSettings = parsed.userSettings || {};
           parsed.userSettings.theme = newTheme;
           localStorage.setItem(`user_profile_backup_${profile.uid}`, JSON.stringify(parsed));
+        }
+        
+        const primaryCached = localStorage.getItem('ulfha_user_profile');
+        if (primaryCached) {
+          const parsed = JSON.parse(primaryCached);
+          parsed.userSettings = parsed.userSettings || {};
+          parsed.userSettings.theme = newTheme;
+          localStorage.setItem('ulfha_user_profile', JSON.stringify(parsed));
         }
       } catch (e) {
         console.warn('Failed to update theme in local profile backup:', e);

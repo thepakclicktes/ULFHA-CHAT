@@ -186,6 +186,57 @@ function PDFPageRenderer({ pdfDoc, pageNum, scale, onVisible }: PDFPageRendererP
   );
 }
 
+interface PDFPagePlaceholderProps {
+  key?: React.Key;
+  pageNum: number;
+  scale: number;
+  onVisible: (page: number) => void;
+  id: string;
+}
+
+function PDFPagePlaceholder({ pageNum, scale, onVisible, id }: PDFPagePlaceholderProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          onVisible(pageNum);
+        }
+      },
+      {
+        root: null,
+        rootMargin: '350px 0px 350px 0px',
+        threshold: 0.05,
+      }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [pageNum, onVisible]);
+
+  return (
+    <div
+      ref={containerRef}
+      id={id}
+      className="w-full bg-[#0e1320] flex items-center justify-center relative"
+      style={{ minHeight: `${600 * scale}px` }}
+    >
+      <div className="absolute top-2 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-full text-[10px] text-slate-500 font-semibold z-10 select-none shadow">
+        صفحہ {pageNum} (لوڈ ہو رہا ہے...)
+      </div>
+      <div className="animate-pulse flex flex-col items-center gap-2">
+        <div className="w-8 h-8 rounded-full border-2 border-slate-800 border-t-slate-600 animate-spin" />
+      </div>
+    </div>
+  );
+}
+
 interface BookmarkType {
   id?: string;
   bookId: string;
@@ -1010,17 +1061,29 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
             </div>
           ) : (
             <>
-              {isScrollMode ? (
+               {isScrollMode ? (
                 <div className="w-full flex flex-col items-center gap-2 py-0">
-                  {Array.from({ length: numPages }, (_, index) => (
-                    <PDFPageRenderer
-                      key={index + 1}
-                      pdfDoc={pdfDoc}
-                      pageNum={index + 1}
-                      scale={scale}
-                      onVisible={(p) => setPageNum(p)}
-                    />
-                  ))}
+                  {Array.from({ length: numPages }, (_, index) => {
+                    const targetPageNum = index + 1;
+                    const isNear = Math.abs(targetPageNum - pageNum) <= 5;
+                    return isNear ? (
+                      <PDFPageRenderer
+                        key={targetPageNum}
+                        pdfDoc={pdfDoc}
+                        pageNum={targetPageNum}
+                        scale={scale}
+                        onVisible={(p) => setPageNum(p)}
+                      />
+                    ) : (
+                      <PDFPagePlaceholder
+                        key={targetPageNum}
+                        pageNum={targetPageNum}
+                        scale={scale}
+                        onVisible={(p) => setPageNum(p)}
+                        id={`reader-page-${targetPageNum}`}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="flex-1 w-full min-h-full flex flex-col items-center justify-center p-2 sm:p-4">
