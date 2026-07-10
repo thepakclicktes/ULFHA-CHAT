@@ -19,18 +19,19 @@ import {
   Smartphone,
   ArrowLeft,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  List
 } from 'lucide-react';
 import { cn } from '../utils';
 import QuranReader from './QuranReader';
 import HadithReader from './HadithReader';
-import MadrasaReader from './MadrasaReader';
 import NoorAIChat from './NoorAIChat';
-import IslamicLibrary from './IslamicLibrary';
+import IslamicLibrary, { CATEGORIES } from './IslamicLibrary';
 import TasbeehCounter from './TasbeehCounter';
 import DuasViewer from './DuasViewer';
 import PrayerTimesViewer from './PrayerTimesViewer';
 import OfflineLibrary from './OfflineLibrary';
+import CategorySelector from './CategorySelector';
 
 interface ExploreItem {
   id: string;
@@ -43,13 +44,13 @@ interface ExploreItem {
 export default function Explore() {
   const [showQuran, setShowQuran] = useState(false);
   const [showHadith, setShowHadith] = useState(false);
-  const [showMadrasa, setShowMadrasa] = useState(false);
   const [showNoorAI, setShowNoorAI] = useState(false);
   const [showIslamicLibrary, setShowIslamicLibrary] = useState(false);
   const [showOfflineLibrary, setShowOfflineLibrary] = useState(false);
   const [showTasbeeh, setShowTasbeeh] = useState(false);
   const [showDuas, setShowDuas] = useState(false);
   const [showPrayer, setShowPrayer] = useState(false);
+  const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [libraryCategory, setLibraryCategory] = useState('all');
 
   // Embedded viewer states
@@ -101,6 +102,13 @@ export default function Explore() {
       color: 'bg-emerald-700',
     },
     {
+      id: 'librarycategories',
+      title: 'Library Categories',
+      urduTitle: 'لائبریری زمرے',
+      icon: <List size={32} />,
+      color: 'bg-teal-700',
+    },
+    {
       id: 'offlinelibrary',
       title: 'Offline Library',
       urduTitle: 'آف لائن لائبریری',
@@ -120,13 +128,6 @@ export default function Explore() {
       urduTitle: 'حدیث مبارکہ',
       icon: <BookOpen size={32} />,
       color: 'bg-blue-500',
-    },
-    {
-      id: 'madrasa',
-      title: 'e-Madrasa',
-      urduTitle: 'ای مدرسہ',
-      icon: <GraduationCap size={32} />,
-      color: 'bg-emerald-600',
     },
     {
       id: 'prayer',
@@ -195,6 +196,9 @@ export default function Explore() {
         setLibraryCategory('all');
         setShowIslamicLibrary(true);
         break;
+      case 'librarycategories':
+        setShowCategorySelector(true);
+        break;
       case 'offlinelibrary':
         setShowOfflineLibrary(true);
         break;
@@ -203,9 +207,6 @@ export default function Explore() {
         break;
       case 'hadith':
         setShowHadith(true);
-        break;
-      case 'madrasa':
-        setShowMadrasa(true);
         break;
       case 'tasbeeh':
         setShowTasbeeh(true);
@@ -247,6 +248,14 @@ export default function Explore() {
     return <IslamicLibrary onBack={() => setShowIslamicLibrary(false)} defaultCategory={libraryCategory} />;
   }
 
+  if (showCategorySelector) {
+    return <CategorySelector onSelect={(id) => {
+      setLibraryCategory(id);
+      setShowIslamicLibrary(true);
+      setShowCategorySelector(false);
+    }} onBack={() => setShowCategorySelector(false)} />;
+  }
+
   if (showOfflineLibrary) {
     return <OfflineLibrary onBack={() => setShowOfflineLibrary(false)} />;
   }
@@ -257,10 +266,6 @@ export default function Explore() {
 
   if (showHadith) {
     return <HadithReader onBack={() => setShowHadith(false)} />;
-  }
-
-  if (showMadrasa) {
-    return <MadrasaReader onBack={() => setShowMadrasa(false)} />;
   }
 
   if (showTasbeeh) {
@@ -341,23 +346,24 @@ export default function Explore() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#f0f2f5] dark:bg-[#111b21] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#e7f5f1] dark:bg-[#111b21] overflow-hidden">
       {/* Header */}
-      <div className="bg-[#00a884] dark:bg-[#202c33] p-6 pt-8 pb-8 shadow-lg z-10 safe-area-top">
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-[#e7f5f1] dark:bg-[#202c33] px-4 py-3 sm:px-6 sm:py-5 border-b border-emerald-100 dark:border-white/5 z-10 safe-area-top">
+        <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-black text-white Urdu">ایکسپلور (Explore)</h1>
-            <p className="text-white/80 Urdu text-sm">اسلامی معلومات اور خدمات تک رسائی</p>
+            <h1 className="text-xl sm:text-3xl font-black text-[#008069] dark:text-white Urdu leading-tight">ایکسپلور (Explore)</h1>
+            <p className="text-[#008069]/80 Urdu text-[10px] sm:text-sm mt-0.5 sm:mt-1">اسلامی معلومات اور خدمات تک رسائی</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white">
-            <LayoutGrid size={24} />
+          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-[#00a884]/10 flex items-center justify-center text-[#00a884] shrink-0 ml-2">
+            <LayoutGrid className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>
 
       {/* Grid Content */}
-      <div className="scrollable-content p-4 md:p-6">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="scrollable-content p-3 sm:p-4 md:p-6 bg-[#e7f5f1] dark:bg-[#111b21]">
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 md:gap-6">
           {categories.map((item, index) => (
             <motion.button
               key={item.id}
@@ -365,18 +371,18 @@ export default function Explore() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               onClick={() => handleItemClick(item.id)}
-              className="group relative flex flex-col items-center justify-center p-6 bg-white dark:bg-[#202c33] rounded-[32px] shadow-sm hover:shadow-xl transition-all active:scale-95 border border-gray-100 dark:border-white/5"
+              className="group relative flex flex-col items-center justify-center p-3 sm:p-6 bg-white dark:bg-[#202c33] rounded-[16px] sm:rounded-[32px] shadow-sm hover:shadow-xl transition-all active:scale-95 border border-gray-100 dark:border-white/5"
             >
               <div className={cn(
-                "w-16 h-16 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 transition-transform",
+                "w-10 h-10 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-white mb-1.5 sm:mb-4 shadow-lg group-hover:scale-110 transition-transform",
                 item.color
               )}>
-                {item.icon}
+                {React.cloneElement(item.icon as React.ReactElement, { className: "w-5 h-5 sm:w-8 sm:h-8" })}
               </div>
-              <span className="text-[#111b21] dark:text-[#e9edef] font-bold text-sm text-center Urdu block mb-1">
+              <span className="text-[#111b21] dark:text-[#e9edef] font-bold text-[11px] sm:text-sm text-center Urdu block mb-0.5 sm:mb-1 leading-tight">
                 {item.urduTitle}
               </span>
-              <span className="text-[#667781] dark:text-[#8696a0] text-[10px] font-bold uppercase tracking-widest text-center">
+              <span className="text-[#667781] dark:text-[#8696a0] text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-center leading-tight mt-0.5">
                 {item.title}
               </span>
             </motion.button>

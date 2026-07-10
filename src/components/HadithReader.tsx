@@ -84,24 +84,24 @@ export default function HadithReader({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex flex-col h-full bg-[#f0f2f5] dark:bg-[#111b21]">
       {/* Header */}
-      <div className="bg-[#00a884] dark:bg-[#202c33] p-4 pt-10 shadow-md">
-        <div className="flex items-center gap-4 text-white">
+      <div className="bg-[#00a884] dark:bg-[#202c33] px-4 py-3 sm:px-6 sm:py-4 shadow-md safe-area-top">
+        <div className="flex items-center gap-2 sm:gap-4 text-white">
           <button 
             onClick={() => {
               if (view === 'reading') setView('sections');
               else if (view === 'sections') setView('books');
               else onBack();
             }} 
-            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors -ml-1 sm:ml-0"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           <div className="flex-1">
-            <h2 className="text-xl font-bold Urdu">{currentTitle}</h2>
-            <p className="text-[10px] opacity-80 uppercase tracking-widest font-bold">{currentSubtitle}</p>
+            <h2 className="text-base sm:text-xl font-bold Urdu leading-tight">{currentTitle}</h2>
+            <p className="text-[9px] sm:text-[10px] opacity-80 uppercase tracking-widest font-bold mt-0.5 sm:mt-1">{currentSubtitle}</p>
           </div>
           {view === 'reading' && (
-             <div className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-black Urdu">
+             <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-white/10 rounded-full text-[9px] sm:text-[10px] font-black Urdu">
                باب: {selectedSection}
              </div>
           )}

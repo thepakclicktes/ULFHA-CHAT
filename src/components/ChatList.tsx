@@ -1032,16 +1032,16 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
       </div>
 
       {/* Search Bar - styled like standard WhatsApp/Telegram, supports real-time global user searches */}
-      <div className="px-5 py-2.5 bg-white border-b border-[#F5F6F6] z-10">
-        <div className="relative flex items-center bg-[#F0F2F5] rounded-xl px-3 py-2 border border-transparent focus-within:border-[#008069] transition-all">
-          <Search size={18} className="text-[#667781] mr-2" />
+      <div className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-b border-[#F5F6F6] z-10">
+        <div className="relative flex items-center bg-[#F0F2F5] rounded-xl px-3 py-1.5 sm:py-2 border border-transparent focus-within:border-[#008069] transition-all">
+          <Search size={16} className="text-[#667781] mr-2" />
           <input
             id="chat-list-search-input"
             type="text"
             placeholder="Search email, username, or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent text-sm text-[#111B21] outline-none placeholder:text-[#667781]"
+            className="w-full bg-transparent text-xs sm:text-sm text-[#111B21] outline-none placeholder:text-[#667781]"
           />
           {searchTerm && (
             <button 

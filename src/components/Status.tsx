@@ -257,6 +257,7 @@ export default function Status({ profile }: StatusProps) {
         userId: profile.uid,
         displayName: profile.displayName || 'Anonymous',
         photoURL: profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName || 'U')}`,
+        isVerified: profile.isVerified || false,
         imageUrl: imageDataUrl || '',
         caption: caption.trim(),
         timestamp: serverTimestamp(),
@@ -308,6 +309,7 @@ export default function Status({ profile }: StatusProps) {
         userId: profile.uid,
         displayName: profile.displayName || 'Anonymous',
         photoURL: profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName || 'U')}`,
+        isVerified: profile.isVerified || false,
         text: text.trim(),
         timestamp: new Date().toISOString()
       };
@@ -341,6 +343,7 @@ export default function Status({ profile }: StatusProps) {
         postId: postToShare.id,
         userId: postToShare.userId,
         displayName: postToShare.displayName,
+        isVerified: postToShare.isVerified || false,
         caption: postToShare.caption,
         imageUrl: postToShare.imageUrl || '',
         photoURL: postToShare.photoURL || ''
@@ -350,6 +353,7 @@ export default function Status({ profile }: StatusProps) {
         userId: profile.uid,
         displayName: profile.displayName || 'Anonymous',
         photoURL: profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName || 'U')}`,
+        isVerified: profile.isVerified || false,
         caption: shareCaption.trim() || 'Shared a post',
         imageUrl: '', // Nest content rather than duplicate
         timestamp: serverTimestamp(),
@@ -387,21 +391,21 @@ export default function Status({ profile }: StatusProps) {
   };
 
   return (
-    <div className="flex-1 bg-[#F0F2F5] flex flex-col lg:flex-row overflow-hidden min-h-0">
+    <div className="flex-1 bg-[#e7f5f1] dark:bg-[#111b21] flex flex-col lg:flex-row overflow-hidden min-h-0">
       
       {/* LEFT SIDEBAR - My Profile Stats & App Info */}
-      <div className="hidden lg:flex w-[340px] bg-white border-r border-[#D1D7DB] flex-col overflow-hidden shrink-0">
-        <div className="p-4 bg-[#F0F2F5] border-b border-[#D1D7DB] flex items-center justify-between safe-area-top">
-          <h2 className="text-xl font-bold text-[#111B21]">Updates Hub</h2>
-          <div className="text-xs bg-[#00a884] text-white px-2 py-1 rounded font-semibold flex items-center gap-1">
-            <Sparkles size={12} /> Social Feed
+      <div className="hidden lg:flex w-[340px] bg-white dark:bg-[#111b21] border-r border-emerald-100 dark:border-white/5 flex-col overflow-hidden shrink-0">
+        <div className="p-4 bg-[#e7f5f1] dark:bg-[#202c33] border-b border-emerald-100 dark:border-white/5 flex items-center justify-between safe-area-top">
+          <h2 className="text-xl font-black text-[#008069] dark:text-white Urdu">اپڈیٹس (Updates)</h2>
+          <div className="text-xs bg-[#00a884] text-white px-2 py-1 rounded-lg font-bold flex items-center gap-1 shadow-sm">
+            <Sparkles size={12} /> سوشل فیڈ
           </div>
         </div>
 
         <div className="p-4 scrollable-content custom-scrollbar flex-1 space-y-4">
           
           {/* User Profile Summary Card */}
-          <div className="bg-gradient-to-br from-[#075E54] to-[#128C7E] text-white p-5 rounded-2xl shadow-md relative overflow-hidden">
+          <div className="bg-gradient-to-br from-[#00a884] to-[#008069] text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
             <div className="absolute top-0 right-0 transform translate-x-4 -translate-y-4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
             <div className="relative z-10 flex flex-col items-center text-center">
               <img 
@@ -411,34 +415,34 @@ export default function Status({ profile }: StatusProps) {
                 onClick={() => openUserProfile(profile.uid)}
                 alt=""
               />
-              <h3 className="font-bold text-lg leading-tight flex items-center gap-1 justify-center cursor-pointer hover:underline" onClick={() => openUserProfile(profile.uid)}>
+              <h3 className="font-bold text-lg leading-tight flex items-center gap-1 justify-center cursor-pointer hover:underline Urdu">
                 {profile.displayName}
                 {profile.isVerified && <ShieldCheck size={16} className="text-emerald-400 fill-white" />}
               </h3>
-              <p className="text-xs text-white/85 mb-3 font-mono">Level: {profile.level || 'Bronze'}</p>
+              <p className="text-[10px] text-white/85 mb-3 font-bold uppercase tracking-widest">Level: {profile.level || 'Bronze'}</p>
               
-              <div className="bg-white/15 px-3 py-1.5 rounded-full text-[11px] font-medium max-w-full truncate mb-3">
-                {profile.bio || 'No status yet...'}
+              <div className="bg-white/15 px-3 py-1.5 rounded-2xl text-[11px] font-bold Urdu max-w-full truncate mb-3">
+                {profile.bio || 'السلام علیکم! میں الفلاح چیٹ استعمال کر رہا ہوں۔'}
               </div>
 
               <button 
                 onClick={() => openUserProfile(profile.uid)}
-                className="w-full py-2 bg-white text-[#075E54] hover:bg-white/95 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-white text-[#008069] hover:bg-white/95 rounded-2xl text-xs font-black shadow-sm transition-all flex items-center justify-center gap-1.5 Urdu"
               >
                 <Users size={14} />
-                <span>View My Social Profile</span>
+                <span>سوشل پروفائل دیکھیں</span>
               </button>
             </div>
           </div>
 
           {/* App Knowledge & Developer Info Block */}
-          <div className="bg-[#f8f9fa] border border-gray-100 p-4 rounded-2xl">
-            <h4 className="font-bold text-[#111B21] text-sm mb-3 flex items-center gap-2">
-              <Sparkles size={16} className="text-amber-500 animate-pulse" /> Developer & App Info
+          <div className="bg-white/50 dark:bg-[#202c33]/50 border border-emerald-100 dark:border-white/5 p-4 rounded-2xl">
+            <h4 className="font-black text-[#008069] dark:text-white text-sm mb-3 flex items-center gap-2 Urdu">
+              <Sparkles size={16} className="text-amber-500 animate-pulse" /> ڈویلپر معلومات (Info)
             </h4>
-            <div className="space-y-2 text-xs text-[#667781] leading-relaxed">
+            <div className="space-y-2 text-xs text-[#008069]/80 dark:text-gray-400 leading-relaxed font-bold">
               <p>
-                <strong className="text-gray-900">Developer:</strong> <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold text-[11px]">Abdulrahman Habib</span>
+                <strong className="text-gray-900 dark:text-white">ڈویلپر:</strong> <span className="bg-[#00a884] text-white px-2 py-0.5 rounded-lg font-bold text-[10px]">عبدالرحمن حبیب</span>
               </p>
               <p>
                 <strong className="text-gray-900">Quran Reader:</strong> Pakistani 16-Lines Taj Company PDF with translation, search and 100% offline access.
@@ -456,25 +460,25 @@ export default function Status({ profile }: StatusProps) {
           <div className="grid grid-cols-2 gap-2 text-center text-xs">
             <button 
               onClick={() => openUserProfile(profile.uid)}
-              className="bg-purple-50 border border-purple-100 p-3 rounded-xl hover:bg-purple-100/50 transition-colors text-center flex flex-col items-center justify-center"
+              className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 p-3 rounded-2xl hover:bg-emerald-100/50 transition-colors text-center flex flex-col items-center justify-center shadow-sm"
             >
-              <p className="text-purple-600 font-bold text-lg">{myFollowers.length}</p>
-              <p className="text-purple-700/80 font-semibold text-[10px] uppercase">Followers</p>
+              <p className="text-emerald-600 dark:text-emerald-400 font-black text-lg">{myFollowers.length}</p>
+              <p className="text-emerald-700/80 dark:text-emerald-400/80 font-bold text-[9px] uppercase tracking-wider">Followers</p>
             </button>
             <button 
               onClick={() => openUserProfile(profile.uid)}
-              className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl hover:bg-indigo-100/50 transition-colors text-center flex flex-col items-center justify-center"
+              className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 p-3 rounded-2xl hover:bg-emerald-100/50 transition-colors text-center flex flex-col items-center justify-center shadow-sm"
             >
-              <p className="text-indigo-600 font-bold text-lg">{myFollowing.length}</p>
-              <p className="text-indigo-700/80 font-semibold text-[10px] uppercase">Following</p>
+              <p className="text-emerald-600 dark:text-emerald-400 font-black text-lg">{myFollowing.length}</p>
+              <p className="text-emerald-700/80 dark:text-emerald-400/80 font-bold text-[9px] uppercase tracking-wider">Following</p>
             </button>
-            <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex flex-col items-center justify-center">
-              <p className="text-blue-500 font-bold text-lg">
+            <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 p-3 rounded-2xl flex flex-col items-center justify-center shadow-sm">
+              <p className="text-emerald-600 dark:text-emerald-400 font-black text-lg">
                 {statuses.filter(s => s.userId === profile.uid).length}
               </p>
-              <p className="text-blue-700/80 font-semibold text-[10px] uppercase">My Posts</p>
+              <p className="text-emerald-700/80 dark:text-emerald-400/80 font-bold text-[9px] uppercase tracking-wider">My Posts</p>
             </div>
-            <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl flex flex-col items-center justify-center">
+            <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 p-3 rounded-2xl flex flex-col items-center justify-center shadow-sm">
               <p className="text-emerald-500 font-bold text-lg">
                 {statuses.filter(s => s.userId === profile.uid).reduce((acc, s) => acc + (s.views || []).length, 0)}
               </p>
@@ -490,10 +494,10 @@ export default function Status({ profile }: StatusProps) {
       </div>
 
       {/* MIDDLE TIMELINE FEED - Scrolling list of Facebook Posts */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col items-center py-4 px-3 sm:px-6 space-y-4">
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col items-center py-4 px-3 sm:px-6 space-y-4 bg-[#e7f5f1] dark:bg-[#111b21]">
         
         {/* Mobile Header (Collapse layout toggle or simpler top bar) */}
-        <div className="w-full max-w-2xl bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between border border-gray-100 lg:hidden">
+        <div className="w-full max-w-2xl bg-white dark:bg-[#202c33] rounded-2xl p-4 shadow-sm flex items-center justify-between border border-emerald-50 dark:border-white/5 lg:hidden">
           <div className="flex items-center gap-3">
             <img 
               src={profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName || 'U')}`} 
@@ -502,25 +506,28 @@ export default function Status({ profile }: StatusProps) {
               onClick={() => openUserProfile(profile.uid)}
             />
             <div>
-              <h3 className="font-bold text-gray-800 text-sm">{profile.displayName}</h3>
+              <h3 className="font-bold text-[#008069] dark:text-white text-sm flex items-center gap-1">
+                {profile.displayName}
+                {profile.isVerified && <ShieldCheck size={14} className="text-[#00a884] fill-white" />}
+              </h3>
               <button 
                 onClick={() => openUserProfile(profile.uid)}
-                className="text-xs text-emerald-600 font-semibold flex items-center gap-1 hover:underline text-left"
+                className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 hover:underline text-left"
               >
-                View Public Profile & Stats
+                پروفائل دیکھیں (Profile)
               </button>
             </div>
           </div>
           <button 
             onClick={() => setIsPostModalOpen(true)}
-            className="bg-[#00a884] text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-md flex items-center gap-1"
+            className="bg-[#00a884] text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-md flex items-center gap-1 active:scale-95 transition-transform"
           >
-            <Plus size={14} /> New Post
+            <Plus size={14} /> نئی پوسٹ
           </button>
         </div>
 
         {/* Facebook-style "What's on your mind?" Input Box */}
-        <div className="w-full max-w-2xl bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
+        <div className="w-full max-w-2xl bg-white dark:bg-[#202c33] rounded-2xl p-4 shadow-sm border border-emerald-50 dark:border-white/5 space-y-3">
           <div className="flex items-center gap-3">
             <img 
               src={profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName || 'U')}`} 
@@ -530,29 +537,29 @@ export default function Status({ profile }: StatusProps) {
             />
             <button 
               onClick={() => setIsPostModalOpen(true)}
-              className="flex-1 bg-[#F0F2F5] hover:bg-gray-200 text-left px-5 py-3 rounded-full text-sm text-gray-500 font-medium transition-colors"
+              className="flex-1 bg-[#e7f5f1] dark:bg-[#111b21] hover:bg-emerald-100/50 dark:hover:bg-white/5 text-left px-5 py-3 rounded-full text-sm text-[#008069]/60 dark:text-white/60 font-medium transition-colors"
             >
-              What's on your mind, {profile.displayName?.split(' ')[0]}?
+              کچھ شیئر کریں، {profile.displayName?.split(' ')[0]}؟
             </button>
           </div>
           
-          <div className="border-t border-gray-100 pt-2 flex justify-around items-center text-xs font-semibold text-gray-500">
+          <div className="border-t border-emerald-50 dark:border-white/5 pt-2 flex justify-around items-center text-[11px] font-black text-[#008069] dark:text-white/70">
             <button 
               onClick={() => setIsPostModalOpen(true)} 
-              className="flex items-center gap-2 hover:bg-gray-100 px-4 py-2 rounded-xl transition-colors"
+              className="flex items-center gap-2 hover:bg-emerald-50 dark:hover:bg-white/5 px-4 py-2 rounded-xl transition-colors"
             >
               <Image size={18} className="text-emerald-500" />
-              <span>Photo / Screenshot</span>
+              <span>تصویر / اسکرین شاٹ</span>
             </button>
             <button 
               onClick={() => {
                 setCaption("✨ Reading Islamic Library...");
                 setIsPostModalOpen(true);
               }} 
-              className="flex items-center gap-2 hover:bg-gray-100 px-4 py-2 rounded-xl transition-colors"
+              className="flex items-center gap-2 hover:bg-emerald-50 dark:hover:bg-white/5 px-4 py-2 rounded-xl transition-colors"
             >
               <BookOpen size={18} className="text-blue-500" />
-              <span>Recommend Book</span>
+              <span>کتاب کی سفارش</span>
             </button>
           </div>
         </div>
@@ -587,17 +594,18 @@ export default function Status({ profile }: StatusProps) {
                         alt=""
                       />
                       <div>
-                        <h3 className="font-bold text-gray-900 text-[14px] sm:text-base flex items-center gap-1">
+                        <h3 className="font-bold text-[#008069] dark:text-white text-[14px] sm:text-base flex items-center gap-1.5">
                           <span className="cursor-pointer hover:underline" onClick={() => openUserProfile(post.userId)}>{post.displayName}</span>
+                          {post.isVerified && <ShieldCheck size={14} className="text-[#00a884] fill-white" />}
                           {isShared && (
-                            <span className="text-xs text-gray-500 font-normal flex items-center gap-1 ml-1">
-                              <Share2 size={12} className="text-emerald-500" /> shared a post
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold flex items-center gap-1 ml-1 Urdu">
+                              <Share2 size={12} className="text-emerald-500" /> نے ایک پوسٹ شیئر کی
                             </span>
                           )}
                         </h3>
-                        <p className="text-[11px] text-gray-400 flex items-center gap-1 font-semibold">
+                        <p className="text-[10px] text-gray-400 flex items-center gap-1 font-bold">
                           <Globe size={11} />
-                          <span>{post.timestamp ? formatChatDate(toSafeDate(post.timestamp)) : 'Just now'}</span>
+                          <span>{post.timestamp ? formatChatDate(toSafeDate(post.timestamp)) : 'ابھی ابھی'}</span>
                         </p>
                       </div>
                     </div>
@@ -651,8 +659,11 @@ export default function Status({ profile }: StatusProps) {
                           alt=""
                         />
                         <div>
-                          <h4 className="font-bold text-gray-800 text-xs cursor-pointer hover:underline" onClick={() => openUserProfile(post.sharedFrom.userId)}>{post.sharedFrom.displayName}</h4>
-                          <p className="text-[10px] text-gray-400">Original post</p>
+                          <h4 className="font-bold text-[#008069] dark:text-white text-xs cursor-pointer hover:underline flex items-center gap-1" onClick={() => openUserProfile(post.sharedFrom.userId)}>
+                            {post.sharedFrom.displayName}
+                            {post.sharedFrom.isVerified && <ShieldCheck size={12} className="text-[#00a884] fill-white" />}
+                          </h4>
+                          <p className="text-[9px] text-gray-400 font-bold Urdu">اصل پوسٹ (Original)</p>
                         </div>
                       </div>
                       <div className="px-3 pb-3">
@@ -713,38 +724,38 @@ export default function Status({ profile }: StatusProps) {
                   </div>
 
                   {/* Facebook Action Buttons (Like, Comment, Share) */}
-                  <div className="border-t border-b border-gray-100 px-2 py-1 flex items-center justify-around text-xs font-bold text-gray-600">
+                  <div className="border-t border-b border-emerald-50 dark:border-white/5 px-2 py-1 flex items-center justify-around text-xs font-black text-[#008069] dark:text-white/70">
                     <button 
                       onClick={() => handleToggleLike(post)}
                       className={cn(
-                        "flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95",
-                        isLiked ? "text-blue-600" : "hover:text-gray-800"
+                        "flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-emerald-50 dark:hover:bg-white/5 active:scale-95 Urdu",
+                        isLiked ? "text-[#00a884]" : "hover:text-[#008069]"
                       )}
                     >
-                      <ThumbsUp size={16} className={cn(isLiked && "fill-blue-600 text-blue-600")} />
-                      <span>Like</span>
+                      <ThumbsUp size={16} className={cn(isLiked && "fill-[#00a884] text-[#00a884]")} />
+                      <span>پسند (Like)</span>
                     </button>
                     
                     <button 
                       onClick={() => setOpenComments(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
-                      className="flex-1 py-2 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 py-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-2 Urdu"
                     >
-                      <MessageSquare size={16} className="text-gray-500" />
-                      <span>Comment</span>
+                      <MessageSquare size={16} className="text-emerald-500" />
+                      <span>تبصرہ (Comment)</span>
                     </button>
                     
                     <button 
                       onClick={() => triggerShare(post)}
-                      className="flex-1 py-2 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 py-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-2 Urdu"
                     >
-                      <Share2 size={16} className="text-gray-500" />
-                      <span>Share</span>
+                      <Share2 size={16} className="text-emerald-500" />
+                      <span>شیئر (Share)</span>
                     </button>
                   </div>
 
                   {/* REAL-TIME COMMENTS LIST & INPUT (Facebook Style) */}
                   {openComments[post.id] && (
-                    <div className="bg-[#f8f9fa] border-t border-gray-100 p-4 space-y-4 animate-in fade-in duration-300">
+                    <div className="bg-[#e7f5f1] dark:bg-[#202c33] border-t border-emerald-50 dark:border-white/5 p-4 space-y-4 animate-in fade-in duration-300">
                       
                       {/* Comments Scroller */}
                       {comments.length > 0 && (
@@ -753,17 +764,21 @@ export default function Status({ profile }: StatusProps) {
                             <div key={comm.id} className="flex gap-2 items-start text-xs">
                               <img 
                                 src={comm.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(comm.displayName || 'U')}`} 
-                                className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5" 
+                                className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5 border border-emerald-100" 
                                 referrerPolicy="no-referrer"
                                 alt=""
+                                onClick={() => openUserProfile(comm.userId)}
                               />
                               <div className="flex-1">
-                                <div className="bg-gray-100 p-2.5 rounded-2xl max-w-[90%] inline-block">
-                                  <h4 className="font-bold text-gray-900 mb-0.5">{comm.displayName}</h4>
-                                  <p className="text-gray-700 break-words leading-relaxed select-text">{comm.text}</p>
+                                <div className="bg-white dark:bg-[#111b21] p-2.5 rounded-2xl max-w-[90%] inline-block shadow-sm border border-emerald-50 dark:border-white/5">
+                                  <h4 className="font-bold text-[#008069] dark:text-white mb-0.5 flex items-center gap-1.5">
+                                    <span className="hover:underline cursor-pointer" onClick={() => openUserProfile(comm.userId)}>{comm.displayName}</span>
+                                    {comm.isVerified && <ShieldCheck size={12} className="text-[#00a884] fill-white" />}
+                                  </h4>
+                                  <p className="text-[#008069]/80 dark:text-gray-300 break-words leading-relaxed select-text font-bold Urdu">{comm.text}</p>
                                 </div>
-                                <p className="text-[9px] text-gray-400 ml-2 mt-1">
-                                  {comm.timestamp ? formatChatDate(new Date(comm.timestamp)) : 'Just now'}
+                                <p className="text-[9px] text-gray-400 ml-2 mt-1 font-bold">
+                                  {comm.timestamp ? formatChatDate(new Date(comm.timestamp)) : 'ابھی ابھی'}
                                 </p>
                               </div>
                             </div>
@@ -775,15 +790,15 @@ export default function Status({ profile }: StatusProps) {
                       <div className="flex items-center gap-2">
                         <img 
                           src={profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName || 'U')}`} 
-                          className="w-8 h-8 rounded-full object-cover shrink-0" 
+                          className="w-8 h-8 rounded-full object-cover shrink-0 border border-emerald-100" 
                           referrerPolicy="no-referrer"
                           alt=""
                         />
-                        <div className="flex-1 flex bg-white border border-gray-200 rounded-full overflow-hidden shadow-inner px-3 py-1 items-center">
+                        <div className="flex-1 flex bg-white dark:bg-[#111b21] border border-emerald-100 dark:border-white/5 rounded-full overflow-hidden shadow-inner px-3 py-1 items-center">
                           <input 
                             type="text"
-                            placeholder="Write a comment..."
-                            className="flex-1 bg-transparent text-xs py-1.5 px-1 outline-none text-gray-800"
+                            placeholder="تبصرہ لکھیں (Write a comment...)"
+                            className="flex-1 bg-transparent text-xs py-1.5 px-1 outline-none text-[#008069] dark:text-white placeholder-[#008069]/40 dark:placeholder-white/40 font-bold Urdu"
                             value={commentInputs[post.id] || ''}
                             onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
                             onKeyDown={(e) => {
@@ -794,7 +809,7 @@ export default function Status({ profile }: StatusProps) {
                           />
                           <button 
                             onClick={() => handleAddComment(post.id)}
-                            className="p-1 text-emerald-500 hover:text-emerald-600 transition-colors"
+                            className="p-1 text-[#00a884] hover:scale-110 transition-transform"
                           >
                             <Send size={15} />
                           </button>
@@ -808,10 +823,10 @@ export default function Status({ profile }: StatusProps) {
             })}
 
             {statuses.length === 0 && (
-              <div className="bg-white rounded-2xl p-12 text-center text-gray-400 border border-gray-100 shadow-sm w-full">
+              <div className="bg-white dark:bg-[#202c33] rounded-3xl p-12 text-center text-[#008069]/40 border border-emerald-100 dark:border-white/5 shadow-sm w-full">
                 <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
-                <p className="font-semibold text-gray-600 mb-1">No timeline posts yet.</p>
-                <p className="text-xs">Be the first to share an update, screenshot, or book review!</p>
+                <p className="font-black text-[#008069] dark:text-white mb-1 Urdu">کوئی پوسٹ نہیں ملی۔</p>
+                <p className="text-xs Urdu font-bold">اپنے خیالات یا کتب کا تبصرہ شیئر کرنے والے پہلے شخص بنیں!</p>
               </div>
             )}
           </AnimatePresence>
@@ -827,14 +842,14 @@ export default function Status({ profile }: StatusProps) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-gray-100 flex flex-col"
+              className="bg-[#e7f5f1] dark:bg-[#1c272d] w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-emerald-100 dark:border-white/5 flex flex-col"
             >
               {/* Header */}
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="font-bold text-[#111B21] text-lg text-center flex-1">Create Post</h3>
+              <div className="p-4 border-b border-emerald-100 dark:border-white/5 flex items-center justify-between bg-[#e7f5f1] dark:bg-[#202c33]">
+                <h3 className="font-black text-[#008069] dark:text-white text-lg text-center flex-1 Urdu">پوسٹ بنائیں (Create Post)</h3>
                 <button 
                   onClick={() => { setIsPostModalOpen(false); setImageDataUrl(''); }} 
-                  className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-all"
+                  className="text-[#008069] dark:text-white/70 hover:bg-[#00a884]/10 p-2 rounded-full transition-all"
                 >
                   <X size={20} />
                 </button>
@@ -852,8 +867,11 @@ export default function Status({ profile }: StatusProps) {
                     alt=""
                   />
                   <div>
-                    <h4 className="font-bold text-gray-900 text-sm">{profile.displayName}</h4>
-                    <span className="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 w-fit mt-0.5">
+                    <h4 className="font-bold text-[#008069] dark:text-white text-sm flex items-center gap-1">
+                      {profile.displayName}
+                      {profile.isVerified && <ShieldCheck size={14} className="text-[#00a884] fill-white" />}
+                    </h4>
+                    <span className="bg-[#00a884]/10 text-[#00a884] dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 w-fit mt-0.5">
                       <Globe size={10} /> Public
                     </span>
                   </div>
@@ -862,15 +880,15 @@ export default function Status({ profile }: StatusProps) {
                 {/* Text editor */}
                 <textarea 
                   rows={4}
-                  placeholder={`What's on your mind, ${profile.displayName?.split(' ')[0]}? Share screen, earnings or books...`}
-                  className="w-full bg-transparent border-0 outline-none resize-none text-gray-800 placeholder-gray-400 text-[15px] focus:ring-0 px-1"
+                  placeholder={`آپ کے ذہن میں کیا ہے، ${profile.displayName?.split(' ')[0]}؟ اسکرین شاٹ یا کتب شیئر کریں...`}
+                  className="w-full bg-transparent border-0 outline-none resize-none text-[#008069] dark:text-white placeholder-[#008069]/40 dark:placeholder-white/40 text-[15px] font-bold focus:ring-0 px-1 Urdu"
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                 />
 
                 {/* Base64 Image Preview block */}
                 {imageDataUrl && (
-                  <div className="relative rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 max-h-60 flex items-center justify-center">
+                  <div className="relative rounded-2xl overflow-hidden border border-emerald-100 dark:border-white/5 bg-white dark:bg-[#111b21] max-h-60 flex items-center justify-center shadow-inner">
                     <img src={imageDataUrl} className="max-w-full max-h-60 object-contain" alt="Selected thumbnail" />
                     <button 
                       onClick={() => setImageDataUrl('')}
@@ -883,8 +901,8 @@ export default function Status({ profile }: StatusProps) {
                 )}
 
                 {/* File picker triggers */}
-                <div className="border border-gray-200 rounded-2xl p-3 flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-600">Add to your post</span>
+                <div className="border border-emerald-100 dark:border-white/5 rounded-2xl p-3 flex items-center justify-between bg-white dark:bg-[#111b21]">
+                  <span className="text-xs font-black text-[#008069] dark:text-white/70 Urdu">پوسٹ میں شامل کریں (Add)</span>
                   <div className="flex items-center gap-1">
                     <input 
                       type="file" 
@@ -895,7 +913,7 @@ export default function Status({ profile }: StatusProps) {
                     />
                     <button 
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-2.5 hover:bg-emerald-50 rounded-full text-emerald-500 hover:text-emerald-600 transition-colors"
+                      className="p-2.5 hover:bg-[#00a884]/10 rounded-full text-[#00a884] transition-colors"
                       title="Attach Photo"
                     >
                       <Camera size={20} />
@@ -905,15 +923,15 @@ export default function Status({ profile }: StatusProps) {
               </div>
 
               {/* Footer */}
-              <div className="p-4 border-t border-gray-100">
+              <div className="p-4 border-t border-emerald-100 dark:border-white/5">
                 <button 
                   onClick={handlePostStatus}
                   disabled={loading || (!caption.trim() && !imageDataUrl)}
-                  className="w-full bg-[#00a884] text-white font-bold py-3.5 rounded-2xl shadow-lg hover:bg-[#008f70] transition-all disabled:opacity-50 h-12 flex items-center justify-center"
+                  className="w-full bg-[#00a884] text-white font-black py-3.5 rounded-2xl shadow-lg hover:bg-[#008f70] transition-all disabled:opacity-50 h-12 flex items-center justify-center Urdu"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : 'Post Now'}
+                  ) : 'پوسٹ کریں (Post Now)'}
                 </button>
               </div>
 
@@ -930,14 +948,14 @@ export default function Status({ profile }: StatusProps) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-gray-100 flex flex-col"
+              className="bg-[#e7f5f1] dark:bg-[#1c272d] w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-emerald-100 dark:border-white/5 flex flex-col"
             >
               {/* Header */}
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="font-bold text-[#111B21] text-lg text-center flex-1">Share to your Timeline</h3>
+              <div className="p-4 border-b border-emerald-100 dark:border-white/5 flex items-center justify-between bg-[#e7f5f1] dark:bg-[#202c33]">
+                <h3 className="font-black text-[#008069] dark:text-white text-lg text-center flex-1 Urdu">ٹائم لائن پر شیئر کریں (Share)</h3>
                 <button 
                   onClick={() => { setIsShareModalOpen(false); setPostToShare(null); }} 
-                  className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-all"
+                  className="text-[#008069] dark:text-white/70 hover:bg-[#00a884]/10 p-2 rounded-full transition-all"
                 >
                   <X size={20} />
                 </button>
@@ -949,14 +967,14 @@ export default function Status({ profile }: StatusProps) {
                 {/* Quote text editor */}
                 <textarea 
                   rows={3}
-                  placeholder="Say something about this post... (optional)"
-                  className="w-full bg-transparent border-0 outline-none resize-none text-gray-800 placeholder-gray-400 text-[14px] focus:ring-0 px-1"
+                  placeholder="اس پوسٹ کے بارے میں کچھ کہیں... (اختیاری)"
+                  className="w-full bg-transparent border-0 outline-none resize-none text-[#008069] dark:text-white placeholder-[#008069]/40 dark:placeholder-white/40 text-[14px] font-bold focus:ring-0 px-1 Urdu"
                   value={shareCaption}
                   onChange={(e) => setShareCaption(e.target.value)}
                 />
 
                 {/* Embedded preview block */}
-                <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50/50 space-y-3">
+                <div className="border border-emerald-100 dark:border-white/5 rounded-2xl p-3 bg-white dark:bg-[#111b21] space-y-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <img 
                       src={postToShare.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(postToShare.displayName || 'U')}`} 
@@ -964,15 +982,18 @@ export default function Status({ profile }: StatusProps) {
                       alt=""
                     />
                     <div>
-                      <h4 className="font-bold text-gray-800 text-xs">{postToShare.displayName}</h4>
-                      <p className="text-[9px] text-gray-400">Original post</p>
+                      <h4 className="font-bold text-[#008069] dark:text-white text-xs flex items-center gap-1">
+                        {postToShare.displayName}
+                        {postToShare.isVerified && <ShieldCheck size={12} className="text-[#00a884] fill-white" />}
+                      </h4>
+                      <p className="text-[9px] text-gray-400 Urdu font-bold">اصل پوسٹ (Original)</p>
                     </div>
                   </div>
-                  <p className="text-gray-700 text-xs line-clamp-3 select-text">{postToShare.caption}</p>
+                  <p className="text-[#008069]/80 dark:text-white/80 text-xs line-clamp-3 select-text font-bold">{postToShare.caption}</p>
                   {postToShare.imageUrl && (
                     <img 
                       src={postToShare.imageUrl} 
-                      className="w-full h-auto max-h-48 object-cover rounded-xl" 
+                      className="w-full h-auto max-h-48 object-cover rounded-xl shadow-sm border border-emerald-50 dark:border-white/5" 
                       alt=""
                       referrerPolicy="no-referrer"
                     />
@@ -982,15 +1003,15 @@ export default function Status({ profile }: StatusProps) {
               </div>
 
               {/* Footer */}
-              <div className="p-4 border-t border-gray-100">
+              <div className="p-4 border-t border-emerald-100 dark:border-white/5">
                 <button 
                   onClick={handleSharePost}
                   disabled={loading}
-                  className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-2xl shadow-lg hover:bg-blue-700 transition-all disabled:opacity-50 h-12 flex items-center justify-center"
+                  className="w-full bg-[#00a884] text-white font-black py-3.5 rounded-2xl shadow-lg hover:bg-[#008f70] transition-all disabled:opacity-50 h-12 flex items-center justify-center Urdu"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : 'Share Now'}
+                  ) : 'ابھی شیئر کریں (Share Now)'}
                 </button>
               </div>
 
@@ -1043,18 +1064,18 @@ export default function Status({ profile }: StatusProps) {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-[#1c272d] w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="bg-[#e7f5f1] dark:bg-[#1c272d] w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="bg-[#075E54] dark:bg-[#202c33] p-4 text-white flex items-center justify-between shadow-md shrink-0">
+              <div className="bg-[#e7f5f1] dark:bg-[#202c33] p-4 border-b border-emerald-100 dark:border-white/5 text-[#008069] dark:text-white flex items-center justify-between shadow-sm shrink-0">
                 <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-white" />
-                  <h3 className="text-lg font-bold text-white">Public Profile</h3>
+                  <Users className="w-5 h-5 text-[#008069] dark:text-white" />
+                  <h3 className="text-lg font-black Urdu">پبلک پروفائل (Public Profile)</h3>
                 </div>
                 <button 
                   onClick={() => setIsProfileDetailOpen(false)} 
-                  className="p-1.5 hover:bg-white/10 rounded-full text-white transition-colors"
+                  className="p-1.5 hover:bg-[#00a884]/10 rounded-full text-[#008069] dark:text-white transition-colors"
                 >
                   <X size={20} />
                 </button>
@@ -1064,7 +1085,7 @@ export default function Status({ profile }: StatusProps) {
               <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
                 
                 {/* Profile Top Banner / Card */}
-                <div className="bg-gradient-to-br from-[#075E54] via-[#128C7E] to-[#25D366] text-white p-6 rounded-2xl shadow-md relative overflow-hidden flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                <div className="bg-gradient-to-br from-[#00a884] via-[#008069] to-[#00a884] text-white p-6 rounded-3xl shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
                   <div className="absolute top-0 right-0 transform translate-x-8 -translate-y-8 w-36 h-36 bg-white/10 rounded-full blur-2xl" />
                   
                   {/* Photo with frame */}
@@ -1075,7 +1096,7 @@ export default function Status({ profile }: StatusProps) {
                       alt=""
                     />
                     {selectedUserDoc?.isVerified && (
-                      <span className="absolute bottom-1 right-1 bg-blue-500 text-white rounded-full p-1 shadow border border-white">
+                      <span className="absolute bottom-1 right-1 bg-[#00a884] text-white rounded-full p-1 shadow border border-white animate-bounce-slow">
                         <ShieldCheck size={14} className="fill-white" />
                       </span>
                     )}
@@ -1083,12 +1104,13 @@ export default function Status({ profile }: StatusProps) {
 
                   {/* Info block */}
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-2xl font-extrabold flex items-center gap-2 justify-center md:justify-start">
+                    <h2 className="text-2xl font-black flex items-center gap-2 justify-center md:justify-start Urdu">
                       <span className="truncate">{selectedUserDoc?.displayName || 'Ulfah Member'}</span>
+                      {selectedUserDoc?.isVerified && <ShieldCheck size={20} className="fill-white shrink-0" />}
                     </h2>
-                    <p className="text-xs text-emerald-100 font-mono mt-1">Level: {selectedUserDoc?.level || 'Bronze'}</p>
-                    <p className="text-sm text-white/90 italic mt-3 bg-white/10 px-4 py-2 rounded-xl border border-white/5 inline-block max-w-full">
-                      {selectedUserDoc?.bio || 'Hey there! I am using Ulfah Chat.'}
+                    <p className="text-[10px] text-emerald-100 font-bold uppercase tracking-widest mt-1">Level: {selectedUserDoc?.level || 'Bronze'}</p>
+                    <p className="text-sm text-white/95 font-bold Urdu mt-3 bg-white/10 px-4 py-2 rounded-2xl border border-white/5 inline-block max-w-full">
+                      {selectedUserDoc?.bio || 'السلام علیکم! میں الفلاح چیٹ استعمال کر رہا ہوں۔'}
                     </p>
                   </div>
 
@@ -1307,17 +1329,17 @@ export default function Status({ profile }: StatusProps) {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-[#1c272d] w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[70vh]"
+              className="bg-[#e7f5f1] dark:bg-[#1c272d] w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[70vh] border border-emerald-100 dark:border-white/5"
             >
               {/* Header */}
-              <div className="bg-[#075E54] dark:bg-[#202c33] p-4 text-white flex items-center justify-between shadow-md shrink-0">
+              <div className="bg-[#e7f5f1] dark:bg-[#202c33] p-4 text-[#008069] dark:text-white flex items-center justify-between border-b border-emerald-100 dark:border-white/5 shrink-0">
                 <div className="flex items-center gap-2">
-                  <ThumbsUp className="w-4 h-4 text-white fill-white" />
-                  <h3 className="text-base font-bold text-white">Liked By</h3>
+                  <ThumbsUp className="w-4 h-4 text-[#008069] dark:text-white fill-[#008069] dark:fill-white" />
+                  <h3 className="text-base font-black Urdu">پسند کرنے والے (Liked By)</h3>
                 </div>
                 <button 
                   onClick={() => setLikesModalPost(null)} 
-                  className="p-1 hover:bg-white/10 rounded-full text-white transition-colors"
+                  className="p-1 hover:bg-[#00a884]/10 rounded-full text-[#008069] dark:text-white transition-colors"
                 >
                   <X size={18} />
                 </button>
@@ -1326,12 +1348,12 @@ export default function Status({ profile }: StatusProps) {
               {/* Scrollable Likes List */}
               <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
                 {loadingLikesDetails ? (
-                  <div className="text-center py-8 text-gray-500 font-semibold text-xs animate-pulse">
-                    Loading likes details...
+                  <div className="text-center py-8 text-[#008069]/60 dark:text-white/40 font-bold text-xs animate-pulse">
+                    لوڈنگ (Loading)...
                   </div>
                 ) : likedUsersDetails.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400 dark:text-gray-500 italic text-xs">
-                    No likes details available.
+                  <div className="text-center py-8 text-[#008069]/40 dark:text-gray-500 italic text-xs">
+                    کوئی ڈیٹا نہیں ملا۔
                   </div>
                 ) : (
                   likedUsersDetails.map((user: any) => (
@@ -1341,23 +1363,23 @@ export default function Status({ profile }: StatusProps) {
                         setLikesModalPost(null);
                         openUserProfile(user.uid);
                       }}
-                      className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl cursor-pointer transition-colors"
+                      className="flex items-center justify-between p-2 hover:bg-white dark:hover:bg-white/5 rounded-2xl cursor-pointer transition-colors shadow-sm"
                     >
                       <div className="flex items-center gap-3">
                         <img 
                           src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'U')}`}
-                          className="w-10 h-10 rounded-full object-cover border border-gray-100"
+                          className="w-10 h-10 rounded-full object-cover border border-emerald-50 shadow-sm"
                           alt=""
                         />
                         <div>
-                          <h4 className="font-bold text-gray-800 dark:text-gray-200 text-xs flex items-center gap-1 hover:underline">
+                          <h4 className="font-bold text-[#008069] dark:text-gray-200 text-xs flex items-center gap-1.5 hover:underline">
                             <span>{user.displayName}</span>
-                            {user.isVerified && <ShieldCheck size={13} className="text-emerald-500" />}
+                            {user.isVerified && <ShieldCheck size={13} className="text-[#00a884] fill-white" />}
                           </h4>
-                          <p className="text-[10px] text-gray-400">Level: {user.level || 'Bronze'}</p>
+                          <p className="text-[10px] text-gray-400 font-bold">Level: {user.level || 'Bronze'}</p>
                         </div>
                       </div>
-                      <span className="text-[10px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-bold">
+                      <span className="text-[9px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-black uppercase tracking-wider">
                         Liked
                       </span>
                     </div>

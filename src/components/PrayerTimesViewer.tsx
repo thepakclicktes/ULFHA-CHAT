@@ -158,18 +158,18 @@ export default function PrayerTimesViewer({ onBack }: { onBack: () => void }) {
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-[0.03] pointer-events-none" />
 
       {/* Header */}
-      <div className="bg-[#00a884] dark:bg-[#202c33] p-4 pt-10 pb-4 shadow-md z-10 flex items-center justify-between shrink-0 text-white">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            <ArrowLeft size={24} />
+      <div className="bg-[#00a884] dark:bg-[#202c33] px-4 py-3 sm:px-6 sm:py-4 shadow-md z-10 flex items-center justify-between shrink-0 text-white safe-area-top">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button onClick={onBack} className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors -ml-1 sm:ml-0">
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           <div>
-            <h2 className="text-xl font-bold Urdu">اوقاتِ نماز (Prayer Times)</h2>
-            <p className="text-white/80 text-xs Urdu">مستند پانچ وقت نماز کا نقشہ</p>
+            <h2 className="text-base sm:text-xl font-bold Urdu leading-tight">اوقاتِ نماز (Prayer Times)</h2>
+            <p className="text-white/80 text-[10px] sm:text-xs Urdu mt-0.5 sm:mt-1">مستند پانچ وقت نماز کا نقشہ</p>
           </div>
         </div>
-        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-yellow-300 animate-pulse">
-          <Clock size={20} />
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-yellow-300 animate-pulse shrink-0">
+          <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
       </div>
 

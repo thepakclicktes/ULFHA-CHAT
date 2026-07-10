@@ -139,22 +139,22 @@ export default function NoorAIChat({ onBack }: { onBack: () => void }) {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-[#f0f2f5] dark:bg-[#111b21] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#e7f5f1] dark:bg-[#111b21] overflow-hidden">
       {/* Header */}
-      <div className="bg-[#00a884] dark:bg-[#202c33] p-4 pt-10 pb-4 shadow-lg z-10 safe-area-top flex items-center justify-between">
-        <div className="flex items-center gap-3 text-white">
+      <div className="bg-[#e7f5f1] dark:bg-[#202c33] px-4 py-3 sm:px-6 sm:py-4 border-b border-emerald-100 dark:border-white/5 z-10 flex items-center justify-between shrink-0 safe-area-top">
+        <div className="flex items-center gap-2 sm:gap-3 text-[#008069] dark:text-white">
           <button 
             onClick={onBack} 
-            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            className="p-1.5 sm:p-2 hover:bg-[#00a884]/10 rounded-full transition-colors -ml-1 sm:ml-0 text-[#008069] dark:text-white"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           <div>
             <div className="flex items-center gap-1.5">
-              <Sparkles size={18} className="text-amber-200 animate-pulse shrink-0" />
-              <h2 className="text-xl font-bold Urdu">نور اے آئی (Noor AI)</h2>
+              <Sparkles className="text-[#008069] animate-pulse shrink-0 w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+              <h2 className="text-base sm:text-xl font-black Urdu leading-tight">نور اے آئی (Noor AI)</h2>
             </div>
-            <p className="text-white/80 text-[11px] Urdu">آن لائن اسلامی اسسٹنٹ (With Google Search Grounding)</p>
+            <p className="text-[#008069]/80 text-[9px] sm:text-[11px] Urdu mt-0.5 font-bold">آن لائن اسلامی اسسٹنٹ (With Google Search Grounding)</p>
           </div>
         </div>
         
@@ -311,7 +311,7 @@ export default function NoorAIChat({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* Input Bar */}
-        <div className="p-3 bg-white dark:bg-[#202c33] border-t border-gray-100 dark:border-white/5 flex items-center gap-2 relative z-10">
+        <div className="p-3 bg-[#e7f5f1] dark:bg-[#202c33] border-t border-emerald-100 dark:border-white/5 flex items-center gap-2 relative z-10">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}

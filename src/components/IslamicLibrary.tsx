@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Fuse from 'fuse.js';
 import { 
   ArrowLeft, 
   Search, 
@@ -40,7 +41,7 @@ export interface Book {
   }[];
 }
 
-const CATEGORIES = [
+export const CATEGORIES = [
   { id: 'tafseer', title: 'Tafseer', urdu: 'تفسير القرآن' },
   { id: 'hadith', title: 'Hadith', urdu: 'حدیث' },
   { id: 'fiqh', title: 'Fiqh & Fatawa', urdu: 'فقہ و فتاویٰ' },
@@ -49,7 +50,8 @@ const CATEGORIES = [
   { id: 'adab', title: 'Adab & Akhlaq', urdu: 'اخلاق و آداب' },
   { id: 'duas', title: 'Duas & Azkar', urdu: 'دعائیں اور اذکار' },
   { id: 'uloom', title: 'Quranic Sciences', urdu: 'علوم القرآن' },
-  { id: 'economics', title: 'Islamic Economics', urdu: 'اسلامی معیشت و مالیات' }
+  { id: 'economics', title: 'Islamic Economics', urdu: 'اسلامی معیشت و مالیات' },
+  { id: 'emadrasa', title: 'e-Madrasa', urdu: 'ای مدرسہ' }
 ];
 
 const BOOKS_DATA_CORE: Book[] = [
@@ -194,15 +196,28 @@ const BOOKS_DATA_CORE: Book[] = [
     category: 'aqaid'
   },
   {
-    id: 'a2',
-    title: 'Al-Aqidah At-Tahawiyyah',
-    urduTitle: 'العقيدة الطحاوية',
-    author: 'Imam Abu Ja\'far al-Tahawi',
-    urduAuthor: 'امام ابو جعفر طحاوی',
-    description: 'A foundational treatise summarizing the core, consensus beliefs of Ahl al-Sunnah wal-Jama\'ah.',
-    urduDescription: 'اہل سنت و جماعت کے متفقہ اور بنیادی عقائد کا خوبصورت اور معتبر ترین خلاصہ۔',
-    language: 'Arabic / Urdu',
-    category: 'aqaid'
+    id: 'em1',
+    title: 'Dora-e-Hadith Book 1',
+    urduTitle: 'دورہ حدیث - جلد ۱',
+    author: 'Author Name',
+    urduAuthor: 'مصنف کا نام',
+    description: 'Dora-e-Hadith books.',
+    urduDescription: 'دورہ حدیث کی کتابیں۔',
+    language: 'Urdu',
+    category: 'emadrasa',
+    url: 'https://archive.org/download/SahihAlBukhariUrduComplete8Volumes/Sahih-Al-Bukhari-Volume-1-Urdu.pdf'
+  },
+  {
+    id: 'em2',
+    title: 'Maufuf Alaih Book 1',
+    urduTitle: 'موقوف علیہ - جلد ۱',
+    author: 'Author Name',
+    urduAuthor: 'مصنف کا نام',
+    description: 'Maufuf Alaih books.',
+    urduDescription: 'موقوف علیہ کی کتابیں۔',
+    language: 'Urdu',
+    category: 'emadrasa',
+    url: 'https://archive.org/download/SahihAlBukhariUrduComplete8Volumes/Sahih-Al-Bukhari-Volume-2-Urdu.pdf'
   }
 ];
 
@@ -432,7 +447,16 @@ export default function IslamicLibrary({
     fetchBooks();
   }, []);
 
-  const allBooks = [...customBooks, ...BOOKS_DATA.filter(sysBook => !customBooks.some(cb => cb.id === sysBook.id))];
+  const [deletedSystemBooks, setDeletedSystemBooks] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('deleted_system_books');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const allBooks = [...customBooks, ...BOOKS_DATA.filter(sysBook => !customBooks.some(cb => cb.id === sysBook.id) && !deletedSystemBooks.includes(sysBook.id))];
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState(defaultCategory);
@@ -506,7 +530,6 @@ export default function IslamicLibrary({
     
     // Fallback if full book object is not found
     const displayTitle = book ? book.urduTitle : item.bookTitle;
-    const displayAuthor = book ? book.urduAuthor : 'مطالعہ جاری ہے';
     const progressPercent = Math.round((item.lastReadPage / item.numPages) * 100);
 
     const handleRecentClick = () => {
@@ -533,43 +556,24 @@ export default function IslamicLibrary({
       <div
         key={item.bookId}
         onClick={handleRecentClick}
-        className="snap-start cursor-pointer bg-white dark:bg-[#1e293b] p-3 rounded-2xl border border-gray-100/85 dark:border-slate-800/60 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between select-none flex-shrink-0 w-40 sm:w-64"
+        className="cursor-pointer flex flex-col gap-2 group transition-transform hover:scale-[1.02] w-full"
       >
         {/* Book Cover Container */}
-        <div className="relative aspect-[3/4] w-full mb-2 rounded-xl overflow-hidden bg-gray-50 dark:bg-[#0f172a] border border-gray-100 dark:border-slate-800 shadow-inner flex items-center justify-center group-hover:shadow transition-all duration-300">
+        <div className="relative aspect-[3/4] w-full rounded-md overflow-hidden border border-gray-300 dark:border-slate-600 shadow-sm flex items-center justify-center bg-gray-50 dark:bg-[#0f172a]">
           {book && book.coverUrl ? (
             <img 
               src={book.coverUrl} 
               alt={displayTitle} 
               referrerPolicy="no-referrer"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover"
             />
           ) : (
             /* Fallback book style */
             <div className={cn(
-              "w-full h-full p-4 flex flex-col justify-between text-left select-none relative overflow-hidden",
+              "w-full h-full flex flex-col items-center justify-center font-bold text-center Urdu select-none text-white p-2 text-xs",
               getCoverBg(item.bookId)
             )}>
-              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-black/10 backdrop-blur-xs" />
-              <div className="absolute right-2 top-2 opacity-10 text-4xl font-serif">﷽</div>
-              
-              <div className="text-[9px] uppercase font-bold tracking-wider opacity-75 Urdu">
-                حالیہ (Recent)
-              </div>
-              
-              <div className="my-auto space-y-1 py-1 text-center">
-                <h5 className="text-sm font-bold Urdu leading-tight line-clamp-3 text-white">
-                  {displayTitle}
-                </h5>
-                <p className="text-[10px] opacity-85 Urdu line-clamp-1">
-                  {displayAuthor}
-                </p>
-              </div>
-
-              <div className="flex justify-between items-center text-[9px] opacity-75 font-mono">
-                <span>PAGE {item.lastReadPage}</span>
-                <span>{progressPercent}%</span>
-              </div>
+              <span className="text-sm">{displayTitle.trim().charAt(0)}</span>
             </div>
           )}
 
@@ -582,14 +586,13 @@ export default function IslamicLibrary({
           </div>
         </div>
 
-        {/* Title & Progress */}
-        <div className="space-y-1 flex-1">
-          <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100 Urdu group-hover:text-[#00a884] transition-colors leading-snug line-clamp-1">
+        {/* Title */}
+        <div className="text-center">
+          <h4 className="text-[10px] font-bold text-gray-800 dark:text-slate-200 Urdu leading-tight line-clamp-2">
             {displayTitle}
           </h4>
-          <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-slate-400 font-medium">
-            <span className="Urdu">صفحہ {item.lastReadPage} / {item.numPages}</span>
-            <span className="font-mono">{progressPercent}%</span>
+          <div className="text-[9px] text-gray-500 dark:text-slate-400 font-medium mt-0.5 Urdu">
+            صفحہ {item.lastReadPage} / {item.numPages}
           </div>
         </div>
       </div>
@@ -764,47 +767,25 @@ export default function IslamicLibrary({
         key={book.id}
         onClick={() => setSelectedBook(book)}
         className={cn(
-          "snap-start cursor-pointer bg-white dark:bg-[#1e293b] p-3 rounded-2xl border border-gray-100/85 dark:border-slate-800/60 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between select-none",
-          isGrid ? "w-full" : "flex-shrink-0 w-40 sm:w-64"
+          "cursor-pointer flex flex-col gap-2 group transition-transform hover:scale-[1.02]",
+          isGrid ? "w-full" : "flex-shrink-0 w-36 sm:w-44"
         )}
       >
         {/* Book Cover Container */}
-        <div className="relative aspect-[3/4] w-full mb-2 rounded-xl overflow-hidden bg-gray-50 dark:bg-[#0f172a] border border-gray-100 dark:border-slate-800 shadow-inner flex items-center justify-center group-hover:shadow transition-all duration-300">
+        <div className="relative aspect-[3/4] w-full rounded-md overflow-hidden border border-gray-300 dark:border-slate-600 shadow-sm flex items-center justify-center bg-gray-50 dark:bg-[#0f172a]">
           {book.coverUrl ? (
             <img 
               src={book.coverUrl} 
               alt={book.title} 
               referrerPolicy="no-referrer"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover"
             />
           ) : (
-            /* Stunning fallback book-style card */
             <div className={cn(
-              "w-full h-full p-4 flex flex-col justify-between text-left select-none relative overflow-hidden",
+              "w-full h-full flex flex-col items-center justify-center font-bold text-center Urdu select-none text-white p-2 text-xs",
               getCoverBg(book.id)
             )}>
-              {/* Spine line */}
-              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-black/10 backdrop-blur-xs" />
-              {/* Arabic ornament */}
-              <div className="absolute right-2 top-2 opacity-10 text-4xl font-serif">﷽</div>
-              
-              <div className="text-[9px] uppercase font-bold tracking-wider opacity-75 Urdu">
-                {CATEGORIES.find(c => c.id === book.category)?.title || book.category}
-              </div>
-              
-              <div className="my-auto space-y-1 py-1 text-center">
-                <h5 className="text-sm font-bold Urdu leading-tight line-clamp-3 text-white">
-                  {book.urduTitle}
-                </h5>
-                <p className="text-[10px] opacity-85 Urdu line-clamp-1">
-                  {book.urduAuthor}
-                </p>
-              </div>
-
-              <div className="flex justify-between items-center text-[9px] opacity-75 font-mono">
-                <span>VOL. 1</span>
-                <span>{book.language.split('/')[0]}</span>
-              </div>
+              <span className="text-sm">{book.urduTitle.trim().charAt(0)}</span>
             </div>
           )}
 
@@ -812,17 +793,17 @@ export default function IslamicLibrary({
           <button
             onClick={(e) => toggleFavorite(book.id, e)}
             className={cn(
-              "absolute top-2 right-2 p-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 shadow-sm hover:shadow transition-all duration-200 z-10 hover:scale-110",
+              "absolute top-1 right-1 p-1 rounded-full bg-white/90 dark:bg-slate-900/90 shadow-sm transition-all duration-200 z-10",
               isFav ? "text-red-500" : "text-gray-400 hover:text-gray-600"
             )}
           >
-            <Heart size={14} fill={isFav ? "currentColor" : "none"} />
+            <Heart size={12} fill={isFav ? "currentColor" : "none"} />
           </button>
         </div>
 
         {/* Title */}
-        <div className="pt-2 flex-1 text-center flex items-center justify-center">
-          <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100 Urdu group-hover:text-[#00a884] transition-colors leading-snug line-clamp-2">
+        <div className="text-center">
+          <h4 className="text-[10px] font-bold text-gray-800 dark:text-slate-200 Urdu leading-tight line-clamp-3">
             {book.urduTitle}
           </h4>
         </div>
@@ -853,33 +834,25 @@ export default function IslamicLibrary({
 
   // Filter books across categories
   const getFilteredBooks = (catId: string) => {
-    return allBooks.filter(book => {
-      if (book.category !== catId) return false;
-      if (!searchQuery.trim()) return true;
-      
-      const query = searchQuery.toLowerCase();
-      return (
-        book.title.toLowerCase().includes(query) ||
-        book.urduTitle.includes(query) ||
-        book.author.toLowerCase().includes(query) ||
-        book.urduAuthor.includes(query) ||
-        book.description.toLowerCase().includes(query) ||
-        book.urduDescription.includes(query)
-      );
+    let filtered = allBooks;
+    if (catId !== 'all') {
+      filtered = filtered.filter(b => b.category === catId);
+    }
+    
+    if (!searchQuery.trim()) return filtered;
+    
+    const fuse = new Fuse(filtered, {
+      keys: ['title', 'urduTitle', 'author', 'urduAuthor', 'description', 'urduDescription'],
+      threshold: 0.4,
+      ignoreLocation: true,
+      minMatchCharLength: 2,
     });
+    
+    return fuse.search(searchQuery.trim()).map(result => result.item);
   };
 
-  const totalFilteredCount = allBooks.filter(book => {
-    if (activeCategory !== 'all' && book.category !== activeCategory) return false;
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      book.title.toLowerCase().includes(query) ||
-      book.urduTitle.includes(query) ||
-      book.author.toLowerCase().includes(query) ||
-      book.urduAuthor.includes(query)
-    );
-  }).length;
+  const filteredForActiveCategory = getFilteredBooks(activeCategory);
+  const totalFilteredCount = filteredForActiveCategory.length;
 
   const handleReadBook = (book: Book) => {
     if (book.url) {
@@ -1121,6 +1094,7 @@ export default function IslamicLibrary({
               bookUrl={readingBook.url!} 
               onClose={() => setReadingBook(null)} 
               onCached={(url) => setCachedBooks(prev => new Set(prev).add(url))}
+              pageOffset={readingBook.pageOffset}
             />
           )}
         </AnimatePresence>
@@ -1133,34 +1107,39 @@ export default function IslamicLibrary({
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-[#0f172a] overflow-hidden relative">
+    <div className="flex flex-col h-full bg-[#e7f5f1] dark:bg-[#0f172a] overflow-hidden relative">
       {/* Arabic Decorative BG pattern */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-[0.03] dark:opacity-[0.01] pointer-events-none" />
 
       {/* Header */}
-      <div className="bg-[#00a884] dark:bg-[#1e293b] p-4 pt-10 pb-4 shadow-md z-10 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3 text-white">
+      <div className="bg-[#e7f5f1] dark:bg-[#1e293b] px-4 py-3 sm:px-6 sm:py-4 border-b border-emerald-100 dark:border-gray-800 z-10 flex items-center justify-between shrink-0 safe-area-top">
+        <div className="flex items-center gap-2 sm:gap-3 text-[#008069] dark:text-white">
           <button 
             onClick={onBack} 
-            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            className="p-1.5 sm:p-2 hover:bg-[#00a884]/10 rounded-full transition-colors -ml-1 sm:ml-0 text-[#008069] dark:text-white"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           <div>
-            <h2 className="text-xl font-bold Urdu">اسلامی لائبریری (Islamic Library)</h2>
-            <p className="text-white/80 text-xs Urdu">معتبر اور مستند کتب کا علمی مرکز</p>
+            <h2 className="text-base sm:text-xl font-black Urdu leading-tight">اسلامی لائبریری (Islamic Library)</h2>
+            <p className="text-[#008069]/80 text-[10px] sm:text-xs Urdu mt-0.5 sm:mt-1 font-bold">معتبر اور مستند کتب کا علمی مرکز</p>
           </div>
         </div>
       </div>
 
       {/* Outlined Search Bar Section & Category Pills */}
-      <div className="p-4 bg-white dark:bg-[#1e293b] border-b border-gray-100 dark:border-gray-800 z-10 shrink-0 space-y-3">
+      <div className="p-4 bg-[#e7f5f1] dark:bg-[#1e293b] border-b border-emerald-100 dark:border-gray-800 z-10 shrink-0 space-y-3">
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (e.target.value.trim() !== '') {
+                setActiveCategory('all');
+              }
+            }}
             placeholder="کتاب کا نام یا مصنف سرچ کریں (Search books or authors...)"
             className="w-full bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-slate-100 pl-11 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-[#00a884] transition-all text-sm Urdu"
           />
@@ -1179,7 +1158,7 @@ export default function IslamicLibrary({
           <button
             onClick={() => setActiveCategory('all')}
             className={cn(
-              "px-4 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 Urdu border",
+              "px-3 py-1.5 sm:px-4 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all shrink-0 Urdu border",
               activeCategory === 'all'
                 ? "bg-[#00a884] border-[#00a884] text-white shadow-sm"
                 : "bg-gray-50 dark:bg-slate-800 border-gray-100 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-100"
@@ -1192,7 +1171,7 @@ export default function IslamicLibrary({
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
               className={cn(
-                "px-4 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 Urdu border",
+                "px-3 py-1.5 sm:px-4 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all shrink-0 Urdu border",
                 activeCategory === cat.id
                   ? "bg-[#00a884] border-[#00a884] text-white shadow-sm"
                   : "bg-gray-50 dark:bg-slate-800 border-gray-100 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-100"
@@ -1272,8 +1251,7 @@ export default function IslamicLibrary({
                   </span>
                 </div>
 
-                {/* Horizontal Scrolling Row */}
-                <div className="flex gap-4 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800 -mx-4 px-4 snap-x">
+                <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-2">
                   {recentlyRead.map(item => renderRecentlyReadCard(item))}
                 </div>
               </div>
@@ -1281,26 +1259,37 @@ export default function IslamicLibrary({
 
             {CATEGORIES.map(category => {
               const catBooks = getFilteredBooks(category.id);
-              if (catBooks.length === 0) return null; // Smart section hiding
+              if (catBooks.length === 0) return null;
+              
+              const isAllBooksView = activeCategory === 'all';
+              const displayBooks = isAllBooksView ? catBooks.slice(0, 4) : catBooks;
 
               return (
-                <div key={category.id} className="space-y-3.5">
-                  {/* Category Header */}
-                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-6 rounded bg-[#00a884]" />
-                      <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 Urdu">
-                        {category.urdu} <span className="text-xs font-normal text-gray-400 ml-1.5">({category.title})</span>
-                      </h3>
-                    </div>
-                    <span className="text-xs text-[#00a884] font-medium bg-teal-50 dark:bg-teal-950/40 px-2.5 py-1 rounded-full">
-                      {catBooks.length} کتب
-                    </span>
+                <div key={category.id} className="space-y-3.5 mb-6">
+                  {/* Category Header as a Pill Button */}
+                  <div className="flex items-center justify-between pb-2">
+                    <button 
+                      onClick={() => setActiveCategory(category.id)}
+                      className="px-3 py-1.5 sm:px-4 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition-all shrink-0 Urdu border bg-[#00a884] border-[#00a884] text-white shadow-sm cursor-pointer hover:bg-[#009273]"
+                    >
+                      {category.urdu}
+                    </button>
+                    {isAllBooksView && catBooks.length > 4 ? (
+                      <button 
+                        onClick={() => setActiveCategory(category.id)}
+                        className="text-[10px] sm:text-xs text-[#00a884] font-bold bg-teal-50 dark:bg-teal-950/40 px-2.5 py-1 rounded-full hover:bg-teal-100 transition-colors Urdu flex items-center gap-1 cursor-pointer"
+                      >
+                        مزید دیکھیں
+                      </button>
+                    ) : (
+                      <span className="text-[10px] sm:text-xs text-gray-500 font-medium bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded-full Urdu">
+                        {catBooks.length} کتب
+                      </span>
+                    )}
                   </div>
 
-                  {/* Horizontal Scrolling Box (LazyRow emulation) */}
-                  <div className="flex gap-4 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800 -mx-4 px-4 snap-x">
-                    {catBooks.map(book => renderBookCard(book, false))}
+                  <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-2">
+                    {displayBooks.map(book => renderBookCard(book, true))}
                   </div>
                 </div>
               );
@@ -1315,16 +1304,13 @@ export default function IslamicLibrary({
             return (
               <div className="space-y-4">
                 {/* Category Header */}
-                <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-6 rounded bg-[#00a884]" />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 Urdu">
-                      {catInfo.urdu} <span className="text-sm font-normal text-gray-400 ml-1.5">({catInfo.title})</span>
-                    </h3>
-                  </div>
-                  <span className="text-xs text-[#00a884] font-bold bg-teal-50 dark:bg-teal-950/40 px-3 py-1.5 rounded-full">
-                    {catBooks.length} کتب
-                  </span>
+                <div className="text-center py-4">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-slate-100 Urdu">
+                    {catInfo.urdu}
+                  </h3>
+                  <p className="text-sm font-normal text-gray-400 mt-1">
+                    {catInfo.title}
+                  </p>
                 </div>
 
                 {/* Vertical Grid for specific category books */}
@@ -1346,6 +1332,7 @@ export default function IslamicLibrary({
             bookUrl={readingBook.url!} 
             onClose={() => setReadingBook(null)} 
             onCached={(url) => setCachedBooks(prev => new Set(prev).add(url))}
+            pageOffset={readingBook.pageOffset}
           />
         )}
         {selectedBook && (

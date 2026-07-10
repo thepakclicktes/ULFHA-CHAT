@@ -163,25 +163,25 @@ export default function OfflineLibrary({ onBack }: OfflineLibraryProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-[#0f172a] overflow-hidden relative">
+    <div className="flex flex-col h-full bg-[#e7f5f1] dark:bg-[#0f172a] overflow-hidden relative">
       {/* Decorative BG element */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header bar */}
-      <div className="bg-[#e2f5ec] dark:bg-[#1e293b] p-4 pt-10 pb-4 shadow-sm z-10 flex items-center justify-between shrink-0 border-b border-teal-100 dark:border-slate-800">
-        <div className="flex items-center gap-3 w-full">
+      <div className="bg-[#e7f5f1] dark:bg-[#1e293b] p-2 sm:p-4 border-b border-emerald-100 dark:border-slate-800 z-10 flex items-center justify-between shrink-0 safe-area-top">
+        <div className="flex items-center gap-2 sm:gap-3 w-full">
           <button 
             onClick={onBack} 
-            className="p-2 hover:bg-teal-200/50 dark:hover:bg-slate-800 rounded-full transition-colors text-gray-750 dark:text-slate-200"
+            className="p-1.5 sm:p-2 hover:bg-teal-200/50 dark:hover:bg-slate-800 rounded-full transition-colors text-gray-750 dark:text-slate-200"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
           </button>
           <div className="flex flex-col flex-1 pr-8">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 Urdu text-center leading-tight">
+            <h2 className="text-sm sm:text-lg font-black text-[#008069] dark:text-slate-100 Urdu text-center leading-tight">
               آف لائن لائبریری (Offline Library)
             </h2>
-            <p className="text-[10px] text-teal-700 dark:text-teal-400 font-bold text-center uppercase tracking-wider">
+            <p className="text-[8px] sm:text-[10px] text-teal-700 dark:text-teal-400 font-bold text-center uppercase tracking-wider">
               No Network Connection Required • انٹرنیٹ کے بغیر پڑھیں
             </p>
           </div>
@@ -190,7 +190,7 @@ export default function OfflineLibrary({ onBack }: OfflineLibraryProps) {
 
       {/* Search Bar */}
       {downloadedBooks.length > 0 && (
-        <div className="p-4 bg-white dark:bg-[#1e293b] border-b border-gray-100 dark:border-slate-850/60 z-10">
+        <div className="p-4 bg-[#e7f5f1] dark:bg-[#1e293b] border-b border-emerald-100 dark:border-slate-850/60 z-10">
           <div className="relative max-w-md mx-auto">
             <Search className="absolute left-3 top-2.5 text-gray-400 dark:text-slate-500" size={18} />
             <input
@@ -239,10 +239,10 @@ export default function OfflineLibrary({ onBack }: OfflineLibraryProps) {
             {filteredBooks.map((book) => (
               <div 
                 key={book.id}
-                className="bg-white dark:bg-[#1e293b] rounded-2xl border border-gray-100 dark:border-slate-800/80 p-4 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 relative overflow-hidden"
+                className="bg-white dark:bg-[#1e293b] rounded-2xl border border-gray-100 dark:border-slate-800/80 p-3 sm:p-4 shadow-sm hover:shadow-md transition-all flex flex-row gap-3 sm:gap-4 relative overflow-hidden"
               >
                 {/* Book Cover */}
-                <div className="w-24 aspect-[3/4] rounded-xl overflow-hidden shadow-sm shrink-0 mx-auto sm:mx-0 flex items-center justify-center bg-gray-50 dark:bg-[#0f172a] border border-gray-100 dark:border-slate-800">
+                <div className="w-16 sm:w-24 aspect-[3/4] rounded-xl overflow-hidden shadow-sm shrink-0 flex items-center justify-center bg-gray-50 dark:bg-[#0f172a] border border-gray-100 dark:border-slate-800">
                   {book.coverUrl ? (
                     <img 
                       src={book.coverUrl} 
@@ -255,29 +255,29 @@ export default function OfflineLibrary({ onBack }: OfflineLibraryProps) {
                       "w-full h-full flex flex-col items-center justify-center font-bold text-center Urdu select-none text-white",
                       getCoverBg(book.id)
                     )}>
-                      <span className="text-xl">{book.urduTitle.trim().charAt(0)}</span>
+                      <span className="text-lg sm:text-xl">{book.urduTitle.trim().charAt(0)}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Details */}
-                <div className="flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1 text-center sm:text-left">
-                    <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 Urdu leading-tight">
+                <div className="flex-1 flex flex-col justify-between space-y-2 sm:space-y-3 overflow-hidden">
+                  <div className="space-y-0.5 sm:space-y-1 text-left rtl:text-right">
+                    <h3 className="text-xs sm:text-base font-bold text-gray-900 dark:text-slate-100 Urdu leading-tight truncate">
                       {book.urduTitle}
                     </h3>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 Urdu font-medium">
+                    <p className="text-[9px] sm:text-xs text-gray-500 dark:text-slate-400 Urdu font-medium truncate">
                       مصنف: <span className="font-bold text-gray-800 dark:text-slate-200">{book.urduAuthor}</span>
                     </p>
-                    <p className="text-[10px] font-mono text-gray-400">
+                    <p className="text-[8px] sm:text-[10px] font-mono text-gray-400">
                       Language: {book.language}
                     </p>
                   </div>
 
                   {/* Volume buttons */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                      <HardDrive size={12} className="text-[#00a884]" />
+                    <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                      <HardDrive className="text-[#00a884] w-2.5 h-2.5 sm:w-3 sm:h-3" />
                       <span>ڈاؤنلوڈ شدہ جلدیں ({book.downloadedVolumes.length})</span>
                     </div>
 
@@ -285,19 +285,19 @@ export default function OfflineLibrary({ onBack }: OfflineLibraryProps) {
                       {book.downloadedVolumes.map((vol, idx) => (
                         <div 
                           key={idx}
-                          className="flex items-center bg-gray-50 dark:bg-[#0f172a] hover:bg-emerald-50 dark:hover:bg-teal-950/20 border border-gray-150 dark:border-slate-800 rounded-lg pl-2.5 pr-1 py-1 transition-all text-xs text-gray-700 dark:text-slate-200"
+                          className="flex items-center bg-gray-50 dark:bg-[#0f172a] hover:bg-emerald-50 dark:hover:bg-teal-950/20 border border-gray-150 dark:border-slate-800 rounded-lg pl-2 sm:pl-2.5 pr-0.5 sm:pr-1 py-0.5 sm:py-1 transition-all text-[10px] sm:text-xs text-gray-700 dark:text-slate-200"
                         >
                           <button
                             onClick={() => setReadingBook({ id: book.id, urduTitle: vol.name, url: vol.url })}
-                            className="font-semibold Urdu hover:text-[#00a884] pr-2 transition-colors flex items-center gap-1 cursor-pointer"
+                            className="font-semibold Urdu hover:text-[#00a884] pr-1.5 sm:pr-2 transition-colors flex items-center gap-1 cursor-pointer"
                           >
-                            <BookOpen size={12} className="text-[#00a884]" />
+                            <BookOpen className="text-[#00a884] w-2.5 h-2.5 sm:w-3 sm:h-3" />
                             <span>{vol.name}</span>
                           </button>
                           
                           <button
                             onClick={() => handleDeleteVolume(vol.url)}
-                            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors"
+                            className="p-0.5 sm:p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors"
                             title="Delete volume from local storage"
                           >
                             <Trash2 size={12} />

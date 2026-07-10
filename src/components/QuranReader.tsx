@@ -163,15 +163,15 @@ function PDFPageRenderer({ pdfDoc, pageNum, scale, onVisible }: PDFPageRendererP
     <div 
       ref={containerRef} 
       id={`quran-page-${pageNum}`}
-      className="relative flex flex-col items-center justify-center p-4 bg-[#0e1320] min-w-full"
+      className="relative flex flex-col items-center justify-center p-0 bg-[#0e1320] w-full"
       style={{ minHeight: `${600 * scale}px` }}
     >
       <div className="absolute top-2 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-full text-[10px] text-slate-300 font-semibold z-10 select-none shadow">
         صفحہ {pageNum}
       </div>
       
-      <div className="shadow-2xl border border-slate-900/60 rounded-lg overflow-hidden bg-white max-w-full">
-        <canvas ref={canvasRef} className="max-w-full h-auto block" />
+      <div className="shadow-2xl bg-white w-full flex justify-center">
+        <canvas ref={canvasRef} className="w-full h-auto block" />
       </div>
 
       {loading && (
@@ -333,6 +333,47 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
   const [drawerTab, setDrawerTab] = useState<'surah' | 'juz'>('surah');
   const [searchQuery, setSearchQuery] = useState('');
   const [isImmersive, setIsImmersive] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const touchStartYRef = useRef<number | null>(null);
+
+  // Auto-hide controls logic
+  const resetControlsTimer = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 5000); // Hide after 5 seconds
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartYRef.current = e.touches[0].clientY;
+    resetControlsTimer();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartYRef.current !== null) {
+      const deltaY = touchStartYRef.current - e.touches[0].clientY;
+      if (deltaY > 50) { // Swipe Up
+        setShowControls(true);
+        resetControlsTimer();
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartYRef.current = null;
+  };
+
+  useEffect(() => {
+    if (view === 'reading') {
+      resetControlsTimer();
+    }
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [view]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -729,11 +770,21 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
 
       {/* ------------------ VIEW 2: PDF READING VIEWPORT ------------------ */}
       {view === 'reading' && (
-        <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+        <div 
+          className="flex-1 flex flex-col h-full overflow-hidden relative"
+          onClick={resetControlsTimer}
+          onMouseMove={resetControlsTimer}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           
           {/* Reading Header */}
-          <div className="bg-[#00a884] dark:bg-[#202c33] p-3 text-white flex justify-between items-center shadow-md safe-area-top z-30 shrink-0">
-            <div className="flex items-center gap-3">
+          <div className={cn(
+            "bg-[#00a884] dark:bg-[#202c33] px-3 py-1.5 sm:px-4 sm:py-2 text-white flex justify-between items-center shadow-md safe-area-top z-30 shrink-0 transition-all duration-500",
+            !showControls && "opacity-0 -translate-y-full pointer-events-none"
+          )}>
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button 
                 onClick={() => {
                   if (isOffline) {
@@ -742,47 +793,43 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
                     setView('intro');
                   }
                 }}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                className="p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
                 title="Back to menu"
               >
-                <ArrowLeft size={22} />
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
-              <div>
-                <h2 className="text-sm sm:text-base font-extrabold Urdu leading-tight">القرآن الکریم (Taj Company)</h2>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[9px] bg-white/25 text-white px-1.5 py-0.5 rounded font-mono font-bold">
-                    PRINT PAGE: {Math.max(1, pageNum - pageOffset)}
+              <div className="overflow-hidden">
+                <h2 className="text-[11px] sm:text-sm font-extrabold Urdu leading-none truncate max-w-[120px] sm:max-w-none">القرآن الکریم (Taj Company)</h2>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="text-[8px] bg-white/25 text-white px-1 py-0.5 rounded font-mono font-bold leading-none">
+                    PAGE: {Math.max(1, pageNum - pageOffset)}
                   </span>
-                  <span className="text-[9px] bg-white/15 text-white/90 px-1.5 py-0.5 rounded font-mono">
+                  <span className="text-[8px] bg-white/15 text-white/90 px-1 py-0.5 rounded font-mono leading-none">
                     PDF: {pageNum}/{numPages || '...'}
                   </span>
                 </div>
               </div>
             </div>
-
-            <div className="flex items-center gap-1.5">
-              {/* Surah/Para Menu Drawer Button */}
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setShowDrawer(true)}
-                className="px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-inner border border-white/10"
+                className="px-2 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border border-white/10"
               >
-                <Layers size={14} className="text-white" />
-                <span className="Urdu">فہرست (Index)</span>
+                <Layers size={12} className="text-white" />
+                <span className="Urdu">فہرست</span>
               </button>
-
-              {/* Fullscreen Button */}
               <button
                 onClick={toggleFullscreen}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors hidden sm:block"
+                className="p-1.5 hover:bg-white/10 rounded-full transition-colors hidden sm:block"
                 title="Fullscreen Toggle"
               >
-                {isImmersive ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                {isImmersive ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </button>
             </div>
           </div>
 
           {/* Reading Body Stage */}
-          <div className="flex-1 w-full max-w-5xl mx-auto flex overflow-hidden bg-[#090d16] relative border-x border-slate-900 shadow-2xl">
+          <div className="flex-1 w-full flex overflow-hidden bg-[#090d16] relative border-slate-900 shadow-2xl">
             
             {/* Loading Cover */}
             {isRenderLoading && (
@@ -811,10 +858,10 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
               </div>
             ) : (
               <>
-                {/* PDF Page Container Viewport */}
-                <div className="flex-1 h-full overflow-y-auto flex flex-col items-center p-4 pb-28 select-none bg-[#0e1320] relative scroll-smooth scrollable-content">
+                {/* PDF Page Container Viewport - Edge-to-Edge */}
+                <div className="flex-1 h-full overflow-y-auto flex flex-col items-center select-none bg-[#0e1320] relative scroll-smooth scrollable-content scrollbar-hide">
                   {isScrollMode ? (
-                    <div className="w-full flex flex-col items-center gap-6 py-4">
+                    <div className="w-full flex flex-col items-center gap-2 py-0">
                       {Array.from({ length: numPages }, (_, index) => (
                         <PDFPageRenderer
                           key={index + 1}
@@ -826,123 +873,104 @@ export default function QuranReader({ onBack }: { onBack: () => void }) {
                       ))}
                     </div>
                   ) : (
-                    <div className="my-auto flex flex-col items-center justify-center py-4">
-                      <div className="shadow-2xl border border-slate-900 rounded-xl overflow-hidden bg-white max-w-full">
-                        <canvas ref={canvasRef} className="max-w-full h-auto block" />
+                    <div className="my-auto flex flex-col items-center justify-center w-full h-full">
+                      <div className="shadow-2xl bg-white w-full flex justify-center">
+                        <canvas ref={canvasRef} className="w-full h-auto block" />
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* BOTTOM FLOATING CONTROL MODULE */}
-                <div className="fixed sm:absolute bottom-6 left-6 bg-[#121b2d]/95 backdrop-blur border border-slate-800/80 rounded-2xl px-4 py-2.5 flex items-center justify-start gap-4 max-w-lg w-[calc(100%-3rem)] sm:w-auto shadow-2xl z-20 select-none">
+                {/* BOTTOM FLOATING CONTROL MODULE - Ultra Compact */}
+                <div className={cn(
+                  "fixed sm:absolute bottom-10 left-1/2 -translate-x-1/2 bg-[#121b2d]/95 backdrop-blur border border-slate-800/80 rounded-2xl px-2.5 py-1.5 flex items-center justify-center gap-2.5 w-max max-w-[95vw] shadow-2xl z-20 select-none transition-all duration-500",
+                  !showControls && "opacity-0 translate-y-20 pointer-events-none"
+                )}>
                   {/* Prev/Next Navigation */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={goToPrevPage}
                       disabled={pageNum <= 1}
-                      className="p-2 bg-slate-800 hover:bg-slate-750 disabled:opacity-35 rounded-xl text-slate-300 transition-all cursor-pointer active:scale-90"
+                      className="p-1.5 bg-slate-800 hover:bg-slate-750 disabled:opacity-30 rounded-xl text-slate-300 transition-all cursor-pointer active:scale-90"
                       title="Previous Page"
                     >
-                      <ChevronLeft size={16} />
+                      <ChevronRight size={14} />
                     </button>
 
-                    {/* Direct Page Input */}
-                    <div className="flex items-center gap-1.5 text-xs text-slate-300 font-bold">
-                      <input 
-                        type="number"
-                        value={pageNum}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value);
-                          if (val >= 1 && val <= numPages) {
-                            setPageNum(val);
-                            if (isScrollMode) {
-                              const el = document.getElementById(`quran-page-${val}`);
-                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                          }
-                        }}
-                        className="w-12 bg-slate-900 border border-slate-800 rounded-lg py-1 px-1.5 text-center font-bold text-white outline-none focus:border-[#00a884]"
-                        min="1"
-                        max={numPages}
-                      />
-                      <span className="text-slate-500">/</span>
-                      <span className="font-mono">{numPages}</span>
+                    <div className="bg-slate-900/40 border border-white/5 rounded-lg px-2 py-1 flex flex-col items-center min-w-[55px]">
+                      <span className="text-[7px] text-slate-500 font-mono font-bold leading-none uppercase">Page</span>
+                      <span className="text-[10px] font-black font-mono text-white mt-0.5 leading-none">{pageNum}/{numPages}</span>
                     </div>
 
                     <button
                       onClick={goToNextPage}
                       disabled={pageNum >= numPages}
-                      className="p-2 bg-slate-800 hover:bg-slate-750 disabled:opacity-35 rounded-xl text-slate-300 transition-all cursor-pointer active:scale-90"
+                      className="p-1.5 bg-slate-800 hover:bg-slate-750 disabled:opacity-30 rounded-xl text-slate-300 transition-all cursor-pointer active:scale-90"
                       title="Next Page"
                     >
-                      <ChevronRight size={16} />
+                      <ChevronLeft size={14} />
                     </button>
                   </div>
 
-                  <div className="h-5 w-[1px] bg-slate-800" />
+                  <div className="h-4 w-[1px] bg-slate-800" />
 
                   {/* Zoom Controls */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => setScale(s => Math.max(0.6, s - 0.2))}
-                      className="p-1.5 bg-slate-800 hover:bg-slate-750 rounded-lg text-slate-300 transition-all cursor-pointer"
+                      className="p-1 bg-slate-800 hover:bg-slate-750 rounded-lg text-slate-300 transition-all cursor-pointer"
                     >
-                      <ZoomOut size={14} />
+                      <ZoomOut size={12} />
                     </button>
-                    <span className="text-[10px] text-slate-400 font-mono font-bold text-center min-w-[32px]">
+                    <span className="text-[8px] text-slate-400 font-mono font-bold text-center min-w-[24px]">
                       {Math.round(scale * 100)}%
                     </span>
                     <button
                       onClick={() => setScale(s => Math.min(2.5, s + 0.2))}
-                      className="p-1.5 bg-slate-800 hover:bg-slate-750 rounded-lg text-slate-300 transition-all cursor-pointer"
+                      className="p-1 bg-slate-800 hover:bg-slate-750 rounded-lg text-slate-300 transition-all cursor-pointer"
                     >
-                      <ZoomIn size={14} />
+                      <ZoomIn size={12} />
                     </button>
                   </div>
 
-                  <div className="h-5 w-[1px] bg-slate-800" />
+                  <div className="h-4 w-[1px] bg-slate-800" />
 
                   {/* Scroll Mode Toggle */}
                   <button
                     onClick={() => setIsScrollMode(!isScrollMode)}
                     className={cn(
-                      "p-1.5 rounded-lg flex items-center gap-1 text-[11px] font-black border transition-all cursor-pointer",
+                      "p-1.5 rounded-lg flex items-center gap-1 text-[9px] font-black border transition-all cursor-pointer",
                       isScrollMode 
-                        ? 'bg-[#00a884]/20 border-[#00c298]/30 text-[#00c298] hover:bg-[#00a884]/30' 
-                        : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
+                        ? 'bg-[#00a884]/20 border-[#00c298]/30 text-[#00c298]' 
+                        : 'bg-slate-800 border-slate-700 text-slate-200'
                     )}
-                    title={isScrollMode ? "صفحہ بہ صفحہ پڑھیں" : "مسلسل اسکرول موڈ"}
                   >
-                    {isScrollMode ? <BookOpen size={13} /> : <Scroll size={13} />}
+                    {isScrollMode ? <BookOpen size={12} /> : <Scroll size={12} />}
                     <span className="hidden xs:inline Urdu">
                       {isScrollMode ? 'صفحہ' : 'اسکرول'}
                     </span>
                   </button>
 
-                  <div className="h-5 w-[1px] bg-slate-800" />
+                  <div className="h-4 w-[1px] bg-slate-800 hidden sm:block" />
 
-                  {/* Offset Adjuster Widget */}
-                  <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+                  {/* Offset Adjuster Widget - Mini */}
+                  <div className="hidden sm:flex items-center gap-0.5 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
                     <button 
                       onClick={() => setPageOffset(prev => Math.max(0, prev - 1))}
-                      className="px-1.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] rounded hover:bg-slate-700 transition-all cursor-pointer"
-                      title="Sync: Page offset minus"
+                      className="px-1 py-0.5 bg-slate-800 text-slate-300 text-[8px] rounded hover:bg-slate-700 transition-all cursor-pointer font-bold"
                     >
                       -
                     </button>
-                    <span className="text-[9px] font-mono px-1 font-bold text-[#d4af37]" title="Current Page Offset (Printed to PDF alignment)">
+                    <span className="text-[7px] font-mono px-0.5 font-bold text-[#d4af37]">
                       Sync:{pageOffset}
                     </span>
                     <button 
                       onClick={() => setPageOffset(prev => prev + 1)}
-                      className="px-1.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] rounded hover:bg-slate-700 transition-all cursor-pointer"
-                      title="Sync: Page offset plus"
+                      className="px-1 py-0.5 bg-slate-800 text-slate-300 text-[8px] rounded hover:bg-slate-700 transition-all cursor-pointer font-bold"
                     >
                       +
                     </button>
                   </div>
-
                 </div>
               </>
             )}

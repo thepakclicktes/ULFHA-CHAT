@@ -87,7 +87,7 @@ export default function Sidebar({ profile, selectedChat }: SidebarProps) {
       )}
       
       <div className="fixed-footer w-full bg-white/80 dark:bg-[#111b21]/80 backdrop-blur-xl border-t border-gray-100 dark:border-white/5 flex flex-col items-center z-50 safe-area-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
-        <div className="flex flex-row items-center justify-around w-full max-w-screen-xl mx-auto h-[65px] px-2 relative">
+        <div className="flex flex-row items-center justify-around w-full max-w-screen-xl mx-auto h-[55px] sm:h-[65px] px-2 relative">
           
           {/* Floating Dropdown Popover */}
           <AnimatePresence>
@@ -97,7 +97,7 @@ export default function Sidebar({ profile, selectedChat }: SidebarProps) {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 15, scale: 0.95 }}
                 transition={{ duration: 0.15, ease: 'easeOut' }}
-                className="absolute bottom-[75px] right-4 w-64 bg-white dark:bg-[#222e35] rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-gray-100 dark:border-white/10 py-2 z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+                className="absolute bottom-[65px] sm:bottom-[75px] right-4 w-64 bg-white dark:bg-[#222e35] rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-gray-100 dark:border-white/10 py-2 z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
               >
                 <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5">
                   <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Connect & Share</h4>
@@ -213,20 +213,20 @@ export default function Sidebar({ profile, selectedChat }: SidebarProps) {
                     "p-1.5 rounded-xl transition-all duration-300 relative z-10",
                     isActive ? "text-[#00a884]" : "text-[#54656F] group-hover:text-[#00a884]"
                   )}>
-                    <Icon className={cn("w-6 h-6 transition-transform duration-300", isActive && "scale-110")} />
+                    <Icon className={cn("w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300", isActive && "scale-110")} />
                   </div>
                   
                   {isActive && (
                     <motion.div
                       layoutId="sidebar-nav-active"
-                      className="absolute inset-[-4px] bg-[#D9FDD3] dark:bg-[#075E54]/30 rounded-2xl -z-0"
+                      className="absolute inset-[-4px] bg-[#dcf8c6] dark:bg-[#075E54]/30 rounded-2xl -z-0 shadow-sm"
                       transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                     />
                   )}
                 </div>
                 
                 <span className={cn(
-                  "text-[10px] font-bold mt-1 transition-all duration-300",
+                  "text-[9px] sm:text-[10px] font-bold mt-1 transition-all duration-300",
                   isActive ? "text-[#075E54] dark:text-emerald-400 opacity-100 scale-100" : "text-[#54656F] opacity-70 scale-95"
                 )}>
                   {item.label}
@@ -251,20 +251,20 @@ export default function Sidebar({ profile, selectedChat }: SidebarProps) {
                 "p-1.5 rounded-xl transition-all duration-300 relative z-10",
                 showMore ? "text-[#00a884]" : "text-[#54656F] group-hover:text-[#00a884]"
               )}>
-                <MoreHorizontal className={cn("w-6 h-6 transition-transform duration-300", showMore && "scale-110 text-[#00a884]")} />
+                <MoreHorizontal className={cn("w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300", showMore && "scale-110 text-[#00a884]")} />
               </div>
               
               {showMore && (
                 <motion.div
                   layoutId="sidebar-more-active"
-                  className="absolute inset-[-4px] bg-[#D9FDD3] dark:bg-[#075E54]/30 rounded-2xl -z-0"
+                  className="absolute inset-[-4px] bg-[#dcf8c6] dark:bg-[#075E54]/30 rounded-2xl -z-0 shadow-sm"
                   transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                 />
               )}
             </div>
             
             <span className={cn(
-              "text-[10px] font-bold mt-1 transition-all duration-300",
+              "text-[9px] sm:text-[10px] font-bold mt-1 transition-all duration-300",
               showMore ? "text-[#075E54] dark:text-emerald-400 opacity-100 scale-100" : "text-[#54656F] opacity-70 scale-95"
             )}>
               More

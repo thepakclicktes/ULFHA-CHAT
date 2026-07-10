@@ -64,7 +64,8 @@ const CATEGORIES = [
   { id: 'adab', title: 'Adab & Akhlaq', urdu: 'اخلاق و آداب' },
   { id: 'duas', title: 'Duas & Azkar', urdu: 'دعائیں اور اذکار' },
   { id: 'uloom', title: 'Quranic Sciences', urdu: 'علوم القرآن' },
-  { id: 'economics', title: 'Islamic Economics', urdu: 'اسلامی معیشت و مالیات' }
+  { id: 'economics', title: 'Islamic Economics', urdu: 'اسلامی معیشت و مالیات' },
+  { id: 'emadrasa', title: 'e-Madrasa', urdu: 'ای مدرسہ' }
 ];
 
 export default function AdminPanel({ onExit }: AdminPanelProps) {
@@ -92,6 +93,14 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
   const [customBooks, setCustomBooks] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem('library_books_local');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [deletedSystemBooks, setDeletedSystemBooks] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('deleted_system_books');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -197,6 +206,16 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
   const handleDeleteBook = async (id: string) => {
     if (confirm('Are you sure you want to delete this book?')) {
       try {
+        const isSystem = id.startsWith('gen_') || ['t1', 't2', 'h1', 'h2', 'h3', 'f1', 'f2', 'f3', 's1', 's2', 'a1', 'a2'].includes(id);
+        
+        if (isSystem) {
+          const updatedDeleted = [...deletedSystemBooks, id];
+          setDeletedSystemBooks(updatedDeleted);
+          localStorage.setItem('deleted_system_books', JSON.stringify(updatedDeleted));
+          alert('System book deleted successfully!');
+          return;
+        }
+
         // Update locally first
         const savedLocal = localStorage.getItem('library_books_local');
         const localList = savedLocal ? JSON.parse(savedLocal) : [];
@@ -839,7 +858,6 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                 </div>
               </motion.div>
             )}
-
           {activeTab === 'fraud' && (
             <motion.div 
               key="fraud"
@@ -1690,7 +1708,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
             {activeTab === 'books' && (() => {
               const mergedBooksList: LibraryBookType[] = [
                 ...customBooks.map(cb => cb as LibraryBookType),
-                ...(BOOKS_DATA as LibraryBookType[]).filter(sysBook => !customBooks.some(cb => cb.id === sysBook.id))
+                ...(BOOKS_DATA as LibraryBookType[]).filter(sysBook => !customBooks.some(cb => cb.id === sysBook.id) && !deletedSystemBooks.includes(sysBook.id))
               ];
 
               const filteredBooksList = mergedBooksList.filter(book => {
@@ -1846,16 +1864,12 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                                     >
                                       Edit
                                     </button>
-                                    {!isSystem ? (
-                                      <button
-                                        onClick={() => handleDeleteBook(book.id)}
-                                        className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-900/30 rounded text-[10px] font-bold transition-all"
-                                      >
-                                        Delete
-                                      </button>
-                                    ) : (
-                                      <span className="text-[10px] text-gray-500 italic px-2 py-1 select-none">Protected</span>
-                                    )}
+                                    <button
+                                      onClick={() => handleDeleteBook(book.id)}
+                                      className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-900/30 rounded text-[10px] font-bold transition-all"
+                                    >
+                                      Delete
+                                    </button>
                                   </div>
                                 </td>
                               </tr>

@@ -16,7 +16,9 @@ import {
   AlertCircle,
   Scroll,
   BookOpen,
-  Search
+  Search,
+  Layers,
+  ArrowLeft
 } from 'lucide-react';
 import { collection, addDoc, deleteDoc, doc, query, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -24,7 +26,7 @@ import { useAuth } from '../hooks/useAuth';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getPDF, storePDF } from '../utils/pdfStorage';
 import { downloadBlobWithFileSystemAccess } from '../utils/StorageManager';
-import { resolveApiUrl } from '../utils';
+import { resolveApiUrl, cn } from '../utils';
 
 // Helper to dynamically load a script from CDN
 const loadScript = (src: string): Promise<void> => {
@@ -122,8 +124,8 @@ function PDFPageRenderer({ pdfDoc, pageNum, scale, onVisible }: PDFPageRendererP
             const pixelRatio = window.devicePixelRatio || 1;
             canvas.width = Math.floor(viewport.width * pixelRatio);
             canvas.height = Math.floor(viewport.height * pixelRatio);
-            canvas.style.width = `${viewport.width}px`;
-            canvas.style.height = `${viewport.height}px`;
+            canvas.style.width = `100%`;
+            canvas.style.height = `auto`;
 
             context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
@@ -163,15 +165,15 @@ function PDFPageRenderer({ pdfDoc, pageNum, scale, onVisible }: PDFPageRendererP
     <div 
       ref={containerRef} 
       id={`reader-page-${pageNum}`}
-      className="relative flex flex-col items-center justify-center p-4 bg-[#0e1320] min-w-full"
+      className="relative flex flex-col items-center justify-center p-0 bg-[#0e1320] w-full"
       style={{ minHeight: `${600 * scale}px` }}
     >
       <div className="absolute top-2 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-full text-[10px] text-slate-300 font-semibold z-10 select-none shadow">
         صفحہ {pageNum}
       </div>
       
-      <div className="shadow-2xl border border-slate-900/60 rounded-lg overflow-hidden bg-white max-w-full">
-        <canvas ref={canvasRef} className="max-w-full h-auto block" />
+      <div className="shadow-2xl bg-white w-full flex justify-center">
+        <canvas ref={canvasRef} className="w-full h-auto block" />
       </div>
 
       {loading && (
@@ -200,9 +202,10 @@ interface BookReaderProps {
   bookUrl: string;
   onClose: () => void;
   onCached?: (url: string) => void;
+  pageOffset?: number;
 }
 
-export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCached }: BookReaderProps) {
+export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCached, pageOffset = 0 }: BookReaderProps) {
   // Viewer states
   const [isLibLoaded, setIsLibLoaded] = useState(false);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
@@ -229,6 +232,26 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
   const [bookmarkNote, setBookmarkNote] = useState('');
   const [isSavingBookmark, setIsSavingBookmark] = useState(false);
   const [isScrollMode, setIsScrollMode] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const touchStartYRef = useRef<number | null>(null);
+
+  // Auto-hide controls logic
+  const resetControlsTimer = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 5000); // Hide after 5 seconds
+  };
+
+  useEffect(() => {
+    resetControlsTimer();
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, []);
 
   // Search & Resume States
   const [showSearchPanel, setShowSearchPanel] = useState(false);
@@ -243,6 +266,41 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const touchStartRef = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = e.changedTouches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+    resetControlsTimer();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartYRef.current !== null) {
+      const deltaY = touchStartYRef.current - e.touches[0].clientY;
+      if (deltaY > 50) { // Swipe Up
+        setShowControls(true);
+        resetControlsTimer();
+      }
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    touchStartYRef.current = null;
+    if (isScrollMode) return;
+    const touchEnd = e.changedTouches[0].clientX;
+    const diff = touchStartRef.current - touchEnd;
+    
+    // Swipe sensitivity threshold
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        // Swiped Left - Next Page
+        goToNextPage();
+      } else {
+        // Swiped Right - Prev Page
+        goToPrevPage();
+      }
+    }
+  };
 
   // 1. Load PDF.js from CDN
   useEffect(() => {
@@ -290,7 +348,7 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           pdfData = { data: new Uint8Array(arrayBuffer) };
         } else {
           setIsOffline(false);
-          const isDirectHost = bookUrl.includes('archive.org') || bookUrl.includes('quran.com') || bookUrl.includes('qurancdn.com');
+          const isDirectHost = bookUrl.includes('quran.com') || bookUrl.includes('qurancdn.com');
           const proxyUrl = isDirectHost ? bookUrl : resolveApiUrl(`/api/pdf-proxy?url=${encodeURIComponent(bookUrl)}`);
           pdfData = { url: proxyUrl };
         }
@@ -469,8 +527,8 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
             const pixelRatio = window.devicePixelRatio || 1;
             canvas.width = Math.floor(viewport.width * pixelRatio);
             canvas.height = Math.floor(viewport.height * pixelRatio);
-            canvas.style.width = `${viewport.width}px`;
-            canvas.style.height = `${viewport.height}px`;
+            canvas.style.width = `100%`;
+            canvas.style.height = `auto`;
 
             context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
@@ -733,42 +791,62 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
       className={`fixed inset-0 bg-[#0b0f19] z-50 flex flex-col transition-all duration-300 ${
         isImmersive ? 'p-0' : 'p-2 sm:p-4'
       }`}
+      onClick={resetControlsTimer}
+      onMouseMove={resetControlsTimer}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Dynamic Header */}
-      <div className="w-full max-w-6xl mx-auto bg-[#131d31] text-white flex flex-col sm:flex-row justify-between items-center p-3 sm:p-4 rounded-t-xl border-b border-slate-800 shadow-md gap-3 shrink-0">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <FileText className="text-[#00a884] shrink-0" size={22} />
-          <h3 className="font-bold text-sm sm:text-base truncate max-w-xs sm:max-w-md Urdu">{bookTitle}</h3>
-          
-          {/* Offline/Online Status Badge */}
-          {isOffline ? (
-            <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-              آف لائن (Offline)
-            </span>
-          ) : (
-            <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-              آن لائن (Online)
-            </span>
-          )}
+      <div className={cn(
+        "w-full max-w-6xl mx-auto bg-[#131d31] text-white flex flex-row justify-between items-center p-1.5 sm:p-2 rounded-t-xl border-b border-slate-800 shadow-md gap-1.5 shrink-0 transition-all duration-500",
+        !showControls && "opacity-0 -translate-y-full pointer-events-none"
+      )}>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button 
+            onClick={() => {
+              cancelRealDownload();
+              onClose();
+            }}
+            className="p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+            title="Back"
+          >
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+          <div className="overflow-hidden">
+            <h3 className="font-bold text-[11px] sm:text-sm truncate Urdu leading-none">{bookTitle}</h3>
+            
+            <div className="flex items-center gap-1 mt-0.5">
+              {pageOffset > 0 && (
+                <span className="text-[8px] bg-[#00a884]/25 text-white px-1 py-0.5 rounded font-mono font-bold leading-none">
+                  PAGE: {Math.max(1, pageNum - pageOffset)}
+                </span>
+              )}
+              <span className="text-[8px] bg-white/10 text-white/90 px-1 py-0.5 rounded font-mono leading-none">
+                PDF: {pageNum}/{numPages || '...'}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Top Control Bar Buttons */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          {/* Real Download Button */}
-          {!isOffline && (
-            <button
-              onClick={handleRealDownload}
-              disabled={isDownloading}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
-                isDownloading 
-                  ? 'bg-slate-800 border-slate-700 text-slate-400' 
-                  : 'bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500'
-              }`}
-            >
-              <Download size={14} />
-              <span>{isDownloading ? `${dlProgress.percent}%` : 'ڈاؤنلوڈ (Download)'}</span>
-            </button>
-          )}
+        <div className="flex flex-row items-center gap-1 sm:gap-1.5 w-auto justify-end shrink-0">
+          {/* Index Button (Opens Bookmarks) */}
+          <button
+            onClick={() => {
+              setShowBookmarksPanel(!showBookmarksPanel);
+              setShowSearchPanel(false);
+            }}
+            className={cn(
+              "px-1.5 sm:px-2.5 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border",
+              showBookmarksPanel 
+                ? "bg-[#00a884] border-[#00c298] text-white" 
+                : "bg-white/10 hover:bg-white/20 border-white/10 text-white"
+            )}
+          >
+            <Layers size={12} className="text-white" />
+            <span className="Urdu">فہرست</span>
+          </button>
 
           {/* Search Toggle */}
           <button
@@ -776,56 +854,61 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
               setShowSearchPanel(!showSearchPanel);
               setShowBookmarksPanel(false);
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
+            className={cn(
+              "p-1.5 rounded-lg transition-all border",
               showSearchPanel 
-                ? 'bg-[#00a884] border-[#00c298] text-white' 
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-            }`}
+                ? "bg-[#00a884] border-[#00c298] text-white" 
+                : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+            )}
+            title="Search"
           >
             <Search size={14} />
-            <span className="hidden xs:inline">تلاش (Search)</span>
           </button>
 
-          {/* Bookmarks Toggle */}
+          {/* Delete Button (System logic) */}
           <button
             onClick={() => {
-              setShowBookmarksPanel(!showBookmarksPanel);
-              setShowSearchPanel(false);
+              if (window.confirm("کیا آپ اس کتاب کو لائبریری سے ختم (Hide) کرنا چاہتے ہیں؟")) {
+                const deleted = JSON.parse(localStorage.getItem('deleted_system_books') || '[]');
+                if (!deleted.includes(bookId)) {
+                  deleted.push(bookId);
+                  localStorage.setItem('deleted_system_books', JSON.stringify(deleted));
+                  window.dispatchEvent(new Event('storage'));
+                }
+                onClose();
+              }
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border ${
-              showBookmarksPanel 
-                ? 'bg-[#00a884] border-[#00c298] text-white' 
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-            }`}
+            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 transition-all"
+            title="Hide this book"
           >
-            <Bookmark size={14} />
-            <span className="hidden xs:inline">بک مارکس ({bookmarks.length})</span>
+            <Trash2 size={14} />
           </button>
+
+          {/* Real Download Button */}
+          {!isOffline && (
+            <button
+              onClick={handleRealDownload}
+              disabled={isDownloading}
+              className="p-2 bg-emerald-600 border border-emerald-500 text-white hover:bg-emerald-500 rounded-lg disabled:bg-slate-800 disabled:border-slate-700 disabled:text-slate-400 transition-all"
+              title="Download"
+            >
+              <Download size={16} />
+            </button>
+          )}
 
           {/* Full Screen */}
           <button
             onClick={toggleFullscreen}
-            className="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 flex items-center gap-1.5 text-slate-200"
+            className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200 hidden sm:block"
+            title="Fullscreen"
           >
-            {isImmersive ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            <span className="hidden md:inline">{isImmersive ? 'Exit Full' : 'Full Screen'}</span>
-          </button>
-
-          {/* Close Button */}
-          <button 
-            onClick={() => {
-              cancelRealDownload();
-              onClose();
-            }}
-            className="bg-red-500 hover:bg-red-600 active:scale-95 px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
-          >
-            بند کریں (Close)
+            {isImmersive ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
         </div>
       </div>
 
       {/* Main Reader Stage */}
-      <div className="flex-1 w-full max-w-6xl mx-auto flex overflow-hidden relative bg-[#090d16] border-x border-b border-slate-900 rounded-b-xl">
+      <div className="flex-1 w-full flex overflow-hidden relative bg-[#090d16] border-b border-slate-900 rounded-b-xl">
         {/* Loading Overlay */}
         {isRenderLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-20 backdrop-blur-sm">
@@ -874,8 +957,30 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           </div>
         )}
 
-        {/* Canvas Display Viewport */}
-        <div className="flex-1 h-full flex flex-col overflow-y-auto items-center p-4 pb-24 scrollable-content select-none bg-[#0e1320] relative">
+        {/* Canvas Display Viewport - Edge-to-Edge */}
+        <div 
+          className="flex-1 h-full flex flex-col overflow-y-auto items-center scrollable-content select-none bg-[#0e1320] relative scrollbar-hide"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={(e) => {
+            touchStartRef.current = e.clientX;
+          }}
+          onMouseUp={(e) => {
+            if (isScrollMode) return;
+            const diff = touchStartRef.current - e.clientX;
+            if (Math.abs(diff) > 50) {
+              if (diff > 0) goToNextPage();
+              else goToPrevPage();
+            }
+          }}
+          onWheel={(e) => {
+            if (isScrollMode) return;
+            if (Math.abs(e.deltaY) > 30) {
+              if (e.deltaY > 0) goToNextPage();
+              else goToPrevPage();
+            }
+          }}
+        >
           {resumeNotice && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-[#00a884]/95 border border-[#00c298]/30 backdrop-blur text-white px-4 py-2 rounded-2xl shadow-xl z-30 text-xs font-semibold Urdu flex items-center gap-2 animate-bounce">
               <CheckCircle size={14} className="text-white shrink-0" />
@@ -906,7 +1011,7 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           ) : (
             <>
               {isScrollMode ? (
-                <div className="w-full flex flex-col items-center gap-8 py-4">
+                <div className="w-full flex flex-col items-center gap-2 py-0">
                   {Array.from({ length: numPages }, (_, index) => (
                     <PDFPageRenderer
                       key={index + 1}
@@ -918,99 +1023,77 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
                   ))}
                 </div>
               ) : (
-                <div className="my-auto flex flex-col items-center justify-center py-4">
-                  {/* Actual Canvas */}
-                  <div className="shadow-2xl border border-slate-900 rounded-lg overflow-hidden bg-white max-w-full">
-                    <canvas ref={canvasRef} className="max-w-full h-auto block" />
+                <div className="my-auto flex flex-col items-center justify-center w-full h-full min-h-0">
+                  {/* Actual Canvas - Edge-to-Edge */}
+                  <div className="shadow-2xl bg-white w-full flex items-center justify-center">
+                    <canvas ref={canvasRef} className="w-full h-auto block" />
                   </div>
                 </div>
               )}
 
-              {/* Bottom Pagination & Zoom Bar - Left Aligned inside stage */}
-              <div className="fixed sm:absolute bottom-6 left-6 bg-[#121b2d]/95 backdrop-blur border border-slate-800/80 rounded-2xl px-4 py-2.5 flex items-center justify-start gap-4 max-w-lg w-[calc(100%-3rem)] sm:w-auto shadow-xl z-20 shrink-0 select-none">
-                {/* Page Navigation */}
-                <div className="flex items-center gap-1.5">
+              {/* BOTTOM FLOATING CONTROL MODULE - Ultra Compact */}
+              <div className={cn(
+                "fixed sm:absolute bottom-10 left-1/2 -translate-x-1/2 bg-[#121b2d]/95 backdrop-blur border border-slate-800/80 rounded-2xl px-2.5 py-1.5 flex items-center justify-center gap-2.5 w-max max-w-[95vw] shadow-2xl z-20 select-none transition-all duration-500",
+                !showControls && "opacity-0 translate-y-20 pointer-events-none"
+              )}>
+                {/* Prev/Next Navigation */}
+                <div className="flex items-center gap-1">
                   <button 
                     onClick={goToPrevPage}
                     disabled={pageNum <= 1}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-lg text-slate-300 transition-all active:scale-90"
-                    title="Previous Page"
+                    className="p-1.5 bg-slate-800 hover:bg-slate-750 disabled:opacity-30 rounded-xl text-white transition-all cursor-pointer shadow active:scale-90"
                   >
-                    <ChevronLeft size={16} />
+                    <ChevronRight size={14} />
                   </button>
-                  
-                  <div className="flex items-center gap-1 text-xs">
-                    <input 
-                      type="number"
-                      value={pageNum}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        if (val >= 1 && val <= numPages) {
-                          setPageNum(val);
-                          if (isScrollMode) {
-                            scrollToPage(val);
-                          }
-                        }
-                      }}
-                      className="w-12 bg-slate-900 text-white border border-slate-800 rounded px-1.5 py-0.5 text-center font-bold font-mono outline-none focus:border-[#00a884]"
-                      min="1"
-                      max={numPages}
-                    />
-                    <span className="text-slate-400">/</span>
-                    <span className="text-slate-300 font-mono font-semibold">{numPages}</span>
+                  <div className="bg-slate-900/40 border border-white/5 rounded-lg px-2 py-1 flex flex-col items-center min-w-[55px]">
+                    <span className="text-[7px] text-slate-500 font-mono font-bold leading-none uppercase">Page</span>
+                    <span className="text-[10px] font-black font-mono text-white mt-0.5 leading-none">{pageNum} / {numPages}</span>
                   </div>
-
                   <button 
                     onClick={goToNextPage}
                     disabled={pageNum >= numPages}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-lg text-slate-300 transition-all active:scale-90"
-                    title="Next Page"
+                    className="p-1.5 bg-slate-800 hover:bg-slate-750 disabled:opacity-30 rounded-xl text-white transition-all cursor-pointer shadow active:scale-90"
                   >
-                    <ChevronRight size={16} />
+                    <ChevronLeft size={14} />
                   </button>
                 </div>
 
-                {/* Vertical Divider */}
-                <div className="h-5 w-[1px] bg-slate-800/80" />
+                <div className="h-4 w-[1px] bg-slate-800" />
 
-                {/* Scale Zoom Controls */}
+                {/* Zoom Controls */}
                 <div className="flex items-center gap-1">
-                  <button 
+                  <button
                     onClick={() => setScale(s => Math.max(0.6, s - 0.2))}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-all active:scale-90"
-                    title="Zoom Out"
+                    className="p-1 bg-slate-800 hover:bg-slate-750 rounded-lg text-slate-300 transition-all cursor-pointer"
                   >
-                    <ZoomOut size={14} />
+                    <ZoomOut size={12} />
                   </button>
-                  <span className="text-[10px] font-mono font-bold text-slate-400 min-w-[35px] text-center">
+                  <span className="text-[8px] text-slate-400 font-mono font-bold text-center min-w-[24px]">
                     {Math.round(scale * 100)}%
                   </span>
-                  <button 
+                  <button
                     onClick={() => setScale(s => Math.min(2.5, s + 0.2))}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-all active:scale-90"
-                    title="Zoom In"
+                    className="p-1 bg-slate-800 hover:bg-slate-750 rounded-lg text-slate-300 transition-all cursor-pointer"
                   >
-                    <ZoomIn size={14} />
+                    <ZoomIn size={12} />
                   </button>
                 </div>
 
-                {/* Vertical Divider */}
-                <div className="h-5 w-[1px] bg-slate-800/80" />
+                <div className="h-4 w-[1px] bg-slate-800" />
 
                 {/* Scroll Mode Toggle */}
                 <button
                   onClick={() => setIsScrollMode(!isScrollMode)}
-                  className={`p-1.5 rounded-lg flex items-center gap-1.5 text-[11px] font-bold transition-all border ${
+                  className={cn(
+                    "p-1.5 rounded-lg flex items-center gap-1 text-[9px] font-black border transition-all cursor-pointer",
                     isScrollMode 
-                      ? 'bg-[#00a884]/20 border-[#00c298]/30 text-[#00c298] hover:bg-[#00a884]/30' 
-                      : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750'
-                  }`}
-                  title={isScrollMode ? "صفحہ بہ صفحہ موڈ" : "مسلسل اسکرول موڈ"}
+                      ? 'bg-[#00a884]/20 border-[#00c298]/30 text-[#00c298]' 
+                      : 'bg-slate-800 border-slate-700 text-slate-200'
+                  )}
+                  title={isScrollMode ? "Single Page" : "Continuous Scroll"}
                 >
-                  {isScrollMode ? <BookOpen size={14} /> : <Scroll size={14} />}
-                  <span className="hidden xs:inline Urdu">
-                    {isScrollMode ? 'صفحہ بہ صفحہ' : 'اسکرول موڈ'}
-                  </span>
+                  <Scroll size={12} />
+                  <span className="Urdu hidden xs:inline">سکرول</span>
                 </button>
               </div>
             </>

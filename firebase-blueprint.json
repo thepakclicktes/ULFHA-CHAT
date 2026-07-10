@@ -142,16 +142,48 @@
       },
       "required": ["title", "body"]
     },
-    "Book": {
-      "title": "Book",
-      "description": "A book in the Islamic Library.",
+    "classes": {
+      "title": "Madrasa Class",
+      "description": "A class in the madrasa hierarchy.",
       "type": "object",
       "properties": {
-        "title": { "type": "string" },
-        "author": { "type": "string" },
-        "category": { "type": "string" }
+        "name": { "type": "string" },
+        "order": { "type": "number" }
       },
-      "required": ["title"]
+      "required": ["name"]
+    },
+    "book_category": {
+      "title": "Book Category",
+      "description": "Category for books within a class.",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["classId", "name"]
+    },
+    "book": {
+      "title": "Book",
+      "description": "A book.",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "name": { "type": "string" },
+        "downloadUrl": { "type": "string" }
+      },
+      "required": ["classId", "name"]
+    },
+    "sharah": {
+      "title": "Sharah",
+      "description": "A sharah of a book.",
+      "type": "object",
+      "properties": {
+        "bookId": { "type": "string" },
+        "name": { "type": "string" },
+        "downloadUrl": { "type": "string" }
+      },
+      "required": ["bookId", "name"]
     },
     "SystemConfig": {
       "title": "System Config",
@@ -214,9 +246,21 @@
       "schema": { "$ref": "#/entities/Notification" },
       "description": "Collection of queued system notifications."
     },
-    "library_books": {
-      "schema": { "$ref": "#/entities/Book" },
-      "description": "Collection of Islamic library books."
+    "classes": {
+      "schema": { "$ref": "#/entities/classes" },
+      "description": "Collection of madrasa classes."
+    },
+    "book_categories": {
+      "schema": { "$ref": "#/entities/book_category" },
+      "description": "Collection of book categories."
+    },
+    "books": {
+      "schema": { "$ref": "#/entities/book" },
+      "description": "Collection of books."
+    },
+    "sharahs": {
+      "schema": { "$ref": "#/entities/sharah" },
+      "description": "Collection of sharahs."
     },
     "system_configs": {
       "schema": { "$ref": "#/entities/SystemConfig" },

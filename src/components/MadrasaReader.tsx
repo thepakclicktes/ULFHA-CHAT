@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -8,24 +8,30 @@ import {
   ChevronRight,
   Search
 } from 'lucide-react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 import { cn } from '../utils';
 
 interface Sarh {
   name: string;
+  downloadUrl?: string;
 }
 
 interface SarhCategory {
+  id: string;
   name: string;
   books: Book[];
 }
 
 interface Book {
+  id: string;
   name: string;
+  downloadUrl?: string;
   sarh: Sarh[];
 }
 
 interface MadrasaClass {
-  id: number;
+  id: string;
   name: string;
   books: Book[];
   sarhCategories?: SarhCategory[];
@@ -37,105 +43,69 @@ export default function MadrasaReader({ onBack }: { onBack: () => void }) {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [selectedSarhCategory, setSelectedSarhCategory] = useState<SarhCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [classes, setClasses] = useState<MadrasaClass[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const classes: MadrasaClass[] = [
-    { id: 1, name: 'دورہ حدیث', books: [] },
-    { id: 2, name: 'موقوف علیہ', books: [] },
-    { id: 3, name: 'درجہ سادسہ', books: [] },
-    { id: 4, name: 'درجہ خامسہ', books: [] },
-    { id: 5, name: 'درجہ رابعہ', books: [] },
-    { id: 6, name: 'درجہ ثالثہ', books: [] },
-    { id: 7, name: 'درجہ ثانیہ', books: [] },
-    { id: 8, name: 'درجہ اولی', books: [
-      { name: 'علم النحو / نحومیر (فارسی یا عربی)', sarh: [] },
-      { name: 'شرح مائۃ عامل (مع الترکیب)', sarh: [] },
-      { name: 'میزان الصرف و منشعب', sarh: [] },
-      { name: 'ارشاد الصرف (اردو) یا علم الصرف (تین حصص)', sarh: [] },
-      { name: 'صفوۃ المصادر', sarh: [] },
-      { name: 'تیسیر الابواب', sarh: [] },
-      { name: 'المنہاج فی القواعد والاعراب', sarh: [] },
-      { name: 'النحو الیسیر', sarh: [] },
-      { name: 'تسہیل النحو', sarh: [] },
-      { name: 'الطریقۃ العصریہ (جلد اول و دوم)', sarh: [] },
-      { name: 'طریقہ العصریہ (مفتی محمد عمر)', sarh: [] },
-      { name: 'جوامع الکلم (حضرت مولانا مفتی محمد شفیع عثمانی)', sarh: [] },
-      { name: 'جمال القرآن (مع حفظ پارہ عم نصف آخر مع التجوید)', sarh: [] }
-    ], sarhCategories: [
-        { name: 'نور الایضاح اور اس کی شروحات و حواشی', books: [
-            { name: 'نور الایضاح و نجاۃ الارواح', sarh: [] },
-            { name: 'حاشیۃ الطحطاوی علی نور الایضاح', sarh: [] },
-            { name: 'مراقی الفلاح', sarh: [] },
-            { name: 'شفاء الارواح', sarh: [] },
-            { name: 'ثمرۃ النجاح', sarh: [] },
-            { name: 'امداد الفتاح', sarh: [] },
-            { name: 'انوار الایضاح', sarh: [] },
-            { name: 'نور الاصباح', sarh: [] },
-            { name: 'اشرف الایضاح', sarh: [] },
-            { name: 'تکمیل الایضاح', sarh: [] }
-        ] },
-        { name: 'الفقہ المیسر اور اس کی شروحات', books: [
-            { name: 'الفقہ المیسر (اصل عربی متن)', sarh: [] },
-            { name: 'الفقہ المیسر اردو (محمد اظہر الاسلام)', sarh: [] },
-            { name: 'توضیح المیسر (اردو شرح الفقہ المیسر)', sarh: [] },
-            { name: 'تسهیل المیسر (اردو شرح الفقہ المیسر)', sarh: [] },
-            { name: 'ریاض الفقه (اردو شرح الفقہ المیسر)', sarh: [] },
-            { name: 'التقریر الانور (اردو شرح الفقہ المیسر)', sarh: [] }
-        ] },
-        { name: 'سیرت اور حدیث کی دیگر شروحات', books: [
-            { name: 'ارمغانِ سیرت (اردو شرح سیرت خاتم الانبیاء)', sarh: [] },
-            { name: 'طیب السیرت (اردو شرح سیرت خاتم الانبیاء)', sarh: [] },
-            { name: 'گلزارِ سیرت (اردو شرح سیرت خاتم الانبیاء)', sarh: [] },
-            { name: 'جوامع الکلم (اصل متن)', sarh: [] },
-            { name: 'توضيح الجوامع (اردو شرح جوامع الکلم)', sarh: [] },
-            { name: 'انوار الجوامع (اردو شرح جوامع الکلم)', sarh: [] },
-            { name: 'تسهیل جوامع الکلم (اردو شرح جوامع الکلم)', sarh: [] },
-            { name: 'فیوض الکلم (اردو شرح جوامع الکلم)', sarh: [] }
-        ] },
-        { name: 'صرف، نحو اور قواعد کی کتب و شروحات', books: [
-            { name: 'تحفۃ الصرف (علم الصرف پر کتاب)', sarh: [] },
-            { name: 'علم الصرف اولین و آخرین (اصل متن)', sarh: [] },
-            { name: 'ارشاد الصرف (اصل متن)', sarh: [] },
-            { name: 'تسہیل الصرف (جدید انداز میں صرف کی کتاب)', sarh: [] },
-            { name: 'میزان الصرف و منشعب (اصل متن)', sarh: [] },
-            { name: 'شرح میزان الصرف و منشعب (مختلف شروحات کا مجموعہ)', sarh: [] },
-            { name: 'تسہیل المیزان (اردو شرح میزان الصرف)', sarh: [] },
-            { name: 'ارشاد المیزان (اردو شرح میزان الصرف)', sarh: [] },
-            { name: 'علم النحو (اصل متن)', sarh: [] },
-            { name: 'نحو میر (اصل متن)', sarh: [] },
-            { name: 'شرح نحو میر (اردو شرح نحو میر)', sarh: [] },
-            { name: 'تسهیل النحو (اردو شرح نحو میر / جدید علم النحو)', sarh: [] },
-            { name: 'ارشاد النحو (اردو شرح نحو میر)', sarh: [] },
-            { name: 'شرح مائۃ عامل (اصل متن)', sarh: [] },
-            { name: 'التحفۃ الکاملۃ (اردو شرح شرح مائۃ عامل)', sarh: [] },
-            { name: 'التحقیق العوامل (اردو شرح شرح مائۃ عامل)', sarh: [] },
-            { name: 'الطریقۃ العصریۃ (جلد اول و دوم)', sarh: [] }
-        ] },
-        { name: 'عربی ادب، تجوید اور بقیہ کتب', books: [
-            { name: 'القراءۃ الواضحۃ (جلد اول، دوم، سوم)', sarh: [] },
-            { name: 'توضيح القراءۃ (اردو شرح القراءۃ الواضحۃ)', sarh: [] },
-            { name: 'مفتاح العربیہ (جلد اول و دوم)', sarh: [] },
-            { name: 'شرح مفتاح العربیہ (اردو شرح و حلِ تبارین)', sarh: [] },
-            { name: 'جمال القرآن (اصل متن از مولانا اشرف علی تھانوی)', sarh: [] },
-            { name: 'فوائدِ مکیہ (علمِ تجوید پر معروف کتاب)', sarh: [] },
-            { name: 'شرح فوائدِ مکیہ (اردو شروحات و حواشی)', sarh: [] },
-            { name: 'اصول التجوید (قاری جمشید علی قاسمی)', sarh: [] },
-            { name: 'تسهیل التجوید (علمِ تجوید پر آسان کتاب)', sarh: [] },
-            { name: 'پنج گنج (صرف کی مشہور کتاب)', sarh: [] },
-            { name: 'شرح پنج گنج (اردو شرح پنج گنج)', sarh: [] },
-            { name: 'المنہاج فی القواعد والاعراب (عربی گرامر اور تمرین)', sarh: [] },
-            { name: 'توضيح المنہاج (اردو شرح المنہاج فی القواعد والاعراب)', sarh: [] },
-            { name: 'النحو الیسیر (نحو کی آسان اور بنیادی کتاب)', sarh: [] },
-            { name: 'تسهیل النحو الیسیر (اردو شرح و حلِ تمرین النحو الیسیر)', sarh: [] },
-            { name: 'خط و املاء (خوشنویسی اور املاء کی درسی کتاب)', sarh: [] },
-            { name: 'پارہ عم مع التجوید (آخری پارہ تجوید کے قواعد اور مخارج کی مشق کے لیے)', sarh: [] }
-        ] }
-    ] },
-    { id: 9, name: 'متفرق درس نظامی', books: [] },
-    { id: 10, name: 'منطق و فلسفہ', books: [] },
-    { id: 11, name: 'تجوید کورس', books: [] },
-    { id: 12, name: 'دراسات دینیہ کورس', books: [] },
-    { id: 13, name: 'درس نظامی بنات / طالبات', books: [] },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const classesSnap = await getDocs(collection(db, 'classes'));
+        const booksSnap = await getDocs(collection(db, 'books'));
+        const categoriesSnap = await getDocs(collection(db, 'book_categories'));
+        const sharahsSnap = await getDocs(collection(db, 'sharahs'));
+
+        const classesData = classesSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          books: [] as Book[],
+          sarhCategories: [] as SarhCategory[]
+        })) as MadrasaClass[];
+
+        // Organize books and categories
+        const booksData = booksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const categoriesData = categoriesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const sharahsData = sharahsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        classesData.forEach(cls => {
+          cls.books = booksData
+            .filter((b: any) => b.classId === cls.id && !b.categoryId)
+            .map((b: any) => ({
+              id: b.id,
+              name: b.name,
+              downloadUrl: b.downloadUrl,
+              sarh: sharahsData
+                .filter((s: any) => s.bookId === b.id)
+                .map((s: any) => ({ name: s.name, downloadUrl: s.downloadUrl }))
+            }));
+          
+          cls.sarhCategories = categoriesData
+            .filter((cat: any) => cat.classId === cls.id)
+            .map((cat: any) => ({
+              id: cat.id,
+              name: cat.name,
+              books: booksData
+                .filter((b: any) => b.categoryId === cat.id)
+                .map((b: any) => ({
+                  id: b.id,
+                  name: b.name,
+                  downloadUrl: b.downloadUrl,
+                  sarh: sharahsData
+                    .filter((s: any) => s.bookId === b.id)
+                    .map((s: any) => ({ name: s.name, downloadUrl: s.downloadUrl }))
+                }))
+            }));
+        });
+
+        setClasses(classesData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handleBack = () => {
     if (view === 'sarh_book') setView('sarh_books_in_category');
@@ -154,18 +124,18 @@ export default function MadrasaReader({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="flex flex-col h-full bg-[#f0f2f5] dark:bg-[#111b21]">
-      <div className="bg-[#00a884] dark:bg-[#202c33] p-4 pt-8 pb-4 shadow-md safe-area-top">
-        <div className="flex items-center gap-4 text-white">
-          <button onClick={handleBack} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            <ArrowLeft size={24} />
+      <div className="bg-[#00a884] dark:bg-[#202c33] px-4 py-3 sm:px-6 sm:py-4 shadow-md safe-area-top shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4 text-white">
+          <button onClick={handleBack} className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors -ml-1 sm:ml-0">
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           <div className="flex-1">
-            <h2 className="text-xl font-bold Urdu line-clamp-1">
+            <h2 className="text-base sm:text-xl font-bold Urdu line-clamp-1 leading-tight">
               {getHeaderTitle()}
             </h2>
           </div>
-          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-            <GraduationCap size={20} />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
@@ -184,13 +154,16 @@ export default function MadrasaReader({ onBack }: { onBack: () => void }) {
       </div>
 
       <div className="scrollable-content p-4">
+        {loading ? (
+            <p className="text-center text-gray-500">Loading...</p>
+        ) : (
         <AnimatePresence mode="wait">
           {view === 'classes' ? (
             <motion.div key="classes" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-1 gap-4">
               {classes.filter(c => c.name.includes(searchQuery)).map((cls) => (
                 <button key={cls.id} onClick={() => { setSelectedClass(cls); setView('options'); }} className="bg-white dark:bg-[#202c33] p-5 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-between group border border-transparent hover:border-[#00a884]/20">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 flex items-center justify-center text-emerald-600 font-black">{cls.id}</div>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 flex items-center justify-center text-emerald-600 font-black">{cls.id.slice(0, 3)}</div>
                     <div className="text-left"><h4 className="text-lg font-bold Urdu text-[#111b21] dark:text-[#e9edef]">{cls.name}</h4></div>
                   </div>
                   <ChevronRight className="text-[#8696a0] group-hover:translate-x-1 transition-transform" size={20} />
@@ -252,6 +225,7 @@ export default function MadrasaReader({ onBack }: { onBack: () => void }) {
             </motion.div>
           )}
         </AnimatePresence>
+        )}
       </div>
     </div>
   );
