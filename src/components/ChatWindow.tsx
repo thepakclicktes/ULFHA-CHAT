@@ -986,82 +986,6 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
     try {
       await addDoc(collection(db, 'messages'), enrichMessageObject(msg));
       sendPushForMessage(messageText);
-
-      // Trigger automatic WhatsApp redirect if this is a WhatsApp contact
-      if (chat.isWhatsAppContact) {
-        const cleanPhone = chat.phoneNumber ? chat.phoneNumber.replace(/[^\d]/g, '') : chat.uid.replace('wa_', '').replace(/[^\d]/g, '');
-        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
-        window.open(waUrl, '_blank');
-      }
-
-      // Chat to Earn Logic (Elite Feature)
-      const rewardAmount = appSettings?.chatRewardAmount || 0;
-      const now = Date.now();
-      const lastRewardTime = currentUser.lastChatRewardTime || 0;
-      const COOLDOWN = 10000; // 10 seconds cooldown
-
-      if (rewardAmount > 0 && (now - lastRewardTime) > COOLDOWN) {
-        await runTransaction(db, async (transaction) => {
-          const userRef = doc(db, 'users', currentUser.uid);
-          const userDoc = await transaction.get(userRef);
-          if (!userDoc.exists()) return;
-          
-          const currentBalance = userDoc.data().balance || 0;
-          transaction.update(userRef, {
-            balance: currentBalance + rewardAmount,
-            lastChatRewardTime: now
-          });
-
-          // Log the reward
-          const logRef = doc(collection(db, 'activityLogs'));
-          transaction.set(logRef, {
-            userId: currentUser.uid,
-            userName: currentUser.displayName,
-            action: `Earned Rs. ${rewardAmount} from chatting`,
-            timestamp: serverTimestamp()
-          });
-        });
-      }
-
-      // Auto-Reply Bot Logic (Elite Feature)
-      if (appSettings?.botAutoReplyEnabled) {
-        let botText = '';
-        const lowerMsg = messageText.toLowerCase().trim();
-        
-        if (lowerMsg === 'balance') {
-          botText = `Your current balance is: Rs. ${currentUser.balance.toFixed(2)}`;
-        } else if (lowerMsg === 'hi' || lowerMsg === 'hello' || lowerMsg === 'hey') {
-          botText = appSettings.botWelcomeMessage || 'Hello! How can I help you today?';
-        } else if (lowerMsg === 'help') {
-          botText = 'Available commands: balance, help, status, games, wallet';
-        } else if (lowerMsg === 'status') {
-          botText = `System Status: Online | Level: ${currentUser.level || 'Bronze'} | Exp: ${currentUser.experience || 0}`;
-        } else if (lowerMsg === 'games') {
-          botText = 'You can play games like Lucky Spin, Math Quiz, and more in the Games tab to earn rewards!';
-        } else if (lowerMsg === 'wallet') {
-          botText = 'Go to the Wallet tab to withdraw your earnings. Minimum withdrawal is Rs. 500.';
-        }
-
-        if (botText) {
-          const botReply: Message = {
-            senderId: 'alpha-ai-bot',
-            senderName: appSettings.botName || 'Alpha Bot',
-            receiverId: currentUser.uid,
-            text: botText,
-            timestamp: serverTimestamp(),
-            status: 'sent',
-            type: 'text',
-            replyTo: null
-          };
-          setTimeout(async () => {
-            try {
-              await addDoc(collection(db, 'messages'), botReply);
-            } catch (err) {
-              console.error('Bot reply failed:', err);
-            }
-          }, 1000);
-        }
-      }
     } catch (error) {
       console.warn('Failed to send message immediately, queueing to IndexedDB:', error);
       await queuePendingMessage(msg);
@@ -1610,7 +1534,6 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
                 </button>
               </>
             )}
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors hidden sm:block"><Gamepad2 size={22} /></button>
             <button 
               id="header-search-btn"
               onClick={() => {
@@ -1906,14 +1829,10 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
 
           <div className="flex items-end gap-2 px-1">
             <div className="flex-1 bg-white rounded-[24px] flex items-end p-1.5 shadow-sm min-h-[48px]">
-              <button className="p-2.5 text-[#54656F] hover:bg-gray-100 rounded-full flex-shrink-0 transition-colors">
-                <Smile size={24} />
-              </button>
-              
-              <form onSubmit={handleSendMessage} className="flex-1 px-1 mb-1.5">
+              <form onSubmit={handleSendMessage} className="flex-1 px-4 mb-1.5">
                 <textarea
                   rows={1}
-                  placeholder="Message"
+                  placeholder="Type a message"
                   className="w-full bg-transparent text-[16px] text-[#111B21] focus:outline-none resize-none max-h-32 py-1 placeholder:text-[#8696A0]"
                   value={newMessage}
                   onChange={(e) => {
@@ -1933,151 +1852,22 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
                   }}
                 />
               </form>
-
-              <div className="flex items-center flex-shrink-0">
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  onChange={handleFileSelect}
-                  accept={fileType === 'image' ? 'image/*' : fileType === 'video' ? 'video/*' : '*/*'}
-                />
-                <button 
-                  onClick={() => setShowGamesMenu(!showGamesMenu)}
-                  disabled={isUploading}
-                  className={cn(
-                    "p-2.5 text-[#54656F] hover:bg-gray-100 rounded-full transition-colors",
-                    (showGamesMenu || isUploading) && "text-[#00A884]"
-                  )}
-                >
-                  {isUploading ? (
-                    <RefreshCw size={24} className="animate-spin" />
-                  ) : (
-                    <Plus size={24} className={cn("transition-transform duration-200", showGamesMenu && "rotate-45")} />
-                  )}
-                </button>
-                
-                {!newMessage.trim() && (
-                  <button 
-                    onClick={() => triggerFileSelect('image')}
-                    className="p-2.5 text-[#54656F] hover:bg-gray-100 rounded-full flex-shrink-0 transition-colors"
-                  >
-                    <Camera size={24} />
-                  </button>
-                )}
-              </div>
-              
-              <AnimatePresence>
-                {showGamesMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                    className="absolute bottom-[70px] left-2 bg-white rounded-2xl shadow-2xl p-4 w-80 grid grid-cols-3 gap-2 border border-gray-100 z-[100]"
-                  >
-                    <div 
-                      onClick={() => triggerFileSelect('image')}
-                      className="flex flex-col items-center gap-1 cursor-pointer hover:bg-gray-50 p-3 rounded-xl transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-md">
-                        <Image size={24} />
-                      </div>
-                      <span className="text-[11px] font-bold text-[#54656F]">Gallery</span>
-                    </div>
-                    <div 
-                      onClick={() => triggerFileSelect('document')}
-                      className="flex flex-col items-center gap-1 cursor-pointer hover:bg-gray-50 p-3 rounded-xl transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-md">
-                        <FileText size={24} />
-                      </div>
-                      <span className="text-[11px] font-bold text-[#54656F]">Document</span>
-                    </div>
-                    <div 
-                      onClick={() => triggerFileSelect('video')}
-                      className="flex flex-col items-center gap-1 cursor-pointer hover:bg-gray-50 p-3 rounded-xl transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white shadow-md">
-                        <Video size={24} />
-                      </div>
-                      <span className="text-[11px] font-bold text-[#54656F]">Video</span>
-                    </div>
-                    <div 
-                      onClick={() => { navigate('/games'); setShowGamesMenu(false); }}
-                      className="flex flex-col items-center gap-1 cursor-pointer hover:bg-gray-50 p-3 rounded-xl transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-pink-500 rounded-full flex items-center justify-center text-white shadow-md">
-                        <Gamepad2 size={24} />
-                      </div>
-                      <span className="text-[11px] font-bold text-[#54656F]">Games</span>
-                    </div>
-                    <div 
-                      onClick={() => { navigate('/wallet'); setShowGamesMenu(false); }}
-                      className="flex flex-col items-center gap-1 cursor-pointer hover:bg-gray-50 p-3 rounded-xl transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-white shadow-md">
-                        <Wallet size={24} />
-                      </div>
-                      <span className="text-[11px] font-bold text-[#54656F]">Wallet</span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
             <div className="flex-shrink-0">
-              {newMessage.trim() ? (
-                <motion.button 
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  onClick={() => handleSendMessage()}
-                  className="w-12 h-12 bg-[#00A884] text-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform"
-                >
-                  <Send size={24} className="ml-1" fill="currentColor" />
-                </motion.button>
-              ) : recordedAudio ? (
-                <div className="flex items-center gap-2 bg-white rounded-full p-1 shadow-md">
-                  <button 
-                    onClick={cancelRecording}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-full"
-                  >
-                    <Trash2 size={22} />
-                  </button>
-                  <div className="flex items-center gap-2 bg-[#D9FDD3] px-3 py-1.5 rounded-full">
-                    <button 
-                      onClick={togglePreviewPlayback}
-                      className="p-1 text-[#008069] hover:bg-white/50 rounded-full transition-colors"
-                    >
-                      {isPlayingPreview ? <Pause size={18} /> : <Play size={18} />}
-                    </button>
-                  </div>
-                  <button 
-                    onClick={handleSendVoiceMessage}
-                    className="w-10 h-10 bg-[#00A884] text-white rounded-full flex items-center justify-center"
-                  >
-                    <Send size={20} fill="currentColor" className="ml-0.5" />
-                  </button>
-                </div>
-              ) : (
-                <motion.button 
-                  whileTap={{ scale: 0.9 }}
-                  onClick={isRecording ? stopRecording : startRecording}
-                  className={cn(
-                    "w-12 h-12 flex items-center justify-center rounded-full shadow-md transition-all",
-                    isRecording ? "bg-red-500 text-white scale-110" : "bg-[#00A884] text-white"
-                  )}
-                >
-                  {isRecording ? (
-                    <div className="flex flex-col items-center">
-                      <div className="w-3 h-3 bg-white rounded-sm mb-1 animate-pulse" />
-                      <span className="text-[8px] font-mono leading-none">{Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}</span>
-                    </div>
-                  ) : (
-                    <Mic size={24} fill="currentColor" />
-                  )}
-                </motion.button>
-              )}
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
+                onClick={() => handleSendMessage()}
+                disabled={!newMessage.trim()}
+                className={cn(
+                  "w-12 h-12 flex items-center justify-center rounded-full shadow-md transition-all",
+                  newMessage.trim() ? "bg-[#00A884] text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                )}
+              >
+                <Send size={24} className="ml-1" fill="currentColor" />
+              </motion.button>
             </div>
+
           </div>
         </div>
       )}

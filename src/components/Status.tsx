@@ -22,6 +22,8 @@ interface StatusProps {
 
 // Quietly record views when a post enters the user's view / mounts on screen
 function PostViewRecorder({ postId, userId, views = [] }: { postId: string; userId: string; views: string[] }) {
+  // Disabling automatic view recording to save Firestore write quota
+  /*
   useEffect(() => {
     if (!postId || !userId) return;
     if (!views.includes(userId)) {
@@ -31,6 +33,7 @@ function PostViewRecorder({ postId, userId, views = [] }: { postId: string; user
       }).catch(err => console.error("Error recording view:", err));
     }
   }, [postId, userId, views]);
+  */
 
   return null;
 }
