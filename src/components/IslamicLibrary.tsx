@@ -820,22 +820,11 @@ export default function IslamicLibrary({
           </button>
         </div>
 
-        {/* Title & Author */}
-        <div className="space-y-0.5 flex-1">
-          <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100 Urdu group-hover:text-[#00a884] transition-colors leading-snug line-clamp-1">
+        {/* Title */}
+        <div className="pt-2 flex-1 text-center flex items-center justify-center">
+          <h4 className="text-sm font-bold text-gray-900 dark:text-slate-100 Urdu group-hover:text-[#00a884] transition-colors leading-snug line-clamp-2">
             {book.urduTitle}
           </h4>
-          <p className="text-[11px] text-gray-500 dark:text-slate-400 Urdu line-clamp-1 font-medium">
-            {book.urduAuthor}
-          </p>
-        </div>
-
-        {/* Language Indicator */}
-        <div className="mt-3 pt-2 border-t border-gray-50 dark:border-slate-800 flex items-center justify-between text-[10px] text-gray-400 font-mono">
-          <span className="Urdu">{book.language}</span>
-          <span className="text-[#00a884] font-semibold group-hover:translate-x-1 transition-transform flex items-center gap-0.5">
-            تفصیل <ChevronRight size={10} />
-          </span>
         </div>
       </div>
     );
@@ -854,14 +843,9 @@ export default function IslamicLibrary({
           <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-black/5" />
         </div>
         
-        <div className="space-y-2 flex-1">
-          <div className="h-4 bg-gray-200 dark:bg-slate-800 rounded w-3/4" />
-          <div className="h-3 bg-gray-200 dark:bg-slate-800 rounded w-1/2" />
-        </div>
-
-        <div className="mt-4 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="h-3 bg-gray-100 dark:bg-slate-800 rounded w-1/3" />
-          <div className="h-3 bg-gray-100 dark:bg-slate-800 rounded w-1/4" />
+        <div className="pt-2 flex-1 flex flex-col items-center justify-center space-y-2">
+          <div className="h-4 bg-gray-200 dark:bg-slate-800 rounded w-3/4 mx-auto" />
+          <div className="h-4 bg-gray-200 dark:bg-slate-800 rounded w-1/2 mx-auto" />
         </div>
       </div>
     );
