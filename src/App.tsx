@@ -27,7 +27,7 @@ import Settings from './components/Settings';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
 
-const DEFAULT_VAPID_KEY = 'BENdBUValtJIOHok8BLVpKY3FhQwej5RwZXJ8NdfFCoZKZY1SpllJQVSscwiG6HnA7n2PFHSSU8EQFZPLAndEhw';
+const DEFAULT_VAPID_KEY = 'BARsQajcr4y6I9nCfTXGorq433uPL-sAYxTtRlDQbkANR_LSc993JKKlev2TrxjHX4rE_3f4tBVRKlZ70__I708';
 const DEFAULT_APP_LOGO = '/logo.png'; // Improved high-quality fallback logo placeholder
 
 const resolveLogo = (url?: string) => {
