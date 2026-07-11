@@ -810,7 +810,8 @@ const cycleVisibility = (key: string, current: string) => {
       <button 
         onClick={() => {
           const themes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
-          const currentIndex = themes.indexOf(settings.theme);
+          const currentTheme = (settings && settings.theme) || 'system';
+          const currentIndex = themes.indexOf(currentTheme);
           const nextTheme = themes[(currentIndex + 1) % themes.length];
           updateSetting('theme', nextTheme);
         }}
@@ -840,7 +841,8 @@ const cycleVisibility = (key: string, current: string) => {
       <button 
         onClick={() => {
           const sizes: ('small' | 'medium' | 'large')[] = ['small', 'medium', 'large'];
-          const currentIndex = sizes.indexOf(settings.fontSize);
+          const currentFontSize = (settings && settings.fontSize) || 'medium';
+          const currentIndex = sizes.indexOf(currentFontSize);
           const nextSize = sizes[(currentIndex + 1) % sizes.length];
           updateSetting('fontSize', nextSize);
         }}

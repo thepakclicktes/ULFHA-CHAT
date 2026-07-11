@@ -68,6 +68,16 @@ const CATEGORIES = [
   { id: 'emadrasa', title: 'e-Madrasa', urdu: 'ای مدرسہ' }
 ];
 
+const highlightJson = (code: string) => {
+  try {
+    const grammar = (languages && (languages.json || languages.js)) || {};
+    return highlight(code, grammar, 'json');
+  } catch (e) {
+    console.warn("Prism highlight warning:", e);
+    return code;
+  }
+};
+
 export default function AdminPanel({ onExit }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -1131,7 +1141,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                         <Editor
                           value={fileContent}
                           onValueChange={code => setFileContent(code)}
-                          highlight={code => highlight(code, languages.json, 'json')}
+                          highlight={highlightJson}
                           padding={20}
                           style={{
                             fontFamily: '"Fira code", "Fira Mono", monospace',

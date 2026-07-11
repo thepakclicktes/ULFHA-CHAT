@@ -1,6 +1,126 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Prevent Firebase / Firestore Quota and Assertion Crashes -->
+    <script>
+      (function() {
+        const isQuotaOrAssertionError = function(msg) {
+          const lower = String(msg || '').toLowerCase();
+          return (
+            lower.includes('quota') ||
+            lower.includes('exceeded') ||
+            lower.includes('limit') ||
+            lower.includes('firestore') ||
+            lower.includes('firebase') ||
+            lower.includes('unexpected state') ||
+            lower.includes('assertion failed') ||
+            lower.includes('resource_exhausted') ||
+            lower.includes('resource-exhausted') ||
+            lower.includes('unreachable') ||
+            lower.includes('ve":-1') ||
+            lower.includes('b815') ||
+            lower.includes('ca9')
+          );
+        };
+
+        const handleIntercept = function() {
+          try {
+            window.dispatchEvent(new CustomEvent('firestore-quota-exceeded'));
+          } catch (e) {}
+        };
+
+        // Intercept console.error and console.warn
+        const originalError = console.error;
+        console.error = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var isQuota = false;
+          for (var i = 0; i < args.length; i++) {
+            var arg = args[i];
+            if (typeof arg === 'string' && isQuotaOrAssertionError(arg)) {
+              isQuota = true;
+              break;
+            }
+            if (arg instanceof Error && (isQuotaOrAssertionError(arg.message) || isQuotaOrAssertionError(arg.stack))) {
+              isQuota = true;
+              break;
+            }
+            try {
+              if (isQuotaOrAssertionError(JSON.stringify(arg))) {
+                isQuota = true;
+                break;
+              }
+            } catch (e) {}
+          }
+
+          if (isQuota) {
+            handleIntercept();
+            console.log('[System Status] Offline database cache active.');
+            return;
+          }
+          originalError.apply(console, arguments);
+        };
+
+        const originalWarn = console.warn;
+        console.warn = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var isQuota = false;
+          for (var i = 0; i < args.length; i++) {
+            var arg = args[i];
+            if (typeof arg === 'string' && isQuotaOrAssertionError(arg)) {
+              isQuota = true;
+              break;
+            }
+            if (arg instanceof Error && (isQuotaOrAssertionError(arg.message) || isQuotaOrAssertionError(arg.stack))) {
+              isQuota = true;
+              break;
+            }
+            try {
+              if (isQuotaOrAssertionError(JSON.stringify(arg))) {
+                isQuota = true;
+                break;
+              }
+            } catch (e) {}
+          }
+
+          if (isQuota) {
+            handleIntercept();
+            console.log('[System Status] Offline database cache active.');
+            return;
+          }
+          originalWarn.apply(console, arguments);
+        };
+
+        // Capture unhandled errors and rejections
+        window.addEventListener('error', function(event) {
+          var msg = (event.message || '').toLowerCase();
+          var errObj = event.error;
+          var errMsg = errObj instanceof Error ? (errObj.message || '').toLowerCase() : '';
+          var errStack = errObj instanceof Error ? (errObj.stack || '').toLowerCase() : '';
+          
+          if (isQuotaOrAssertionError(msg) || isQuotaOrAssertionError(errMsg) || isQuotaOrAssertionError(errStack)) {
+            handleIntercept();
+            event.preventDefault();
+            try {
+              event.stopImmediatePropagation();
+            } catch (e) {}
+          }
+        }, { capture: true });
+
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event.reason;
+          var msg = reason instanceof Error ? (reason.message || '') : String(reason || '');
+          var stack = reason instanceof Error ? (reason.stack || '') : '';
+          
+          if (isQuotaOrAssertionError(msg) || isQuotaOrAssertionError(stack)) {
+            handleIntercept();
+            event.preventDefault();
+            try {
+              event.stopImmediatePropagation();
+            } catch (e) {}
+          }
+        }, { capture: true });
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#00A884" />

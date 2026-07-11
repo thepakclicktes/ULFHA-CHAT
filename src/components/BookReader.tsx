@@ -523,10 +523,12 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
       for (let p = 1; p <= pdfDoc.numPages; p++) {
         const page = await pdfDoc.getPage(p);
         const textContent = await page.getTextContent();
-        const textItems = textContent.items.map((item: any) => item.str).join(' ');
+        const textItems = textContent?.items ? textContent.items.map((item: any) => (item?.str || '')).join(' ') : '';
+        const lowercaseTextItems = textItems ? textItems.toLowerCase() : '';
+        const lowercaseQueryStr = queryStr ? queryStr.toLowerCase() : '';
         
-        if (textItems.toLowerCase().includes(queryStr.toLowerCase())) {
-          const index = textItems.toLowerCase().indexOf(queryStr.toLowerCase());
+        if (lowercaseTextItems && lowercaseQueryStr && lowercaseTextItems.includes(lowercaseQueryStr)) {
+          const index = lowercaseTextItems.indexOf(lowercaseQueryStr);
           const start = Math.max(0, index - 30);
           const end = Math.min(textItems.length, index + queryStr.length + 30);
           let snippet = textItems.substring(start, end).trim();

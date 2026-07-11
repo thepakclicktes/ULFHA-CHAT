@@ -24,6 +24,7 @@ import { getToken, onMessage } from 'firebase/messaging';
 import { reload, updatePassword } from 'firebase/auth';
 import { db, messaging, auth } from './firebase';
 import { handleFirestoreError, OperationType } from './firebaseError';
+import firebaseConfig from '../firebase-applet-config.json';
 import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock, MessageCircle, Loader2 } from 'lucide-react';
 import { cn, resolveApiUrl } from './utils';
 import Header from './components/Header';
@@ -58,7 +59,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export default function App() {
   const { user: authUser, profile, loading } = useAuth();
-  const user = authUser || (profile ? { uid: profile.uid, email: profile.email, phoneNumber: profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL } as any : null);
+  const user = authUser || (profile as any);
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedChat, setSelectedChat] = useState<any | null>(() => {
@@ -280,31 +281,57 @@ useEffect(() => {
     window.addEventListener('firestore-quota-exceeded', handleQuotaError);
 
     const handleGlobalError = (event: ErrorEvent) => {
-      const msg = event.message || '';
-      if (
-        msg.includes('FIRESTORE') ||
+      const msg = (event.message || '').toLowerCase();
+      const errObj = event.error;
+      const errMsg = errObj instanceof Error ? (errObj.message || '').toLowerCase() : '';
+      const errStack = errObj instanceof Error ? (errObj.stack || '').toLowerCase() : '';
+      const isFirestoreOrQuota =
         msg.includes('firestore') ||
-        msg.includes('Unexpected state') ||
-        msg.includes('Quota limit exceeded') ||
-        msg.includes('RESOURCE_EXHAUSTED')
-      ) {
+        msg.includes('unexpected state') ||
+        msg.includes('quota') ||
+        msg.includes('resource-exhausted') ||
+        msg.includes('limit') ||
+        errMsg.includes('firestore') ||
+        errMsg.includes('unexpected state') ||
+        errMsg.includes('quota') ||
+        errMsg.includes('resource-exhausted') ||
+        errMsg.includes('limit') ||
+        errStack.includes('firestore') ||
+        errStack.includes('unexpected state') ||
+        errStack.includes('quota');
+
+      if (isFirestoreOrQuota) {
         setQuotaExceeded(true);
         event.preventDefault(); // Prevent standard browser crash overlay
+        try {
+          event.stopImmediatePropagation();
+        } catch (e) {}
       }
     };
 
     const handleGlobalRejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason;
-      const msg = reason instanceof Error ? reason.message : String(reason);
-      if (
-        msg.includes('FIRESTORE') ||
-        msg.includes('firestore') ||
-        msg.includes('Unexpected state') ||
-        msg.includes('Quota limit exceeded') ||
-        msg.includes('RESOURCE_EXHAUSTED')
-      ) {
+      const msg = reason instanceof Error ? (reason.message || '') : String(reason || '');
+      const stack = reason instanceof Error ? (reason.stack || '') : '';
+      const lowerMsg = msg.toLowerCase();
+      const lowerStack = stack.toLowerCase();
+      
+      const isFirestoreOrQuota =
+        lowerMsg.includes('firestore') ||
+        lowerMsg.includes('unexpected state') ||
+        lowerMsg.includes('quota') ||
+        lowerMsg.includes('resource-exhausted') ||
+        lowerMsg.includes('limit') ||
+        lowerStack.includes('firestore') ||
+        lowerStack.includes('unexpected state') ||
+        lowerStack.includes('quota');
+
+      if (isFirestoreOrQuota) {
         setQuotaExceeded(true);
         event.preventDefault(); // Prevent standard browser crash overlay
+        try {
+          event.stopImmediatePropagation();
+        } catch (e) {}
       }
     };
 
@@ -969,33 +996,7 @@ return (
         </div>
       )}
 
-      {quotaExceeded && (
-        <div className="bg-amber-600 text-white py-3 px-4 relative z-[9999] shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left transition-all">
-          <div className="flex items-center gap-3">
-            <ShieldAlert size={20} className="shrink-0 text-amber-200 animate-pulse animate-bounce" />
-            <div className="text-xs sm:text-sm font-medium">
-              <span className="font-bold">Daily Database Quota Exceeded (Free Tier)!</span> Some database operations may fail until your Spark Plan quota resets tomorrow.
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <a 
-              href="https://console.firebase.google.com/project/gen-lang-client-0459240900/firestore/databases/ai-studio-14fe2e05-9393-4e2e-8fb5-2d753f28d925/data?openUpgradeDialog=true"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-white text-amber-800 hover:bg-amber-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1 shrink-0"
-            >
-              Enable Billing & Upgrade
-            </a>
-            <button 
-              onClick={() => setQuotaExceeded(false)}
-              className="text-white hover:text-amber-200 p-1 rounded transition-colors text-xs uppercase font-bold tracking-wider shrink-0"
-              title="Close warning"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
+
       {activeTab !== 'admin' && !isReaderPage && (
         <div className={cn(selectedChat ? "hidden xl:block" : "block")}>
           <Header profile={profile} onSearch={setSearchQuery} logoUrl={resolveLogo(appSettings?.appLogoUrl)} />

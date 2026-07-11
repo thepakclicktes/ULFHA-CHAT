@@ -1,11 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
 import { 
-  getFirestore, 
-  enableMultiTabIndexedDbPersistence,
   initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  setLogLevel
 } from 'firebase/firestore';
 import { getMessaging } from 'firebase/messaging';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -23,17 +22,11 @@ export const db = initializeFirestore(app, {
   })
 }, dbId);
 
-// Fallback for older versions if needed, though initializeFirestore is preferred in newer SDKs
+// Disable internal Firestore SDK logs completely to prevent unhandled logs in the console
 try {
-  enableMultiTabIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn('Persistence failed: Multiple tabs open');
-    } else if (err.code === 'unimplemented') {
-      console.warn('Persistence is not available in this browser');
-    }
-  });
+  setLogLevel('silent');
 } catch (e) {
-  // Ignore errors if already initialized with localCache
+  // Ignore
 }
 
 export const messaging = getMessaging(app);

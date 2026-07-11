@@ -376,26 +376,65 @@ export default function Status({ profile }: StatusProps) {
 
   // Listen to my own followers and following
   useEffect(() => {
-    if (!profile.uid) return;
+    if (!profile?.uid) return;
+
+    // Load from cache first
+    try {
+      const cachedFollowers = localStorage.getItem(`my_followers_${profile.uid}`);
+      if (cachedFollowers) {
+        setMyFollowers(JSON.parse(cachedFollowers));
+      }
+      const cachedFollowing = localStorage.getItem(`my_following_${profile.uid}`);
+      if (cachedFollowing) {
+        setMyFollowing(JSON.parse(cachedFollowing));
+      }
+    } catch (e) {
+      console.warn("Failed to load followers/following cache:", e);
+    }
+
     const qFollowers = query(collection(db, 'follows'), where('followingId', '==', profile.uid));
     const unsubFollowers = onSnapshot(qFollowers, (snapshot) => {
-      setMyFollowers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const followersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMyFollowers(followersData);
+      try {
+        localStorage.setItem(`my_followers_${profile.uid}`, JSON.stringify(followersData));
+      } catch (e) {
+        console.warn("Failed to save followers cache:", e);
+      }
     }, (error) => {
-      console.error("Error fetching followers:", error);
+      console.warn("Error fetching followers (using cache):", error);
+      try {
+        const cachedFollowers = localStorage.getItem(`my_followers_${profile.uid}`);
+        if (cachedFollowers) {
+          setMyFollowers(JSON.parse(cachedFollowers));
+        }
+      } catch (e) {}
     });
 
     const qFollowing = query(collection(db, 'follows'), where('followerId', '==', profile.uid));
     const unsubFollowing = onSnapshot(qFollowing, (snapshot) => {
-      setMyFollowing(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const followingData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMyFollowing(followingData);
+      try {
+        localStorage.setItem(`my_following_${profile.uid}`, JSON.stringify(followingData));
+      } catch (e) {
+        console.warn("Failed to save following cache:", e);
+      }
     }, (error) => {
-      console.error("Error fetching following:", error);
+      console.warn("Error fetching following (using cache):", error);
+      try {
+        const cachedFollowing = localStorage.getItem(`my_following_${profile.uid}`);
+        if (cachedFollowing) {
+          setMyFollowing(JSON.parse(cachedFollowing));
+        }
+      } catch (e) {}
     });
 
     return () => {
       unsubFollowers();
       unsubFollowing();
     };
-  }, [profile.uid]);
+  }, [profile?.uid]);
 
   // Listen to selected user doc, posts, and follows
   useEffect(() => {
@@ -414,6 +453,8 @@ export default function Status({ profile }: StatusProps) {
       } else {
         setSelectedUserDoc(null);
       }
+    }, (error) => {
+      console.warn("Error listening to selected user profile doc:", error);
     });
 
     // 2. Listen to selected user posts
@@ -426,18 +467,24 @@ export default function Status({ profile }: StatusProps) {
         return tB - tA;
       });
       setSelectedUserPosts(list);
+    }, (error) => {
+      console.warn("Error listening to selected user posts:", error);
     });
 
     // 3. Listen to selected user followers
     const qFollowers = query(collection(db, 'follows'), where('followingId', '==', selectedUserId));
     const unsubFollowers = onSnapshot(qFollowers, (snapshot) => {
       setSelectedUserFollowers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.warn("Error listening to selected user followers:", error);
     });
 
     // 4. Listen to selected user following
     const qFollowing = query(collection(db, 'follows'), where('followerId', '==', selectedUserId));
     const unsubFollowing = onSnapshot(qFollowing, (snapshot) => {
       setSelectedUserFollowing(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.warn("Error listening to selected user following:", error);
     });
 
     return () => {

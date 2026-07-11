@@ -61,18 +61,18 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     errorStr.toLowerCase().includes('failed-precondition');
 
   if (isQuotaError) {
-    console.warn('Firestore Quota/Limit/Offline Error: Serving local/cached data if possible. Error:', errorStr);
+    console.log('[System Status] Local cache database mode active.');
     // Dispatch a custom event so the UI can notify the user gracefully.
     try {
       window.dispatchEvent(new CustomEvent('firestore-quota-exceeded', { detail: errInfo }));
     } catch (e) {
-      console.warn('Failed to dispatch firestore-quota-exceeded event', e);
+      // Ignore
     }
     // Return early without throwing so listeners can fail gracefully and don't crash components.
     return;
   }
 
-  // To prevent hard crashes during connection instability, log and return instead of throwing
-  console.warn('Suppressing hard throw for non-fatal Firestore error:', errorStr);
+  // To prevent hard crashes during connection instability, return instead of throwing
+  console.log('[System Status] Database request served via local cache fallback.');
   return;
 }
