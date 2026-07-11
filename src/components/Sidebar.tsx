@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   MessageCircle, 
@@ -12,10 +12,11 @@ import {
   Youtube, 
   Facebook, 
   Instagram, 
-  ExternalLink 
+  ExternalLink
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { UserProfile } from '../types';
 import { cn } from '../utils';
 
@@ -30,6 +31,23 @@ export default function Sidebar({ profile, selectedChat }: SidebarProps) {
   const currentPath = location.pathname;
   const [copied, setCopied] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [totalUnread, setTotalUnread] = useState(0);
+
+  useEffect(() => {
+    if (!auth.currentUser) return;
+
+    const q = query(
+      collection(db, 'messages'),
+      where('receiverId', '==', auth.currentUser.uid),
+      where('status', '!=', 'read')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setTotalUnread(snapshot.size);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleShare = async () => {
     let shareUrl = window.location.origin;
@@ -232,9 +250,15 @@ export default function Sidebar({ profile, selectedChat }: SidebarProps) {
                   {item.label}
                 </span>
 
-                {/* Unread Indicator placeholder */}
-                {item.path === '/' && (
-                  <div className="absolute top-2 right-1/4 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-[#111b21]" />
+                {/* Unread Indicator with Count */}
+                {item.path === '/' && totalUnread > 0 && (
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#FF3B30] text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 shadow-lg border-2 border-white dark:border-[#111b21] z-20"
+                  >
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </motion.div>
                 )}
               </motion.button>
             );

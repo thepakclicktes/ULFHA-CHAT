@@ -54,6 +54,13 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+// Handle Background Sync
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-messages') {
+    console.log('[Service Worker] Background Syncing messages...');
+  }
+});
+
 // PWA requirement: Cache assets for offline use
 const CACHE_NAME = 'ulfha-chat-v2';
 const ASSETS_TO_CACHE = [

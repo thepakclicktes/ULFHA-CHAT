@@ -263,6 +263,8 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
     }
   });
 
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
   const togglePinChat = (uid: string) => {
     setPinnedChats(prev => {
       const next = prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid];
@@ -489,6 +491,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       setIsLoading(true);
       const activeUserIds = new Set<string>();
+      const counts: Record<string, number> = {};
       
       // Sort documents client-side by timestamp descending to ensure we process newest first if needed
       const docs = [...snapshot.docs];
@@ -515,7 +518,14 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
             console.error('Failed to update delivery status:', e);
           }
         }
+
+        // Unread counts for DMs
+        if (data.receiverId === auth.currentUser?.uid && data.status !== 'read') {
+          counts[data.senderId] = (counts[data.senderId] || 0) + 1;
+        }
       });
+
+      setUnreadCounts(counts);
 
       if (activeUserIds.size === 0) {
         setUsers([]);
@@ -1212,23 +1222,50 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.98 }}
                       key={chatItem.uid}
-                      onClick={() => handleSelectChatLocal(chatItem)}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setContextMenu({
-                          x: e.clientX,
-                          y: e.clientY,
-                          chat: chatItem
-                        });
-                      }}
-                      onTouchStart={(e) => handleTouchStart(e, chatItem)}
-                      onTouchEnd={handleTouchEnd}
-                      onTouchMove={handleTouchMove}
-                      className={cn(
-                        "flex items-center p-3 cursor-pointer hover:bg-[#F5F6F6] transition-all duration-200 group relative chat-item",
-                        selectedChat?.uid === chatItem.uid && "bg-[#F0F2F5]"
-                      )}
+                      className="relative overflow-hidden chat-item-container"
                     >
+                      {/* Swipe Actions Background */}
+                      <div className="absolute inset-0 flex">
+                        <div className="flex-1 bg-[#25D366] flex items-center pl-8 text-white">
+                          <Archive size={24} />
+                        </div>
+                        <div className="flex-1 bg-[#FF3B30] flex items-center justify-end pr-8 text-white">
+                          <Trash2 size={24} />
+                        </div>
+                      </div>
+
+                      <motion.div
+                        drag="x"
+                        dragConstraints={{ left: 0, right: 0 }}
+                        dragElastic={0.7}
+                        onDragEnd={(_, info) => {
+                          const threshold = 80;
+                          if (info.offset.x > threshold) {
+                            toggleArchiveChat(chatItem.uid);
+                          } else if (info.offset.x < -threshold) {
+                            if (confirm("Are you sure you want to delete this conversation? This will remove all messages for you.")) {
+                              handleDeleteChat(chatItem);
+                            }
+                          }
+                        }}
+                        onClick={() => handleSelectChatLocal(chatItem)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setContextMenu({
+                            x: e.clientX,
+                            y: e.clientY,
+                            chat: chatItem
+                          });
+                        }}
+                        onTouchStart={(e) => handleTouchStart(e, chatItem)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchMove={handleTouchMove}
+                        className={cn(
+                          "flex items-center p-3 cursor-pointer bg-white dark:bg-[#111b21] hover:bg-[#F5F6F6] dark:hover:bg-[#202c33] transition-colors duration-200 group relative z-10",
+                          selectedChat?.uid === chatItem.uid && "bg-[#F0F2F5] dark:bg-[#2a3942]"
+                        )}
+                      >
+
                       <div className="relative flex-shrink-0">
                         <img
                           src={chatItem.photoURL || `https://ui-avatars.com/api/?name=${chatItem.displayName}`}
@@ -1307,14 +1344,20 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
                             {pinnedChats.includes(chatItem.uid) && (
                               <Pin size={12} className="text-[#008069] -rotate-45" />
                             )}
-                            {unreadChats.includes(chatItem.uid) && (
-                              <span className="w-2.5 h-2.5 bg-[#25D366] rounded-full"></span>
+                            {unreadCounts[chatItem.uid] > 0 ? (
+                              <div className="min-w-[20px] h-5 bg-[#FF3B30] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-lg animate-in zoom-in duration-300 ring-2 ring-white">
+                                {unreadCounts[chatItem.uid]}
+                              </div>
+                            ) : unreadChats.includes(chatItem.uid) && (
+                              <span className="w-2.5 h-2.5 bg-[#FF3B30] rounded-full ring-2 ring-white"></span>
                             )}
                           </div>
                         </div>
                       </div>
                     </motion.div>
-                  );
+                  </motion.div>
+                );
+
                 })
               )}
             </div>

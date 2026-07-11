@@ -19,13 +19,14 @@ import { getToken, onMessage } from 'firebase/messaging';
 import { reload, updatePassword } from 'firebase/auth';
 import { db, messaging, auth } from './firebase';
 import { handleFirestoreError, OperationType } from './firebaseError';
-import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock } from 'lucide-react';
+import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock, MessageCircle } from 'lucide-react';
 import { cn, resolveApiUrl } from './utils';
 import VoiceCall from './components/VoiceCall';
 import Header from './components/Header';
 import Settings from './components/Settings';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
+import { Toaster, toast } from 'sonner';
 
 const DEFAULT_VAPID_KEY = 'BARsQajcr4y6I9nCfTXGorq433uPL-sAYxTtRlDQbkANR_LSc993JKKlev2TrxjHX4rE_3f4tBVRKlZ70__I708';
 const DEFAULT_APP_LOGO = '/logo.png'; // Improved high-quality fallback logo placeholder
@@ -434,10 +435,23 @@ useEffect(() => {
           onMessage(messaging, (payload) => {
             console.log('Foreground message received:', payload);
             if (payload.notification) {
-              new Notification(payload.notification.title || 'New Message', {
-                body: payload.notification.body,
-                icon: resolveLogo(appSettings?.appLogoUrl)
+              toast(payload.notification.title || 'New Message', {
+                description: payload.notification.body,
+                icon: (
+                  <img 
+                    src={resolveLogo(appSettings?.appLogoUrl)} 
+                    className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-sm" 
+                    alt="Logo" 
+                  />
+                )
               });
+
+              if (Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+                new Notification(payload.notification.title || 'New Message', {
+                  body: payload.notification.body,
+                  icon: resolveLogo(appSettings?.appLogoUrl)
+                });
+              }
             }
           });
         }
@@ -476,6 +490,18 @@ useEffect(() => {
           // Verify that this is a very recently sent message to avoid notification floods of older messages
           const msgTime = msg.timestamp?.seconds ? msg.timestamp.seconds * 1000 : Date.now();
           if (Date.now() - msgTime < 15000) {
+            // Show in-app popup
+            toast(msg.senderName || 'New Message', {
+              description: msg.text,
+              icon: (
+                <img 
+                  src={msg.senderPhoto || resolveLogo(appSettings?.appLogoUrl)} 
+                  className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-sm" 
+                  alt="Avatar" 
+                />
+              )
+            });
+
             if (Notification.permission === 'granted' && document.visibilityState !== 'visible') {
               new Notification(msg.senderName || 'New Message', {
                 body: msg.text,
@@ -1048,6 +1074,7 @@ return (
       </div>
 
       {/* Incoming Call UI */}
+      <Toaster position="top-center" richColors closeButton />
       <AnimatePresence>
         {incomingCall && (
           <motion.div 

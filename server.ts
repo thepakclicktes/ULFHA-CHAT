@@ -43,12 +43,13 @@ try {
   const adminApp = apps.length > 0 
     ? getAdminApp() 
     : initAdminApp({
+        credential: applicationDefault(),
         projectId: firebaseConfig.projectId
       });
   
   const databaseId = firebaseConfig.firestoreDatabaseId || '(default)';
   adminDb = getAdminFirestore(adminApp, databaseId);
-  console.log('Firebase Admin initialized with config for project:', firebaseConfig.projectId);
+  console.log('Firebase Admin initialized with config for project:', firebaseConfig.projectId, 'Database:', databaseId);
   console.log('Firebase Admin DB initialized successfully:', !!adminDb);
 } catch (adminInitErr) {
   console.error('Firebase Admin initialization failed:', adminInitErr);
@@ -76,10 +77,9 @@ async function startServer() {
 
   // Client Firestore on Backend (Fallback for when Admin SDK lacks permissions)
   const firebaseApp = initializeApp(firebaseConfig);
-  const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
+  const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId || '(default)');
   
-  // Use a helper to decide which DB to use (Admin is preferred, client db is fallback)
-  const getDb = () => adminDb || db;
+  console.log('Client SDK Firestore initialized for database:', firebaseConfig.firestoreDatabaseId || '(default)');
 
   // Gemini AI Setup with modern SDK guidelines
   const aiKey = process.env.GEMINI_API_KEY;
@@ -389,6 +389,43 @@ async function startServer() {
     });
 
     res.json({ messages: filtered });
+  });
+
+  app.post("/api/messages/react", (req, res) => {
+    const { msgId, emoji, userId } = req.body;
+    if (!msgId || !emoji || !userId) {
+      return res.status(400).json({ error: "Missing parameters" });
+    }
+
+    // Update in-memory message if it exists
+    const msgIndex = inMemoryMessages.findIndex(m => m.id === msgId);
+    if (msgIndex !== -1) {
+      const msg = inMemoryMessages[msgIndex];
+      const reactions = msg.reactions || {};
+      
+      const alreadyHasThisEmoji = (reactions[emoji] || []).includes(userId);
+      
+      // Remove user from all existing reactions
+      Object.keys(reactions).forEach(e => {
+        reactions[e] = (reactions[e] || []).filter((uid: string) => uid !== userId);
+        if (reactions[e].length === 0) delete reactions[e];
+      });
+      
+      if (!alreadyHasThisEmoji) {
+        if (!reactions[emoji]) reactions[emoji] = [];
+        reactions[emoji].push(userId);
+      }
+      
+      msg.reactions = reactions;
+      
+      // Broadcast update via SSE
+      const data = `data: ${JSON.stringify({ ...msg, type: 'reaction_update' })}\n\n`;
+      sseClients.forEach(client => {
+        try { client.write(data); } catch (err) {}
+      });
+    }
+
+    res.json({ success: true });
   });
 
   app.get("/api/health", (req, res) => {
@@ -787,6 +824,36 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    
+    // Start Background Service Loop
+    setInterval(async () => {
+      console.log('[Background Service] Running scheduled maintenance...');
+      try {
+        // Try Admin SDK first
+        if (adminDb) {
+          try {
+            const onlineSnap = await adminDb.collection('users').where('isOnline', '==', true).limit(1).get();
+            console.log(`[Background Service] Admin Health Check: OK. Online users found: ${onlineSnap.size > 0 ? 'Yes' : 'None'}`);
+            return;
+          } catch (adminErr: any) {
+            if (adminErr.message?.includes('PERMISSION_DENIED')) {
+              console.warn('[Background Service] Admin SDK permission denied, attempting client SDK fallback...');
+            } else {
+              throw adminErr;
+            }
+          }
+        }
+
+        // Fallback to Client SDK (initialized as 'db' in startServer)
+        if (db) {
+          const q = query(collection(db, 'users'), where('isOnline', '==', true), limit(1));
+          const onlineSnap = await getDocs(q);
+          console.log(`[Background Service] Client Health Check: OK. Online users found: ${onlineSnap.size > 0 ? 'Yes' : 'None'}`);
+        }
+      } catch (err) {
+        console.warn('[Background Service] Maintenance loop warning:', err);
+      }
+    }, 1000 * 60 * 15); // Run every 15 minutes
   });
 }
 

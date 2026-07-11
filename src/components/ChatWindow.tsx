@@ -95,6 +95,28 @@ const MessageBubble = React.memo(({
     }
   };
 
+  const handleMouseDownLocal = (e: React.MouseEvent) => {
+    if (isSelectionMode || e.button !== 0) return; // Only left click
+    longPressActive.current = false;
+    const { clientX, clientY } = e;
+
+    longPressTimeout.current = setTimeout(() => {
+      longPressActive.current = true;
+      onMessageContextMenu({
+        x: clientX,
+        y: clientY,
+        msg
+      });
+    }, 600);
+  };
+
+  const handleMouseUpLocal = (e: React.MouseEvent) => {
+    if (longPressTimeout.current) {
+      clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
+    }
+  };
+
   const handleContextMenuLocal = (e: React.MouseEvent) => {
     if (isSelectionMode) return;
     e.preventDefault();
@@ -148,6 +170,9 @@ const MessageBubble = React.memo(({
       >
         <div
           onContextMenu={handleContextMenuLocal}
+          onMouseDown={handleMouseDownLocal}
+          onMouseUp={handleMouseUpLocal}
+          onMouseLeave={handleMouseUpLocal}
           onTouchStart={handleTouchStartLocal}
           onTouchEnd={handleTouchEndLocal}
           onTouchMove={handleTouchMoveLocal}
@@ -526,6 +551,7 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
     }
   }, [messages, chat?.uid]);
 
+
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -543,6 +569,28 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
 
   const [messageMap, setMessageMap] = useState<Record<string, Message>>({});
   const [newMessage, setNewMessage] = useState('');
+
+  // --- Draft Restoration & Saving Logic ---
+  const prevChatIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!chat?.uid) return;
+
+    if (chat.uid !== prevChatIdRef.current) {
+      // Chat ID changed: Restore draft for the NEW chat
+      const saved = localStorage.getItem(`chat_draft_${chat.uid}`);
+      setNewMessage(saved || '');
+      prevChatIdRef.current = chat.uid;
+    } else {
+      // Message text changed within the SAME chat: Save draft
+      if (newMessage.trim()) {
+        localStorage.setItem(`chat_draft_${chat.uid}`, newMessage);
+      } else {
+        localStorage.removeItem(`chat_draft_${chat.uid}`);
+      }
+    }
+  }, [newMessage, chat?.uid]);
+  // ----------------------------------------
   const [showGamesMenu, setShowGamesMenu] = useState(false);
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -595,7 +643,33 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
     if (!msgId || !currentUser.uid) return;
     const msgRef = doc(db, 'messages', msgId);
     
+    // Optimistic UI update
+    setMessages(prev => {
+      const index = prev.findIndex(m => m.id === msgId);
+      if (index === -1) return prev;
+      const updated = [...prev];
+      const reactions = { ...(updated[index].reactions || {}) };
+      
+      const alreadyHasThisEmoji = (reactions[emoji] || []).includes(currentUser.uid);
+      
+      // Remove user from all existing reactions
+      Object.keys(reactions).forEach(e => {
+        reactions[e] = (reactions[e] || []).filter(uid => uid !== currentUser.uid);
+        if (reactions[e].length === 0) delete reactions[e];
+      });
+      
+      if (!alreadyHasThisEmoji) {
+        if (!reactions[emoji]) reactions[emoji] = [];
+        reactions[emoji].push(currentUser.uid);
+      }
+      
+      updated[index] = { ...updated[index], reactions };
+      return updated;
+    });
+
     try {
+      if (!isOnline) throw new Error("Offline");
+
       await runTransaction(db, async (transaction) => {
         const msgDoc = await transaction.get(msgRef);
         if (!msgDoc.exists()) return;
@@ -605,13 +679,11 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
         
         const alreadyHasThisEmoji = (reactions[emoji] || []).includes(currentUser.uid);
         
-        // Remove user from all existing reactions for this message
         Object.keys(reactions).forEach(e => {
           reactions[e] = (reactions[e] || []).filter(uid => uid !== currentUser.uid);
           if (reactions[e].length === 0) delete reactions[e];
         });
         
-        // If they didn't have this specific one, add it
         if (!alreadyHasThisEmoji) {
           if (!reactions[emoji]) reactions[emoji] = [];
           reactions[emoji].push(currentUser.uid);
@@ -620,8 +692,17 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
         transaction.update(msgRef, { reactions });
       });
     } catch (e) {
-      console.error("Reaction failed:", e);
-      showToast("Reaction failed. Try again.");
+      console.warn("Firestore reaction failed, using backup Express API:", e);
+      try {
+        await fetch(resolveApiUrl('/api/messages/react'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ msgId, emoji, userId: currentUser.uid })
+        });
+      } catch (backupErr) {
+        console.error("Backup reaction API failed:", backupErr);
+        showToast("Reaction failed. Check your connection.");
+      }
     }
   };
 
@@ -921,7 +1002,12 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
         const isUserInvolved = msg.senderId === currentUser.uid || msg.receiverId === currentUser.uid;
         if (isForThisChat && (msg.isGroupMode || msg.isChannelMode || isUserInvolved)) {
           setMessages(prev => {
-            if (prev.some(m => m.id === msg.id)) return prev;
+            const index = prev.findIndex(m => m.id === msg.id);
+            if (index !== -1) {
+              const updated = [...prev];
+              updated[index] = { ...updated[index], ...msg };
+              return updated;
+            }
             const combined = [...prev, msg];
             combined.sort((a, b) => {
               const tA = (a.timestamp?.seconds || 0) * 1000;
@@ -930,9 +1016,11 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
             });
             return combined;
           });
-          setTimeout(() => {
-            scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-          }, 100);
+          if (msg.type !== 'reaction_update') {
+            setTimeout(() => {
+              scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+            }, 100);
+          }
         }
       } catch (err) {
         console.error("Error parsing backup stream message:", err);
@@ -958,11 +1046,11 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => {
-        const data = doc.data();
+        const data = doc.data({ serverTimestamps: 'estimate' });
         return { 
           id: doc.id, 
           ...data,
-          // Fallback for serverTimestamp which is null in local cache
+          // Extra safety for timestamp
           timestamp: data.timestamp || { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 }
         } as Message;
       });
@@ -987,34 +1075,31 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
           const tB = (b.timestamp?.seconds || 0) * 1000 + Math.floor((b.timestamp?.nanoseconds || 0) / 1000000);
           return tA - tB;
         });
-        return combined;
+        // Limit to prevent huge memory usage if things go wild
+        return combined.slice(-500);
       });
       
       const map: Record<string, Message> = {};
       msgs.forEach(m => { if (m.id) map[m.id] = m; });
-      setMessageMap(map);
+      setMessageMap(prev => ({ ...prev, ...map }));
 
-      // Cache for instant load
-      try {
-        localStorage.setItem(`ulfha_messages_${chat.uid}`, JSON.stringify(msgs.slice(-50)));
-      } catch (e) {
-        console.warn('Failed to save messages to local cache:', e);
-      }
-      
       // Mark unread messages as read (Read Receipts Logic)
       const readReceiptsEnabled = currentUser.userSettings?.readReceipts !== false;
-      if (readReceiptsEnabled) {
+      if (readReceiptsEnabled && !snapshot.metadata.fromCache) {
         const unreadDocs = snapshot.docs.filter(d => {
           const data = d.data();
           return data.receiverId === currentUser.uid && data.status !== 'read';
         });
 
         if (unreadDocs.length > 0) {
-          const batch = writeBatch(db);
-          unreadDocs.forEach(d => {
-            batch.update(d.ref, { status: 'read' });
-          });
-          batch.commit().catch(e => console.error('Failed to update read status batch:', e));
+          // Delay to avoid immediate re-trigger during sync
+          setTimeout(() => {
+            const batch = writeBatch(db);
+            unreadDocs.forEach(d => {
+              batch.update(d.ref, { status: 'read' });
+            });
+            batch.commit().catch(e => console.error('Failed to update read status batch:', e));
+          }, 500);
         }
       }
 
@@ -1093,6 +1178,13 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
       // Add to local state for immediate feedback
       setMessages(prev => [...prev, { ...msg, id: 'temp-' + Date.now(), status: 'sent', timestamp: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } } as Message]);
     }
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const [isRecording, setIsRecording] = useState(false);
@@ -1341,7 +1433,7 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
 
     const isMsgPinned = pinnedMessageIds.includes(msg.id || '');
     const isMsgKept = keptMessageIds.includes(msg.id || '');
-    const quickEmojis = ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥', '🎉', '💯', '✅', '🤣', '✨', '🙌', '💔', '👀'];
+    const quickEmojis = ['❤️', '👍', '😂', '🔥', '😮', '😢', '🙏', '🎉', '💯', '✅', '🤣', '✨', '🙌', '💔', '👀'];
 
     const options = [
       {
@@ -1929,44 +2021,115 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
           </AnimatePresence>
 
           <div className="flex items-end gap-2 px-1">
-            <div className="flex-1 bg-white rounded-[24px] flex items-end p-1.5 shadow-sm min-h-[48px]">
-              <form onSubmit={handleSendMessage} className="flex-1 px-4 mb-1.5">
-                <textarea
-                  rows={1}
-                  placeholder="Type a message"
-                  className="w-full bg-transparent text-[16px] text-[#111B21] focus:outline-none resize-none max-h-32 py-1 placeholder:text-[#8696A0]"
-                  value={newMessage}
-                  onChange={(e) => {
-                    setNewMessage(e.target.value);
-                    handleTyping();
-                    e.target.style.height = 'auto';
-                    e.target.style.height = e.target.scrollHeight + 'px';
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      const enterIsSend = currentUser.userSettings?.enterIsSend ?? true; // Default to true if not set
-                      if (enterIsSend) {
-                        e.preventDefault();
-                        handleSendMessage();
+            {isRecording ? (
+              <div className="flex-1 bg-white rounded-[24px] flex items-center justify-between p-2 shadow-sm min-h-[48px] animate-pulse">
+                <div className="flex items-center gap-3 px-4">
+                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                  <span className="text-sm font-bold text-gray-700">{formatTime(recordingTime)}</span>
+                </div>
+                <div className="flex items-center gap-2 pr-2">
+                  <button 
+                    onClick={() => {
+                      if (mediaRecorderRef.current) {
+                        mediaRecorderRef.current.stop();
+                        setIsRecording(false);
+                        clearInterval((mediaRecorderRef.current as any).timer);
+                        setRecordedAudio(null);
                       }
-                    }
-                  }}
-                />
-              </form>
-            </div>
+                    }}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                  <button 
+                    onClick={stopRecording}
+                    className="p-2 text-[#00A884] hover:bg-[#00A884]/10 rounded-full transition-colors"
+                  >
+                    <Check size={24} strokeWidth={3} />
+                  </button>
+                </div>
+              </div>
+            ) : recordedAudio ? (
+              <div className="flex-1 bg-white rounded-[24px] flex items-center justify-between p-2 shadow-sm min-h-[48px]">
+                <div className="flex items-center gap-3 px-2 flex-1">
+                  <button 
+                    onClick={togglePreviewPlayback}
+                    className="w-8 h-8 flex items-center justify-center bg-[#00A884] text-white rounded-full"
+                  >
+                    {isPlayingPreview ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
+                  </button>
+                  <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-[#00A884]"
+                      initial={{ width: 0 }}
+                      animate={{ width: isPlayingPreview ? '100%' : '0%' }}
+                      transition={{ duration: 0.1 }}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pr-2">
+                  <button 
+                    onClick={cancelRecording}
+                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <XCircle size={20} />
+                  </button>
+                  <button 
+                    onClick={handleSendVoiceMessage}
+                    className="p-2 text-[#00A884] hover:bg-[#00A884]/10 rounded-full transition-colors"
+                  >
+                    <Send size={24} fill="currentColor" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 bg-white rounded-[24px] flex items-end p-1.5 shadow-sm min-h-[48px]">
+                <form onSubmit={handleSendMessage} className="flex-1 px-4 mb-1.5">
+                  <textarea
+                    rows={1}
+                    placeholder="Type a message"
+                    className="w-full bg-transparent text-[16px] text-[#111B21] focus:outline-none resize-none max-h-32 py-1 placeholder:text-[#8696A0]"
+                    value={newMessage}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      handleTyping();
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        const enterIsSend = currentUser.userSettings?.enterIsSend ?? true; // Default to true if not set
+                        if (enterIsSend) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }
+                    }}
+                  />
+                </form>
+              </div>
+            )}
 
             <div className="flex-shrink-0">
-              <motion.button 
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleSendMessage()}
-                disabled={!newMessage.trim()}
-                className={cn(
-                  "w-12 h-12 flex items-center justify-center rounded-full shadow-md transition-all",
-                  newMessage.trim() ? "bg-[#00A884] text-white" : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                )}
-              >
-                <Send size={24} className="ml-1" fill="currentColor" />
-              </motion.button>
+              {!isRecording && !recordedAudio && (
+                newMessage.trim() ? (
+                  <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => handleSendMessage()}
+                    className="w-12 h-12 flex items-center justify-center rounded-full shadow-md bg-[#00A884] text-white"
+                  >
+                    <Send size={24} className="ml-1" fill="currentColor" />
+                  </motion.button>
+                ) : (
+                  <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    onClick={startRecording}
+                    className="w-12 h-12 flex items-center justify-center rounded-full shadow-md bg-[#00A884] text-white"
+                  >
+                    <Mic size={24} fill="currentColor" />
+                  </motion.button>
+                )
+              )}
             </div>
 
           </div>

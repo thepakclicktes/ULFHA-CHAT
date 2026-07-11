@@ -8,7 +8,7 @@ import {
   CircleDashed, ToggleLeft as Toggle, Clock, Sun, 
   Palette, Send, EyeOff, Languages, Volume2, History,
   Database, HelpCircle, Users, Smile, BadgePlus, QrCode, PlusCircle,
-  Ban, Camera, Mic, MapPin
+  Ban, Camera, Mic, MapPin, ShieldCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../types';
@@ -1120,6 +1120,24 @@ const cycleVisibility = (key: string, current: string) => {
                 Allow
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Background App Service Status */}
+        <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Background Service</h3>
+              <p className="text-xs text-gray-500">Keeps app listening while closed</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">
+              ALWAYS ACTIVE
+            </span>
           </div>
         </div>
       </div>
