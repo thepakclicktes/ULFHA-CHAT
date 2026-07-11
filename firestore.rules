@@ -15,6 +15,7 @@ service cloud.firestore {
     match /supportTickets/{ticketId} { allow read, write: if true; }
     match /activityLogs/{logId} { allow read, write: if true; }
     match /notifications/{notificationId} { allow read, write: if true; }
+    match /chats/{chatId}/status/{userId} { allow read, write: if true; }
     match /library_books/{bookId} { allow read, write: if true; }
     match /system_configs/{configId} { allow read, write: if true; }
     match /settings/{settingId} { allow read, write: if true; }

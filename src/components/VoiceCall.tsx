@@ -24,6 +24,8 @@ export default function VoiceCall({ currentUser, otherUser, callId, isIncoming, 
   const [isSpeaker, setIsSpeaker] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(initialType === 'video');
   const [isRemoteVideoEnabled, setIsRemoteVideoEnabled] = useState(true);
+  const [isRemoteMuted, setIsRemoteMuted] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [timer, setTimer] = useState(0);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   
@@ -204,10 +206,13 @@ export default function VoiceCall({ currentUser, otherUser, callId, isIncoming, 
 
           // Sync call status in real-time
           const unsubStatus = onSnapshot(callDoc, (s) => {
-            const data = s.data();
+            const data = s.data() as Call;
             if (data?.status === 'ended' || data?.status === 'rejected') {
               onEnd();
             }
+            // Sync remote participant's media states
+            setIsRemoteMuted(!!data.callerMuted);
+            setIsRemoteVideoEnabled(!data.callerVideoOff);
           }, (err) => handleFirestoreError(err, OperationType.GET, 'calls'));
 
           // Buffer/apply offer candidate signals from remote caller
@@ -284,6 +289,9 @@ export default function VoiceCall({ currentUser, otherUser, callId, isIncoming, 
             if (data?.status === 'ended' || data?.status === 'rejected') {
               onEnd();
             }
+            // Sync remote participant's media states
+            setIsRemoteMuted(!!data.receiverMuted);
+            setIsRemoteVideoEnabled(!data.receiverVideoOff);
           });
 
           // Buffer/apply answer candidate signals from remote receiver
@@ -355,26 +363,77 @@ export default function VoiceCall({ currentUser, otherUser, callId, isIncoming, 
     }
   };
 
-  const toggleMute = () => {
+  const toggleMute = async () => {
     if (localStreamRef.current) {
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
+        const newMutedState = !audioTrack.enabled;
         audioTrack.enabled = !audioTrack.enabled;
         setIsMuted(!audioTrack.enabled);
+
+        if (currentCallId) {
+          const updateData = isIncoming ? { receiverMuted: !audioTrack.enabled } : { callerMuted: !audioTrack.enabled };
+          await updateDoc(doc(db, 'calls', currentCallId), updateData).catch(e => console.warn("Failed to sync mute state:", e));
+        }
       }
     }
   };
 
-  const toggleCamera = () => {
+  const toggleCamera = async () => {
     if (localStreamRef.current) {
       const videoTrack = localStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
+        const newVideoState = !videoTrack.enabled;
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoEnabled(videoTrack.enabled);
+
+        if (currentCallId) {
+          const updateData = isIncoming ? { receiverVideoOff: !videoTrack.enabled } : { callerVideoOff: !videoTrack.enabled };
+          await updateDoc(doc(db, 'calls', currentCallId), updateData).catch(e => console.warn("Failed to sync video state:", e));
+        }
       } else if (callType === 'voice') {
         // Fallback or request upgrades from voice to video
         alert("Converting ongoing voice calls to video requires a browser page reload to request camera streams.");
       }
+    }
+  };
+
+  const switchCamera = async () => {
+    if (!localStreamRef.current || !pcRef.current || !isVideoEnabled) return;
+    
+    const newFacingMode = facingMode === 'user' ? 'environment' : 'user';
+    
+    try {
+      const constraints = {
+        video: { facingMode: newFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      };
+      
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const newTrack = newStream.getVideoTracks()[0];
+      
+      const senders = pcRef.current.getSenders();
+      const videoSender = senders.find(s => s.track?.kind === 'video');
+      
+      if (videoSender) {
+        await videoSender.replaceTrack(newTrack);
+        
+        // Update local stream and UI
+        const oldTrack = localStreamRef.current.getVideoTracks()[0];
+        if (oldTrack) {
+          oldTrack.stop();
+          localStreamRef.current.removeTrack(oldTrack);
+        }
+        localStreamRef.current.addTrack(newTrack);
+        
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStreamRef.current;
+        }
+        
+        setFacingMode(newFacingMode);
+      }
+    } catch (err) {
+      console.error('Error switching camera:', err);
     }
   };
 
@@ -424,6 +483,11 @@ export default function VoiceCall({ currentUser, otherUser, callId, isIncoming, 
                     className="w-full h-full rounded-full object-cover border-4 border-[#0B1014]"
                     alt=""
                   />
+                  {isRemoteMuted && (
+                    <div className="absolute bottom-0 right-0 bg-red-500 p-2 rounded-full border-2 border-[#0B1014]">
+                      <MicOff size={16} className="text-white" />
+                    </div>
+                  )}
                 </div>
                 <p className="text-[#8696A0] text-sm font-medium">{otherUser.displayName}'s video is off</p>
               </div>
@@ -489,6 +553,11 @@ export default function VoiceCall({ currentUser, otherUser, callId, isIncoming, 
                 alt={otherUser.displayName || 'User'}
                 referrerPolicy="no-referrer"
               />
+              {isRemoteMuted && (
+                <div className="absolute bottom-2 right-2 bg-red-500 p-3 rounded-full border-4 border-[#0B1014] shadow-lg">
+                  <MicOff size={20} className="text-white" />
+                </div>
+              )}
             </div>
             
             <AnimatePresence>
@@ -564,18 +633,34 @@ export default function VoiceCall({ currentUser, otherUser, callId, isIncoming, 
 
           {/* Toggle Video Camera (Only available in Video Call mode) */}
           {isVideoCallMode && (
-            <motion.button 
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={toggleCamera}
-              className={cn(
-                "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-md relative overflow-hidden group",
-                !isVideoEnabled ? "bg-red-500 text-white" : "bg-white/10 text-white hover:bg-white/20 border border-white/5"
-              )}
-              title={isVideoEnabled ? "Turn Camera Off" : "Turn Camera On"}
-            >
-              {isVideoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
-            </motion.button>
+            <>
+              <motion.button 
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={toggleCamera}
+                className={cn(
+                  "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-md relative overflow-hidden group",
+                  !isVideoEnabled ? "bg-red-500 text-white" : "bg-white/10 text-white hover:bg-white/20 border border-white/5"
+                )}
+                title={isVideoEnabled ? "Turn Camera Off" : "Turn Camera On"}
+              >
+                {isVideoEnabled ? <Video size={24} /> : <VideoOff size={24} />}
+              </motion.button>
+
+              <motion.button 
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={switchCamera}
+                disabled={!isVideoEnabled}
+                className={cn(
+                  "w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-md relative overflow-hidden group bg-white/10 text-white hover:bg-white/20 border border-white/5",
+                  !isVideoEnabled && "opacity-50 cursor-not-allowed"
+                )}
+                title="Switch Camera"
+              >
+                <Camera size={24} />
+              </motion.button>
+            </>
           )}
 
           {/* Speaker Phone Button */}

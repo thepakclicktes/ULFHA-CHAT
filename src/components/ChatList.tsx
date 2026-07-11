@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot, getDocs, or, orderBy, updateDoc, addDoc, serverTimestamp, limit, doc, setDoc, getDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -17,6 +17,150 @@ const ChatSkeleton = () => (
     </div>
   </div>
 );
+
+const ChatItem = React.memo(({ 
+  chatItem, 
+  selectedChat, 
+  nicknames, 
+  lockedChats, 
+  mutedChats, 
+  pinnedChats, 
+  unreadCounts,
+  onSelect,
+  onContextMenu,
+  onDelete,
+  onToggleArchive,
+  handleTouchStart,
+  handleTouchEnd,
+  handleTouchMove
+}: {
+  chatItem: any;
+  selectedChat: any;
+  nicknames: Record<string, string>;
+  lockedChats: string[];
+  mutedChats: string[];
+  pinnedChats: string[];
+  unreadCounts: Record<string, number>;
+  onSelect: (chat: any) => void;
+  onContextMenu: (e: React.MouseEvent, chat: any) => void;
+  onDelete: (chat: any) => void;
+  onToggleArchive: (uid: string) => void;
+  handleTouchStart: (e: React.TouchEvent, chat: any) => void;
+  handleTouchEnd: () => void;
+  handleTouchMove: (e: React.TouchEvent) => void;
+}) => {
+  const isGrp = chatItem.isGroup;
+  const isChnl = chatItem.isChannel;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      className="relative overflow-hidden chat-item-container"
+    >
+      {/* Swipe Actions Background */}
+      <div className="absolute inset-0 flex">
+        <div className="flex-1 bg-[#25D366] flex items-center pl-8 text-white">
+          <Archive size={24} />
+        </div>
+        <div className="flex-1 bg-[#FF3B30] flex items-center justify-end pr-8 text-white">
+          <Trash2 size={24} />
+        </div>
+      </div>
+
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.7}
+        onDragEnd={(_, info) => {
+          const threshold = 80;
+          if (info.offset.x > threshold) {
+            onToggleArchive(chatItem.uid);
+          } else if (info.offset.x < -threshold) {
+            if (confirm("Are you sure you want to delete this conversation? This will remove all messages for you.")) {
+              onDelete(chatItem);
+            }
+          }
+        }}
+        onClick={() => onSelect(chatItem)}
+        onContextMenu={(e) => onContextMenu(e, chatItem)}
+        onTouchStart={(e) => handleTouchStart(e, chatItem)}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        className={cn(
+          "flex items-center p-3 cursor-pointer bg-white dark:bg-[#111b21] hover:bg-[#F5F6F6] dark:hover:bg-[#202c33] transition-colors duration-200 group relative z-10",
+          selectedChat?.uid === chatItem.uid && "bg-[#F0F2F5] dark:bg-[#2a3942]"
+        )}
+      >
+        <div className="relative flex-shrink-0">
+          <img
+            src={chatItem.photoURL || `https://ui-avatars.com/api/?name=${chatItem.displayName}`}
+            alt={chatItem.displayName || ''}
+            className={cn(
+              "w-12 h-12 rounded-full object-cover border-2",
+              isGrp ? "border-blue-400" : isChnl ? "border-purple-400" : "border-transparent"
+            )}
+            referrerPolicy="no-referrer"
+          />
+          {isGrp && (
+            <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white p-1 rounded-full border border-white">
+              <Users size={10} />
+            </div>
+          )}
+          {isChnl && (
+            <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white p-1 rounded-full border border-white">
+              <Megaphone size={10} />
+            </div>
+          )}
+          {!isGrp && !isChnl && chatItem.isOnline && (
+            <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-[#25D366] rounded-full border-2 border-white shadow-sm"></div>
+          )}
+        </div>
+        
+        <div className="flex-1 min-w-0 ml-3 border-b border-[#F5F6F6] py-2 h-full">
+          <div className="flex justify-between items-baseline mb-0.5">
+            <h3 className="font-semibold text-[#111B21] truncate text-base flex items-center gap-1.5">
+              {nicknames[chatItem.uid] || chatItem.displayName}
+              {chatItem.isNoorAI && (
+                <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-0.5 animate-pulse">
+                  <Sparkles size={10} /> AI
+                </span>
+              )}
+              {chatItem.isWhatsAppContact && (
+                <span className="bg-[#25D366] text-white text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-0.5">
+                  <MessageSquare size={10} /> WA
+                </span>
+              )}
+              {chatItem.isVerified && <BadgeCheck size={14} className="text-[#3b82f6] fill-[#3b82f6]/10 flex-shrink-0" />}
+              {isGrp && <span className="bg-blue-50 text-blue-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Group</span>}
+              {isChnl && <span className="bg-purple-50 text-purple-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Channel</span>}
+            </h3>
+            <span className="text-[10px] text-[#667781] font-semibold">
+              {chatItem.isNoorAI ? '@noorai' : (isGrp ? `${chatItem.members?.length || 0} members` : isChnl ? 'Megaphone Feed' : (chatItem.isOnline ? 'Online' : 'Offline'))}
+            </span>
+          </div>
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-[12px] text-[#667781] truncate flex-1 leading-normal">
+              {chatItem.bio || chatItem.email || (isGrp ? 'Click to read and message.' : 'Click to read latest announcements.')}
+            </p>
+            <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+              {lockedChats.includes(chatItem.uid) && <Lock size={12} className="text-[#008069]" />}
+              {mutedChats.includes(chatItem.uid) && <VolumeX size={12} className="text-[#8696A0]" />}
+              {pinnedChats.includes(chatItem.uid) && <Pin size={12} className="text-[#008069] -rotate-45" />}
+              {unreadCounts[chatItem.uid] > 0 && (
+                <div className="min-w-[20px] h-5 bg-[#FF3B30] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-lg animate-in zoom-in duration-300 ring-2 ring-white">
+                  {unreadCounts[chatItem.uid]}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+});
 
 interface ChatListProps {
   onSelectChat: (chat: any) => void;
@@ -45,6 +189,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
     }
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -653,13 +798,13 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
   // Run real-time automatic search whenever searchTerm changes
   useEffect(() => {
     const triggerSearch = async () => {
-      if (!searchTerm.trim() || !auth.currentUser) {
+      if (!deferredSearchTerm.trim() || !auth.currentUser) {
         setSearchResults([]);
         return;
       }
       setIsLoading(true);
       try {
-        const cleanSearch = searchTerm.trim();
+        const cleanSearch = deferredSearchTerm.trim();
         const lowerSearch = cleanSearch.toLowerCase();
         const cleanPhone = cleanSearch.replace(/[^\d+]/g, '');
 
@@ -807,7 +952,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, auth.currentUser]);
+  }, [deferredSearchTerm, auth.currentUser]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1211,154 +1356,32 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
                   </p>
                 </motion.div>
               ) : (
-                uniqueDisplayedChats.map((chatItem) => {
-                  const isGrp = chatItem.isGroup;
-                  const isChnl = chatItem.isChannel;
-                  
-                  return (
-                    <motion.div
-                      layout
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.98 }}
-                      key={chatItem.uid}
-                      className="relative overflow-hidden chat-item-container"
-                    >
-                      {/* Swipe Actions Background */}
-                      <div className="absolute inset-0 flex">
-                        <div className="flex-1 bg-[#25D366] flex items-center pl-8 text-white">
-                          <Archive size={24} />
-                        </div>
-                        <div className="flex-1 bg-[#FF3B30] flex items-center justify-end pr-8 text-white">
-                          <Trash2 size={24} />
-                        </div>
-                      </div>
-
-                      <motion.div
-                        drag="x"
-                        dragConstraints={{ left: 0, right: 0 }}
-                        dragElastic={0.7}
-                        onDragEnd={(_, info) => {
-                          const threshold = 80;
-                          if (info.offset.x > threshold) {
-                            toggleArchiveChat(chatItem.uid);
-                          } else if (info.offset.x < -threshold) {
-                            if (confirm("Are you sure you want to delete this conversation? This will remove all messages for you.")) {
-                              handleDeleteChat(chatItem);
-                            }
-                          }
-                        }}
-                        onClick={() => handleSelectChatLocal(chatItem)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setContextMenu({
-                            x: e.clientX,
-                            y: e.clientY,
-                            chat: chatItem
-                          });
-                        }}
-                        onTouchStart={(e) => handleTouchStart(e, chatItem)}
-                        onTouchEnd={handleTouchEnd}
-                        onTouchMove={handleTouchMove}
-                        className={cn(
-                          "flex items-center p-3 cursor-pointer bg-white dark:bg-[#111b21] hover:bg-[#F5F6F6] dark:hover:bg-[#202c33] transition-colors duration-200 group relative z-10",
-                          selectedChat?.uid === chatItem.uid && "bg-[#F0F2F5] dark:bg-[#2a3942]"
-                        )}
-                      >
-
-                      <div className="relative flex-shrink-0">
-                        <img
-                          src={chatItem.photoURL || `https://ui-avatars.com/api/?name=${chatItem.displayName}`}
-                          alt={chatItem.displayName || ''}
-                          className={cn(
-                            "w-12 h-12 rounded-full object-cover border-2",
-                            isGrp ? "border-blue-400" : isChnl ? "border-purple-400" : "border-transparent"
-                          )}
-                          referrerPolicy="no-referrer"
-                        />
-                        
-                        {/* Type indicator bubble */}
-                        {isGrp && (
-                          <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white p-1 rounded-full border border-white">
-                            <Users size={10} />
-                          </div>
-                        )}
-                        {isChnl && (
-                          <div className="absolute -bottom-1 -right-1 bg-purple-500 text-white p-1 rounded-full border border-white">
-                            <Megaphone size={10} />
-                          </div>
-                        )}
-                        {!isGrp && !isChnl && chatItem.isOnline && (
-                          <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-[#25D366] rounded-full border-2 border-white shadow-sm"></div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0 ml-3 border-b border-[#F5F6F6] py-2 h-full">
-                        <div className="flex justify-between items-baseline mb-0.5">
-                          <h3 className="font-semibold text-[#111B21] truncate text-base flex items-center gap-1.5">
-                            {nicknames[chatItem.uid] || chatItem.displayName}
-                            {chatItem.isNoorAI && (
-                              <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-0.5 animate-pulse">
-                                <Sparkles size={10} /> AI
-                              </span>
-                            )}
-                            {chatItem.isWhatsAppContact && (
-                              <span className="bg-[#25D366] text-white text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-0.5">
-                                <MessageSquare size={10} /> WA
-                              </span>
-                            )}
-                            {!chatItem.isNoorAI && (chatItem.phoneNumber || (chatItem.isWhatsAppContact && chatItem.uid)) && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const phone = chatItem.phoneNumber || chatItem.uid;
-                                  window.open(`https://wa.me/${phone.replace(/[^\d]/g, '')}`, '_blank');
-                                }}
-                                className="ml-auto p-1.5 bg-[#25D366] text-white rounded-full hover:bg-[#128C7E] transition-all shadow-sm"
-                                title="Chat on WhatsApp"
-                              >
-                                <Globe size={12} />
-                              </button>
-                            )}
-                            {chatItem.isVerified && <BadgeCheck size={14} className="text-[#3b82f6] fill-[#3b82f6]/10 flex-shrink-0" />}
-                            {isGrp && <span className="bg-blue-50 text-blue-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Group</span>}
-                            {isChnl && <span className="bg-purple-50 text-purple-600 text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Channel</span>}
-                          </h3>
-                          <span className="text-[10px] text-[#667781] font-semibold">
-                            {chatItem.isNoorAI ? '@noorai' : (isGrp ? `${chatItem.members?.length || 0} members` : isChnl ? 'Megaphone Feed' : (chatItem.isOnline ? 'Online' : 'Offline'))}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-[12px] text-[#667781] truncate flex-1 leading-normal">
-                            {chatItem.bio || chatItem.email || (isGrp ? 'Click to read and message.' : 'Click to read latest announcements.')}
-                          </p>
-                          
-                          {/* Badges Column */}
-                          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-                            {lockedChats.includes(chatItem.uid) && (
-                              <Lock size={12} className="text-[#008069]" />
-                            )}
-                            {mutedChats.includes(chatItem.uid) && (
-                              <VolumeX size={12} className="text-[#8696A0]" />
-                            )}
-                            {pinnedChats.includes(chatItem.uid) && (
-                              <Pin size={12} className="text-[#008069] -rotate-45" />
-                            )}
-                            {unreadCounts[chatItem.uid] > 0 ? (
-                              <div className="min-w-[20px] h-5 bg-[#FF3B30] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-lg animate-in zoom-in duration-300 ring-2 ring-white">
-                                {unreadCounts[chatItem.uid]}
-                              </div>
-                            ) : unreadChats.includes(chatItem.uid) && (
-                              <span className="w-2.5 h-2.5 bg-[#FF3B30] rounded-full ring-2 ring-white"></span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                );
-
-                })
+                uniqueDisplayedChats.map((chatItem) => (
+                  <ChatItem
+                    key={chatItem.uid}
+                    chatItem={chatItem}
+                    selectedChat={selectedChat}
+                    nicknames={nicknames}
+                    lockedChats={lockedChats}
+                    mutedChats={mutedChats}
+                    pinnedChats={pinnedChats}
+                    unreadCounts={unreadCounts}
+                    onSelect={handleSelectChatLocal}
+                    onContextMenu={(e, chat) => {
+                      e.preventDefault();
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        chat: chat
+                      });
+                    }}
+                    onDelete={handleDeleteChat}
+                    onToggleArchive={toggleArchiveChat}
+                    handleTouchStart={handleTouchStart}
+                    handleTouchEnd={handleTouchEnd}
+                    handleTouchMove={handleTouchMove}
+                  />
+                ))
               )}
             </div>
           )}

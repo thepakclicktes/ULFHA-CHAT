@@ -155,8 +155,14 @@ const MessageBubble = React.memo(({
       )}
 
       <motion.div
-        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+        initial={{ opacity: 0, y: 15, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ 
+          type: 'spring', 
+          stiffness: 260, 
+          damping: 20,
+          duration: 0.3 
+        }}
         drag={isSelectionMode ? false : "x"}
         dragConstraints={{ left: 0, right: 100 }}
         dragElastic={0.1}
@@ -487,7 +493,7 @@ interface ChatWindowProps {
   nicknames: Record<string, string>;
 }
 
-export default function ChatWindow({ chat, currentUser, onBack, appSettings, onStartCall, nicknames }: ChatWindowProps) {
+const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStartCall, nicknames }: ChatWindowProps) => {
   const navigate = useNavigate();
   const enrichMessageObject = (msg: Message): Message => {
     if (chat.isGroup || chat.isChannel) {
@@ -1625,7 +1631,14 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
 
   return (
     <>
-      <div className="flex flex-col h-full bg-[#EFEAE2] relative overflow-hidden">
+      <motion.div 
+        key={chat.uid}
+        initial={{ x: '100%', opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: '100%', opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="flex flex-col h-full bg-[#EFEAE2] relative overflow-hidden z-20"
+      >
       {/* Dynamic Wallpaper (Elite Feature) */}
       <div 
         className="absolute inset-0 opacity-20 pointer-events-none z-0"
@@ -2135,8 +2148,8 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
           </div>
         </div>
       )}
-    </div>
-
+    </motion.div>
+    
     {/* Message Deletion Modal */}
     <AnimatePresence>
       {messageToForward && (
@@ -2451,4 +2464,6 @@ export default function ChatWindow({ chat, currentUser, onBack, appSettings, onS
       </AnimatePresence>
     </>
   );
-}
+});
+
+export default ChatWindow;

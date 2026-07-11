@@ -171,7 +171,7 @@ export interface Status {
   imageUrl: string;
   caption: string;
   timestamp: any;
-  views: string[];
+  viewedBy: string[];
 }
 
 export interface Call {
@@ -185,6 +185,10 @@ export interface Call {
   timestamp: any;
   offer?: any;
   answer?: any;
+  callerMuted?: boolean;
+  receiverMuted?: boolean;
+  callerVideoOff?: boolean;
+  receiverVideoOff?: boolean;
 }
 
 export interface GroupOrChannel {

@@ -14,7 +14,7 @@ interface HeaderProps {
   logoUrl?: string;
 }
 
-export default function Header({ profile, onSearch, logoUrl }: HeaderProps) {
+const Header = React.memo(({ profile, onSearch, logoUrl }: HeaderProps) => {
   const DEFAULT_LOGO = '/logo.png';
   const resolveLogo = (url?: string) => {
     if (!url || url.includes('mosque.png') || url.includes('icons8.com') || url.includes('encrypted-tbn0.gstatic.com')) {
@@ -824,7 +824,9 @@ export default function Header({ profile, onSearch, logoUrl }: HeaderProps) {
       </AnimatePresence>
     </>
   );
-}
+});
+
+export default Header;
 
 // ==========================================
 // PREMIUM DRAWER SUB-COMPONENTS

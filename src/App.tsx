@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Auth from './components/Auth';
@@ -6,24 +6,27 @@ import ProfileSetupModal from './components/ProfileSetupModal';
 import Sidebar from './components/Sidebar';
 import ChatList from './components/ChatList';
 import ChatWindow from './components/ChatWindow';
-import Explore from './components/Explore';
-import Status from './components/Status';
-import Contacts from './components/Contacts';
-import CallHistory from './components/CallHistory';
-import AdminPanel from './components/AdminPanel';
+
+// Lazy load non-critical components for faster startup
+const Explore = lazy(() => import('./components/Explore'));
+const Status = lazy(() => import('./components/Status'));
+const Contacts = lazy(() => import('./components/Contacts'));
+const CallHistory = lazy(() => import('./components/CallHistory'));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const Settings = lazy(() => import('./components/Settings'));
+const VoiceCall = lazy(() => import('./components/VoiceCall'));
+const NoorAIChat = lazy(() => import('./components/NoorAIChat'));
+
 import ReplyBridge from './components/ReplyBridge';
-import NoorAIChat from './components/NoorAIChat';
 import { UserProfile, AppSettings, Announcement, Call } from './types';
 import { doc, setDoc, onSnapshot, collection, query, orderBy, where, updateDoc, limit, getDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
 import { reload, updatePassword } from 'firebase/auth';
 import { db, messaging, auth } from './firebase';
 import { handleFirestoreError, OperationType } from './firebaseError';
-import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock, MessageCircle } from 'lucide-react';
+import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock, MessageCircle, Loader2 } from 'lucide-react';
 import { cn, resolveApiUrl } from './utils';
-import VoiceCall from './components/VoiceCall';
 import Header from './components/Header';
-import Settings from './components/Settings';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
 import { Toaster, toast } from 'sonner';
@@ -755,11 +758,27 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-dvh bg-white">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#00A884] border-t-transparent"></div>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F0F2F5] dark:bg-[#111B21] transition-colors duration-500">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative"
+        >
+          <div className="w-16 h-16 border-4 border-[#00A884]/20 border-t-[#00A884] rounded-full animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <img src="/logo.png" className="w-8 h-8 opacity-20" alt="" />
+          </div>
+        </motion.div>
+        <p className="mt-4 text-[#667781] text-sm font-medium Urdu animate-pulse">درخواست پر کارروائی ہو رہی ہے...</p>
       </div>
     );
   }
+
+  const LoadingFallback = () => (
+    <div className="h-full w-full flex items-center justify-center bg-transparent">
+      <Loader2 className="w-8 h-8 text-[#00A884] animate-spin" />
+    </div>
+  );
 
   const path = location.pathname;
 
@@ -1010,55 +1029,61 @@ return (
               "flex-1 min-h-0 bg-[#F8F9FA] relative",
               selectedChat ? "flex" : "hidden xl:flex"
             )}>
-              {selectedChat ? (
-                selectedChat.uid === 'noorai_assistant' || selectedChat.isNoorAI ? (
-                  <NoorAIChat onBack={() => setSelectedChat(null)} />
-                ) : (
-                  <ChatWindow 
-                    key={selectedChat.uid}
-                    chat={selectedChat} 
-                    currentUser={profile} 
-                    onBack={() => setSelectedChat(null)} 
-                    appSettings={appSettings} 
-                    onStartCall={handleStartCall}
-                    nicknames={nicknames}
-                  />
-                )
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center p-10 bg-[#f8f9fa]">
-                  <div className="w-64 h-64 bg-gray-200 rounded-full mb-8 flex items-center justify-center opacity-70 shadow-inner overflow-hidden border-4 border-white">
-                    <img 
-                      src={resolveLogo(appSettings?.appLogoUrl)} 
-                      className="w-full h-full object-cover"
-                      alt="Ulfah Chat Logo"
-                      referrerPolicy="no-referrer"
+              <AnimatePresence mode="wait">
+                {selectedChat ? (
+                  selectedChat.uid === 'noorai_assistant' || selectedChat.isNoorAI ? (
+                    <Suspense fallback={<LoadingFallback />}>
+                      <NoorAIChat onBack={() => setSelectedChat(null)} />
+                    </Suspense>
+                  ) : (
+                    <ChatWindow 
+                      key={selectedChat.uid}
+                      chat={selectedChat} 
+                      currentUser={profile} 
+                      onBack={() => setSelectedChat(null)} 
+                      appSettings={appSettings} 
+                      onStartCall={handleStartCall}
+                      nicknames={nicknames}
                     />
+                  )
+                ) : (
+                  <div key="placeholder" className="flex flex-col items-center justify-center h-full text-center p-10 bg-[#f8f9fa] w-full">
+                    <div className="w-64 h-64 bg-gray-200 rounded-full mb-8 flex items-center justify-center opacity-70 shadow-inner overflow-hidden border-4 border-white">
+                      <img 
+                        src={resolveLogo(appSettings?.appLogoUrl)} 
+                        className="w-full h-full object-cover"
+                        alt="Ulfah Chat Logo"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <h2 className="text-3xl font-light text-[#41525d] mb-4">Ulfah Chat Web</h2>
+                    <p className="text-[#667781] text-sm max-w-sm leading-relaxed">
+                      Send and receive messages without keeping your phone online.
+                      Use Ulfah Chat on up to 4 linked devices and 1 phone at the same time.
+                    </p>
+                    <div className="mt-8 flex items-center gap-2 text-gray-400 text-xs">
+                      <ShieldAlert size={14} />
+                      <span>End-to-end encrypted</span>
+                    </div>
                   </div>
-                  <h2 className="text-3xl font-light text-[#41525d] mb-4">Ulfah Chat Web</h2>
-                  <p className="text-[#667781] text-sm max-w-sm leading-relaxed">
-                    Send and receive messages without keeping your phone online.
-                    Use Ulfah Chat on up to 4 linked devices and 1 phone at the same time.
-                  </p>
-                  <div className="mt-8 flex items-center gap-2 text-gray-400 text-xs">
-                    <ShieldAlert size={14} />
-                    <span>End-to-end encrypted</span>
-                  </div>
-                </div>
-              )}
+                )}
+              </AnimatePresence>
             </div>
           </>
         } />
         <Route path="/contacts" element={
           <div className="w-full h-full min-h-0 border-r border-[#D1D7DB] bg-white flex flex-col">
-            <Contacts onSelectChat={(u) => { setSelectedChat(u); navigate('/'); }} nicknames={nicknames} />
+            <Suspense fallback={<LoadingFallback />}>
+              <Contacts onSelectChat={(u) => { setSelectedChat(u); navigate('/'); }} nicknames={nicknames} />
+            </Suspense>
           </div>
         } />
-        <Route path="/status" element={<Status profile={profile} />} />
-        <Route path="/explore" element={<Explore />} />
-        <Route path="/settings" element={<Settings profile={profile} />} />
+        <Route path="/status" element={<Suspense fallback={<LoadingFallback />}><Status profile={profile} /></Suspense>} />
+        <Route path="/explore" element={<Suspense fallback={<LoadingFallback />}><Explore /></Suspense>} />
+        <Route path="/settings" element={<Suspense fallback={<LoadingFallback />}><Settings profile={profile} /></Suspense>} />
         <Route path="/admin" element={
           (profile.role === 'admin' || profile.email === 'abdulrehmanhabib.com@gmail.com' || profile.email === 'teemabdulrehman.com@gmail.com') ? 
-          <AdminPanel onExit={() => navigate('/')} /> : 
+          <Suspense fallback={<LoadingFallback />}><AdminPanel onExit={() => navigate('/')} /></Suspense> : 
           <Navigate to="/" replace />
         } />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -1128,18 +1153,20 @@ return (
       {/* Active Call Overlay */}
       <AnimatePresence>
         {activeCall && (
-          <VoiceCall 
-            currentUser={profile}
-            otherUser={{ 
-              uid: activeCall.callerId === profile.uid ? activeCall.receiverId : activeCall.callerId,
-              displayName: activeCall.callerName,
-              photoURL: activeCall.callerPhoto
-            } as UserProfile}
-            callId={activeCall.id}
-            isIncoming={activeCall.receiverId === profile.uid}
-            initialType={activeCall.type}
-            onEnd={() => setActiveCall(null)}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <VoiceCall 
+              currentUser={profile}
+              otherUser={{ 
+                uid: activeCall.callerId === profile.uid ? activeCall.receiverId : activeCall.callerId,
+                displayName: activeCall.callerName,
+                photoURL: activeCall.callerPhoto
+              } as UserProfile}
+              callId={activeCall.id}
+              isIncoming={activeCall.receiverId === profile.uid}
+              initialType={activeCall.type}
+              onEnd={() => setActiveCall(null)}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
     </div>

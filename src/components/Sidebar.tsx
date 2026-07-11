@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   MessageCircle, 
@@ -25,7 +25,7 @@ interface SidebarProps {
   selectedChat?: any;
 }
 
-export default function Sidebar({ profile, selectedChat }: SidebarProps) {
+const Sidebar = React.memo(({ profile, selectedChat }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
@@ -298,4 +298,6 @@ export default function Sidebar({ profile, selectedChat }: SidebarProps) {
       </div>
     </>
   );
-}
+});
+
+export default Sidebar;

@@ -62,22 +62,20 @@ self.addEventListener('sync', (event) => {
 });
 
 // PWA requirement: Cache assets for offline use
-const CACHE_NAME = 'ulfha-chat-v2';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'ulfha-chat-v4';
+const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/logo.png',
   '/manifest.json',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Arabic:wght@400;500;600;700;800;900&display=swap'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Use Map to avoid duplicate failures or cache gracefully
       return Promise.all(
-        ASSETS_TO_CACHE.map(url => {
+        STATIC_ASSETS.map(url => {
           return cache.add(url).catch(err => {
             console.warn('[Service Worker] Failed to pre-cache asset:', url, err);
           });
@@ -106,32 +104,52 @@ self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
   
-  // Exclude API requests
-  if (event.request.url.includes('/api/')) return;
+  const url = new URL(event.request.url);
 
-  event.respondWith(
-    fetch(event.request).then((fetchResponse) => {
-      // Network success! Cache it and return.
-      if (fetchResponse && fetchResponse.status === 200 && event.request.url.startsWith('http')) {
-        const responseClone = fetchResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone).catch(err => {
-            console.warn('[Service Worker] Failed to put in cache:', err);
-          });
-        }).catch(err => {
-          console.warn('[Service Worker] Failed to open cache:', err);
+  // Exclude API requests and Firebase services
+  if (url.pathname.startsWith('/api/') || 
+      url.hostname.includes('firestore.googleapis.com') ||
+      url.hostname.includes('firebasestorage.googleapis.com') ||
+      url.hostname.includes('identitytoolkit.googleapis.com')) {
+    return;
+  }
+
+  // Strategy: Cache First for Images and Fonts
+  if (event.request.destination === 'image' || 
+      event.request.destination === 'font' ||
+      url.hostname.includes('ui-avatars.com') ||
+      url.hostname.includes('lh3.googleusercontent.com')) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
         });
-      }
-      return fetchResponse;
-    }).catch(() => {
-      // Network failed! Fallback to cache
-      return caches.match(event.request).then((response) => {
-        if (response) return response;
-        // Fallback for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
+      })
+    );
+    return;
+  }
+
+  // Strategy: Stale-While-Revalidate for JS, CSS, and HTML
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
         }
-      });
+        return networkResponse;
+      }).catch(() => cachedResponse); // Fallback to cache if network fails completely
+
+      return cachedResponse || fetchPromise;
     })
   );
 });

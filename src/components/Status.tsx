@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, 
   updateDoc, doc, arrayUnion, arrayRemove, deleteDoc, limit,
@@ -21,24 +22,319 @@ interface StatusProps {
 }
 
 // Quietly record views when a post enters the user's view / mounts on screen
-function PostViewRecorder({ postId, userId, views = [] }: { postId: string; userId: string; views: string[] }) {
-  // Disabling automatic view recording to save Firestore write quota
-  /*
+function PostViewRecorder({ postId, userId, viewedBy = [] }: { postId: string; userId: string; viewedBy: string[] }) {
   useEffect(() => {
     if (!postId || !userId) return;
-    if (!views.includes(userId)) {
+    if (!viewedBy.includes(userId)) {
       const postRef = doc(db, 'statuses', postId);
       updateDoc(postRef, {
-        views: arrayUnion(userId)
+        viewedBy: arrayUnion(userId)
       }).catch(err => console.error("Error recording view:", err));
     }
-  }, [postId, userId, views]);
-  */
+  }, [postId, userId, viewedBy]);
 
   return null;
 }
 
+// Memoized Status Card for better scrolling performance
+const StatusCard = React.memo(({ 
+  post, 
+  profile, 
+  onLike, 
+  onDelete, 
+  onShare, 
+  onComment, 
+  onOpenProfile, 
+  onShowLikes, 
+  onShowViews,
+  openComments,
+  setOpenComments,
+  commentInputs,
+  setCommentInputs
+}: {
+  post: any;
+  profile: UserProfile;
+  onLike: (postId: string, isLiked: boolean) => void;
+  onDelete: (postId: string) => void;
+  onShare: (post: any) => void;
+  onComment: (postId: string) => void;
+  onOpenProfile: (uid: string) => void;
+  onShowLikes: (post: any) => void;
+  onShowViews: (post: any) => void;
+  openComments: Record<string, boolean>;
+  setOpenComments: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  commentInputs: Record<string, string>;
+  setCommentInputs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}) => {
+  const likes = post.likes || [];
+  const comments = post.comments || [];
+  const isLiked = likes.includes(profile.uid);
+  const isShared = !!post.sharedFrom;
+  const hasImage = !!post.imageUrl;
+  const isMyPost = post.userId === profile.uid;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="bg-white dark:bg-[#202c33] rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm overflow-hidden"
+    >
+      <PostViewRecorder postId={post.id} userId={profile.uid} viewedBy={post.viewedBy || []} />
+      
+      {/* Post Card Header */}
+      <div className="p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <img 
+            src={post.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.displayName || 'U')}`} 
+            className="w-11 h-11 rounded-full object-cover border border-gray-100 dark:border-white/10 cursor-pointer hover:opacity-90 transition-opacity" 
+            referrerPolicy="no-referrer"
+            onClick={() => onOpenProfile(post.userId)}
+            alt=""
+            loading="lazy"
+          />
+          <div>
+            <h3 className="font-bold text-[#008069] dark:text-white text-[14px] sm:text-base flex items-center gap-1.5">
+              <span className="cursor-pointer hover:underline" onClick={() => onOpenProfile(post.userId)}>{post.displayName}</span>
+              {post.isVerified && <ShieldCheck size={14} className="text-[#00a884] fill-white" />}
+              {isShared && (
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold flex items-center gap-1 ml-1 Urdu">
+                  <Share2 size={12} className="text-emerald-500" /> نے ایک پوسٹ شیئر کی
+                </span>
+              )}
+            </h3>
+            <p className="text-[10px] text-gray-400 flex items-center gap-1 font-bold">
+              <Globe size={11} />
+              <span>{post.timestamp ? formatChatDate(toSafeDate(post.timestamp)) : 'ابھی ابھی'}</span>
+            </p>
+          </div>
+        </div>
+        
+        {isMyPost && (
+          <button 
+            onClick={() => onDelete(post.id)}
+            className="text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+            title="Delete post"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
+      </div>
+
+      {/* Post Caption / Content */}
+      <div className="px-4 pb-3">
+        <p className={cn(
+          "text-gray-800 dark:text-gray-200 break-words whitespace-pre-wrap leading-relaxed select-text",
+          post.caption.length < 80 && !hasImage && !isShared ? "text-[17px] font-medium" : "text-[14px]"
+        )}>
+          {post.caption}
+        </p>
+      </div>
+
+      {/* Post Image Section */}
+      {hasImage && (
+        <div className="bg-gray-50 dark:bg-black/20 border-t border-b border-gray-100 dark:border-white/5 overflow-hidden cursor-zoom-in group max-h-[500px] flex items-center justify-center relative">
+          <img 
+            src={post.imageUrl} 
+            className="w-full h-auto max-h-[500px] object-cover transition-transform duration-500 group-hover:scale-[1.01]" 
+            alt="Attached content"
+            referrerPolicy="no-referrer"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+        </div>
+      )}
+
+      {/* NESTED SHARED POST PREVIEW */}
+      {isShared && post.sharedFrom && (
+        <div className="mx-4 mb-4 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden bg-gray-50/50 dark:bg-black/10">
+          <div className="p-3 flex items-center gap-2">
+            <img 
+              src={post.sharedFrom.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.sharedFrom.displayName || 'U')}`} 
+              className="w-8 h-8 rounded-full object-cover cursor-pointer hover:opacity-90 transition-opacity" 
+              onClick={() => onOpenProfile(post.sharedFrom.userId)}
+              alt=""
+              loading="lazy"
+            />
+            <div>
+              <h4 className="font-bold text-[#008069] dark:text-white text-xs cursor-pointer hover:underline flex items-center gap-1" onClick={() => onOpenProfile(post.sharedFrom.userId)}>
+                {post.sharedFrom.displayName}
+                {post.sharedFrom.isVerified && <ShieldCheck size={12} className="text-[#00a884] fill-white" />}
+              </h4>
+              <p className="text-[9px] text-gray-400 font-bold Urdu">اصل پوسٹ (Original)</p>
+            </div>
+          </div>
+          <div className="px-3 pb-3">
+            <p className="text-gray-700 dark:text-gray-300 text-xs break-words line-clamp-3 select-text">
+              {post.sharedFrom.caption}
+            </p>
+          </div>
+          {post.sharedFrom.imageUrl && (
+            <div className="bg-gray-100 dark:bg-black/20 border-t border-gray-200 dark:border-white/5 overflow-hidden max-h-64 flex items-center justify-center">
+              <img 
+                src={post.sharedFrom.imageUrl} 
+                className="w-full h-auto max-h-64 object-cover" 
+                alt=""
+                referrerPolicy="no-referrer"
+                loading="lazy"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Post Metrics Display */}
+      <div className="px-4 py-2.5 flex items-center justify-between text-xs text-gray-500 border-t border-gray-50 dark:border-white/5">
+        <div className="flex items-center gap-1 font-medium">
+          {likes.length > 0 ? (
+            <button 
+              onClick={() => onShowLikes(post)}
+              className="flex items-center gap-1.5 hover:underline focus:outline-none"
+              title="Click to see who liked this post"
+            >
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[10px]">
+                <ThumbsUp size={10} className="fill-white" />
+              </span>
+              <span className="text-gray-700 dark:text-gray-300 font-bold">{likes.length}</span>
+            </button>
+          ) : (
+            <span className="text-gray-400">Be the first to like this</span>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2.5 font-semibold text-[11px] text-gray-500">
+          <button 
+            onClick={() => {
+              if (isMyPost) {
+                onShowViews(post);
+              }
+            }}
+            className={cn(
+              "flex items-center gap-1 transition-colors",
+              isMyPost ? "text-emerald-600 hover:text-emerald-700 hover:underline" : "text-gray-400/80 cursor-default"
+            )}
+            title={isMyPost ? "Click to see who viewed your post" : "Views"}
+          >
+            <Eye size={13} className="inline" />
+            <span>{(post.viewedBy || []).length} {(post.viewedBy || []).length === 1 ? 'view' : 'views'}</span>
+          </button>
+          {comments.length > 0 && (
+            <button 
+              onClick={() => setOpenComments((prev: any) => ({ ...prev, [post.id]: !prev[post.id] }))}
+              className="hover:underline hover:text-emerald-600 transition-colors"
+            >
+              {comments.length} comments
+            </button>
+          )}
+          {post.shareCount > 0 && (
+            <span>{post.shareCount} shares</span>
+          )}
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center border-t border-gray-100 dark:border-white/5 mx-2 py-1">
+        <button 
+          onClick={() => onLike(post.id, isLiked)}
+          className={cn(
+            "flex-1 py-2 flex items-center justify-center gap-2 text-xs font-bold transition-all rounded-xl active:scale-95",
+            isLiked 
+              ? "text-blue-500 bg-blue-50 dark:bg-blue-500/10" 
+              : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"
+          )}
+        >
+          <ThumbsUp size={16} className={cn(isLiked && "fill-blue-500")} />
+          <span>Like</span>
+        </button>
+        <button 
+          onClick={() => setOpenComments((prev: any) => ({ ...prev, [post.id]: !prev[post.id] }))}
+          className="flex-1 py-2 flex items-center justify-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-all rounded-xl active:scale-95"
+        >
+          <MessageSquare size={16} />
+          <span>Comment</span>
+        </button>
+        <button 
+          onClick={() => onShare(post)}
+          className="flex-1 py-2 flex items-center justify-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-all rounded-xl active:scale-95"
+        >
+          <Share2 size={16} />
+          <span>Share</span>
+        </button>
+      </div>
+
+      {/* COMMENTS SECTION */}
+      <AnimatePresence>
+        {openComments[post.id] && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-black/5 overflow-hidden"
+          >
+            {/* Existing comments list */}
+            <div className="px-4 py-3 space-y-4">
+              {comments.length > 0 ? (
+                comments.map((comment: any, idx: number) => (
+                  <div key={idx} className="flex gap-3 animate-in slide-in-from-left-2 duration-300">
+                    <img 
+                      src={comment.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.displayName || 'U')}`} 
+                      className="w-8 h-8 rounded-full object-cover shrink-0 border border-gray-100 dark:border-white/10" 
+                      alt=""
+                    />
+                    <div className="flex-1">
+                      <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-2xl rounded-tl-none shadow-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-[#008069] dark:text-gray-200 text-xs">{comment.displayName}</span>
+                          <span className="text-[9px] text-gray-400">{comment.timestamp ? getTime(toSafeDate(comment.timestamp)) : ''}</span>
+                        </div>
+                        <p className="text-xs text-gray-700 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{comment.text}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-400 text-xs italic">No comments yet. Be the first to join the conversation!</div>
+              )}
+            </div>
+
+            {/* Comment Input */}
+            <div className="p-3 border-t border-gray-100 dark:border-white/5 flex items-center gap-2">
+              <img 
+                src={profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName || 'U')}`} 
+                className="w-8 h-8 rounded-full object-cover shrink-0 border border-emerald-50" 
+                alt=""
+              />
+              <div className="flex-1 relative">
+                <input 
+                  type="text"
+                  placeholder="Write a comment..."
+                  value={commentInputs[post.id] || ''}
+                  onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && commentInputs[post.id]?.trim()) {
+                      onComment(post.id);
+                    }
+                  }}
+                  className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl py-2 px-4 pr-10 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all dark:text-white"
+                />
+                <button 
+                  onClick={() => onComment(post.id)}
+                  disabled={!commentInputs[post.id]?.trim()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 disabled:opacity-30 p-1 hover:bg-emerald-50 rounded-full transition-all"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+});
+
 export default function Status({ profile }: StatusProps) {
+  const navigate = useNavigate();
   const [statuses, setStatuses] = useState<any[]>([]);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -72,6 +368,11 @@ export default function Status({ profile }: StatusProps) {
   const [likesModalPost, setLikesModalPost] = useState<any | null>(null);
   const [likedUsersDetails, setLikedUsersDetails] = useState<any[]>([]);
   const [loadingLikesDetails, setLoadingLikesDetails] = useState(false);
+
+  // Views detail modal
+  const [viewsModalPost, setViewsModalPost] = useState<any | null>(null);
+  const [viewedUsersDetails, setViewedUsersDetails] = useState<any[]>([]);
+  const [loadingViewsDetails, setLoadingViewsDetails] = useState(false);
 
   // Listen to my own followers and following
   useEffect(() => {
@@ -189,6 +490,48 @@ export default function Status({ profile }: StatusProps) {
     };
   }, [likesModalPost]);
 
+  // Listen to viewed users details
+  useEffect(() => {
+    if (!viewsModalPost || !viewsModalPost.viewedBy || viewsModalPost.viewedBy.length === 0) {
+      setViewedUsersDetails([]);
+      return;
+    }
+    
+    let active = true;
+    const fetchViewedUsers = async () => {
+      setLoadingViewsDetails(true);
+      try {
+        const details = await Promise.all(
+          viewsModalPost.viewedBy.map(async (uid: string) => {
+            const userSnap = await getDoc(doc(db, 'users', uid));
+            if (userSnap.exists()) {
+              return { uid, ...userSnap.data() };
+            }
+            return { 
+              uid, 
+              displayName: 'Ulfah Member', 
+              photoURL: `https://ui-avatars.com/api/?name=U` 
+            };
+          })
+        );
+        if (active) {
+          setViewedUsersDetails(details);
+        }
+      } catch (err) {
+        console.error("Error fetching viewed users details:", err);
+      } finally {
+        if (active) {
+          setLoadingViewsDetails(false);
+        }
+      }
+    };
+
+    fetchViewedUsers();
+    return () => {
+      active = false;
+    };
+  }, [viewsModalPost]);
+
   const handleFollowUser = async (targetUser: any) => {
     if (!profile.uid || !targetUser.uid) return;
     const followId = `${profile.uid}_${targetUser.uid}`;
@@ -264,7 +607,7 @@ export default function Status({ profile }: StatusProps) {
         imageUrl: imageDataUrl || '',
         caption: caption.trim(),
         timestamp: serverTimestamp(),
-        views: [],
+        viewedBy: [],
         likes: [],
         comments: [],
         shareCount: 0,
@@ -360,7 +703,7 @@ export default function Status({ profile }: StatusProps) {
         caption: shareCaption.trim() || 'Shared a post',
         imageUrl: '', // Nest content rather than duplicate
         timestamp: serverTimestamp(),
-        views: [],
+        viewedBy: [],
         likes: [],
         comments: [],
         shareCount: 0,
@@ -483,7 +826,7 @@ export default function Status({ profile }: StatusProps) {
             </div>
             <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 p-3 rounded-2xl flex flex-col items-center justify-center shadow-sm">
               <p className="text-emerald-500 font-bold text-lg">
-                {statuses.filter(s => s.userId === profile.uid).reduce((acc, s) => acc + (s.views || []).length, 0)}
+                {statuses.filter(s => s.userId === profile.uid).reduce((acc, s) => acc + (s.viewedBy || []).length, 0)}
               </p>
               <p className="text-emerald-700/80 font-semibold text-[10px] uppercase">Post Views</p>
             </div>
@@ -570,261 +913,25 @@ export default function Status({ profile }: StatusProps) {
         {/* POSTS LIST (Facebook style) */}
         <div className="w-full max-w-2xl space-y-4">
           <AnimatePresence>
-            {statuses.map((post) => {
-              const likes = post.likes || [];
-              const comments = post.comments || [];
-              const isLiked = likes.includes(profile.uid);
-              const isShared = !!post.sharedFrom;
-              const hasImage = !!post.imageUrl;
-              
-              return (
-                <motion.div 
-                  key={post.id}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-                >
-                  <PostViewRecorder postId={post.id} userId={profile.uid} views={post.views || []} />
-                  {/* Post Card Header */}
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <img 
-                        src={post.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.displayName || 'U')}`} 
-                        className="w-11 h-11 rounded-full object-cover border border-gray-100 cursor-pointer hover:opacity-90 transition-opacity" 
-                        referrerPolicy="no-referrer"
-                        onClick={() => openUserProfile(post.userId)}
-                        alt=""
-                      />
-                      <div>
-                        <h3 className="font-bold text-[#008069] dark:text-white text-[14px] sm:text-base flex items-center gap-1.5">
-                          <span className="cursor-pointer hover:underline" onClick={() => openUserProfile(post.userId)}>{post.displayName}</span>
-                          {post.isVerified && <ShieldCheck size={14} className="text-[#00a884] fill-white" />}
-                          {isShared && (
-                            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold flex items-center gap-1 ml-1 Urdu">
-                              <Share2 size={12} className="text-emerald-500" /> نے ایک پوسٹ شیئر کی
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-[10px] text-gray-400 flex items-center gap-1 font-bold">
-                          <Globe size={11} />
-                          <span>{post.timestamp ? formatChatDate(toSafeDate(post.timestamp)) : 'ابھی ابھی'}</span>
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Delete button for owners */}
-                    {post.userId === profile.uid && (
-                      <button 
-                        onClick={() => handleDeletePost(post.id)}
-                        className="text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-gray-50 transition-colors"
-                        title="Delete post"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Post Caption / Content */}
-                  <div className="px-4 pb-3">
-                    <p className={cn(
-                      "text-gray-800 break-words whitespace-pre-wrap leading-relaxed select-text",
-                      post.caption.length < 80 && !hasImage && !isShared ? "text-[17px] font-medium" : "text-[14px]"
-                    )}>
-                      {post.caption}
-                    </p>
-                  </div>
-
-                  {/* Post Image Section */}
-                  {hasImage && (
-                    <div 
-                      onClick={() => setLightboxImage(post.imageUrl)}
-                      className="bg-gray-50 border-t border-b border-gray-100 overflow-hidden cursor-zoom-in group max-h-[500px] flex items-center justify-center relative"
-                    >
-                      <img 
-                        src={post.imageUrl} 
-                        className="w-full h-auto max-h-[500px] object-cover transition-transform duration-500 group-hover:scale-[1.01]" 
-                        alt="Attached content"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-                    </div>
-                  )}
-
-                  {/* NESTED SHARED POST PREVIEW */}
-                  {isShared && post.sharedFrom && (
-                    <div className="mx-4 mb-4 border border-gray-200 rounded-2xl overflow-hidden bg-gray-50/50">
-                      <div className="p-3 flex items-center gap-2">
-                        <img 
-                          src={post.sharedFrom.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.sharedFrom.displayName || 'U')}`} 
-                          className="w-8 h-8 rounded-full object-cover cursor-pointer hover:opacity-90 transition-opacity" 
-                          onClick={() => openUserProfile(post.sharedFrom.userId)}
-                          alt=""
-                        />
-                        <div>
-                          <h4 className="font-bold text-[#008069] dark:text-white text-xs cursor-pointer hover:underline flex items-center gap-1" onClick={() => openUserProfile(post.sharedFrom.userId)}>
-                            {post.sharedFrom.displayName}
-                            {post.sharedFrom.isVerified && <ShieldCheck size={12} className="text-[#00a884] fill-white" />}
-                          </h4>
-                          <p className="text-[9px] text-gray-400 font-bold Urdu">اصل پوسٹ (Original)</p>
-                        </div>
-                      </div>
-                      <div className="px-3 pb-3">
-                        <p className="text-gray-700 text-xs break-words line-clamp-3 select-text">
-                          {post.sharedFrom.caption}
-                        </p>
-                      </div>
-                      {post.sharedFrom.imageUrl && (
-                        <div className="bg-gray-100 border-t border-gray-200 overflow-hidden max-h-64 flex items-center justify-center">
-                          <img 
-                            src={post.sharedFrom.imageUrl} 
-                            className="w-full h-auto max-h-64 object-cover" 
-                            alt=""
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Post Metrics Display */}
-                  <div className="px-4 py-2.5 flex items-center justify-between text-xs text-gray-500 border-t border-gray-50">
-                    <div className="flex items-center gap-1 font-medium">
-                      {likes.length > 0 ? (
-                        <button 
-                          onClick={() => setLikesModalPost(post)}
-                          className="flex items-center gap-1.5 hover:underline focus:outline-none"
-                          title="Click to see who liked this post"
-                        >
-                          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 text-white text-[10px]">
-                            <ThumbsUp size={10} className="fill-white" />
-                          </span>
-                          <span className="text-gray-700 font-bold">{likes.length}</span>
-                        </button>
-                      ) : (
-                        <span className="text-gray-400">Be the first to like this</span>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2.5 font-semibold text-[11px] text-gray-500">
-                      <span className="flex items-center gap-1 text-gray-400/80" title="Views">
-                        <Eye size={13} className="inline" />
-                        <span>{(post.views || []).length} {(post.views || []).length === 1 ? 'view' : 'views'}</span>
-                      </span>
-                      {comments.length > 0 && (
-                        <button 
-                          onClick={() => setOpenComments(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
-                          className="hover:underline flex items-center gap-1"
-                        >
-                          • {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
-                        </button>
-                      )}
-                      <span className="flex items-center gap-1 text-gray-400/80" title="Shares">
-                        • <Share2 size={12} className="inline" />
-                        <span>{post.shareCount || 0} {post.shareCount === 1 ? 'share' : 'shares'}</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Facebook Action Buttons (Like, Comment, Share) */}
-                  <div className="border-t border-b border-emerald-50 dark:border-white/5 px-2 py-1 flex items-center justify-around text-xs font-black text-[#008069] dark:text-white/70">
-                    <button 
-                      onClick={() => handleToggleLike(post)}
-                      className={cn(
-                        "flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-emerald-50 dark:hover:bg-white/5 active:scale-95 Urdu",
-                        isLiked ? "text-[#00a884]" : "hover:text-[#008069]"
-                      )}
-                    >
-                      <ThumbsUp size={16} className={cn(isLiked && "fill-[#00a884] text-[#00a884]")} />
-                      <span>پسند (Like)</span>
-                    </button>
-                    
-                    <button 
-                      onClick={() => setOpenComments(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
-                      className="flex-1 py-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-2 Urdu"
-                    >
-                      <MessageSquare size={16} className="text-emerald-500" />
-                      <span>تبصرہ (Comment)</span>
-                    </button>
-                    
-                    <button 
-                      onClick={() => triggerShare(post)}
-                      className="flex-1 py-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-2 Urdu"
-                    >
-                      <Share2 size={16} className="text-emerald-500" />
-                      <span>شیئر (Share)</span>
-                    </button>
-                  </div>
-
-                  {/* REAL-TIME COMMENTS LIST & INPUT (Facebook Style) */}
-                  {openComments[post.id] && (
-                    <div className="bg-[#e7f5f1] dark:bg-[#202c33] border-t border-emerald-50 dark:border-white/5 p-4 space-y-4 animate-in fade-in duration-300">
-                      
-                      {/* Comments Scroller */}
-                      {comments.length > 0 && (
-                        <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar pr-1">
-                          {comments.map((comm: any) => (
-                            <div key={comm.id} className="flex gap-2 items-start text-xs">
-                              <img 
-                                src={comm.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(comm.displayName || 'U')}`} 
-                                className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5 border border-emerald-100" 
-                                referrerPolicy="no-referrer"
-                                alt=""
-                                onClick={() => openUserProfile(comm.userId)}
-                              />
-                              <div className="flex-1">
-                                <div className="bg-white dark:bg-[#111b21] p-2.5 rounded-2xl max-w-[90%] inline-block shadow-sm border border-emerald-50 dark:border-white/5">
-                                  <h4 className="font-bold text-[#008069] dark:text-white mb-0.5 flex items-center gap-1.5">
-                                    <span className="hover:underline cursor-pointer" onClick={() => openUserProfile(comm.userId)}>{comm.displayName}</span>
-                                    {comm.isVerified && <ShieldCheck size={12} className="text-[#00a884] fill-white" />}
-                                  </h4>
-                                  <p className="text-[#008069]/80 dark:text-gray-300 break-words leading-relaxed select-text font-bold Urdu">{comm.text}</p>
-                                </div>
-                                <p className="text-[9px] text-gray-400 ml-2 mt-1 font-bold">
-                                  {comm.timestamp ? formatChatDate(new Date(comm.timestamp)) : 'ابھی ابھی'}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Comment Input Box */}
-                      <div className="flex items-center gap-2">
-                        <img 
-                          src={profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName || 'U')}`} 
-                          className="w-8 h-8 rounded-full object-cover shrink-0 border border-emerald-100" 
-                          referrerPolicy="no-referrer"
-                          alt=""
-                        />
-                        <div className="flex-1 flex bg-white dark:bg-[#111b21] border border-emerald-100 dark:border-white/5 rounded-full overflow-hidden shadow-inner px-3 py-1 items-center">
-                          <input 
-                            type="text"
-                            placeholder="تبصرہ لکھیں (Write a comment...)"
-                            className="flex-1 bg-transparent text-xs py-1.5 px-1 outline-none text-[#008069] dark:text-white placeholder-[#008069]/40 dark:placeholder-white/40 font-bold Urdu"
-                            value={commentInputs[post.id] || ''}
-                            onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleAddComment(post.id);
-                              }
-                            }}
-                          />
-                          <button 
-                            onClick={() => handleAddComment(post.id)}
-                            className="p-1 text-[#00a884] hover:scale-110 transition-transform"
-                          >
-                            <Send size={15} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                </motion.div>
-              );
-            })}
-
+            {statuses.map((post) => (
+              <StatusCard 
+                key={post.id}
+                post={post}
+                profile={profile}
+                onLike={handleToggleLike}
+                onDelete={handleDeletePost}
+                onShare={triggerShare}
+                onComment={handleComment}
+                onOpenProfile={(uid) => navigate(`/contacts`)}
+                onShowLikes={(p) => setLikesModalPost(p)}
+                onShowViews={(p) => setViewsModalPost(p)}
+                openComments={openComments}
+                setOpenComments={setOpenComments}
+                commentInputs={commentInputs}
+                setCommentInputs={setCommentInputs}
+              />
+            ))}
+            {/* End of mapping */}
             {statuses.length === 0 && (
               <div className="bg-white dark:bg-[#202c33] rounded-3xl p-12 text-center text-[#008069]/40 border border-emerald-100 dark:border-white/5 shadow-sm w-full">
                 <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
@@ -1163,7 +1270,7 @@ export default function Status({ profile }: StatusProps) {
                   </div>
                   <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-xl">
                     <p className="text-emerald-600 dark:text-emerald-400 font-black text-xl">
-                      {selectedUserPosts.reduce((acc, p) => acc + (p.views || []).length, 0)}
+                      {selectedUserPosts.reduce((acc, p) => acc + (p.viewedBy || []).length, 0)}
                     </p>
                     <p className="text-emerald-800/80 dark:text-emerald-400/80 font-bold text-[10px] uppercase tracking-wide">Total Post Views</p>
                   </div>
@@ -1251,7 +1358,7 @@ export default function Status({ profile }: StatusProps) {
                             key={post.id} 
                             className="bg-white dark:bg-[#202c33] rounded-xl border border-gray-100 dark:border-white/5 p-4 shadow-sm space-y-3 text-left"
                           >
-                            <PostViewRecorder postId={post.id} userId={profile.uid} views={post.views || []} />
+                            <PostViewRecorder postId={post.id} userId={profile.uid} viewedBy={post.viewedBy || []} />
                             
                             <div className="flex items-center justify-between text-xs text-gray-400">
                               <span className="font-semibold">{post.timestamp ? formatChatDate(toSafeDate(post.timestamp)) : 'Just now'}</span>
@@ -1289,10 +1396,21 @@ export default function Status({ profile }: StatusProps) {
                               </button>
 
                               <div className="flex items-center gap-2.5 text-gray-400/80 font-medium">
-                                <span className="flex items-center gap-0.5">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (post.userId === profile.uid) {
+                                      setViewsModalPost(post);
+                                    }
+                                  }}
+                                  className={cn(
+                                    "flex items-center gap-0.5 transition-colors",
+                                    post.userId === profile.uid ? "text-emerald-600 hover:text-emerald-700 hover:underline" : ""
+                                  )}
+                                >
                                   <Eye size={11} />
-                                  <span>{(post.views || []).length} views</span>
-                                </span>
+                                  <span>{(post.viewedBy || []).length} views</span>
+                                </button>
                                 <span>• {postComments.length} comments</span>
                                 <span>• {post.shareCount || 0} shares</span>
                               </div>
@@ -1384,6 +1502,76 @@ export default function Status({ profile }: StatusProps) {
                       </div>
                       <span className="text-[9px] bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full font-black uppercase tracking-wider">
                         Liked
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* VIEWED BY MODAL */}
+      <AnimatePresence>
+        {viewsModalPost && (
+          <div className="fixed inset-0 z-[260] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#e7f5f1] dark:bg-[#1c272d] w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[70vh] border border-emerald-100 dark:border-white/5"
+            >
+              {/* Header */}
+              <div className="bg-[#e7f5f1] dark:bg-[#202c33] p-4 text-[#008069] dark:text-white flex items-center justify-between border-b border-emerald-100 dark:border-white/5 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-[#008069] dark:text-white" />
+                  <h3 className="text-base font-black Urdu">دیکھنے والے (Viewed By)</h3>
+                </div>
+                <button 
+                  onClick={() => setViewsModalPost(null)} 
+                  className="p-1 hover:bg-[#00a884]/10 rounded-full text-[#008069] dark:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Scrollable Views List */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                {loadingViewsDetails ? (
+                  <div className="text-center py-8 text-[#008069]/60 dark:text-white/40 font-bold text-xs animate-pulse">
+                    لوڈنگ (Loading)...
+                  </div>
+                ) : viewedUsersDetails.length === 0 ? (
+                  <div className="text-center py-8 text-[#008069]/40 dark:text-gray-500 italic text-xs">
+                    کوئی ڈیٹا نہیں ملا۔
+                  </div>
+                ) : (
+                  viewedUsersDetails.map((user: any) => (
+                    <div 
+                      key={user.uid} 
+                      onClick={() => {
+                        setViewsModalPost(null);
+                        openUserProfile(user.uid);
+                      }}
+                      className="flex items-center justify-between p-2 hover:bg-white dark:hover:bg-white/5 rounded-2xl cursor-pointer transition-colors shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'U')}`}
+                          className="w-10 h-10 rounded-full object-cover border border-emerald-50 shadow-sm"
+                          alt=""
+                        />
+                        <div>
+                          <h4 className="font-bold text-[#008069] dark:text-gray-200 text-xs flex items-center gap-1.5 hover:underline">
+                            <span>{user.displayName}</span>
+                            {user.isVerified && <ShieldCheck size={13} className="text-[#00a884] fill-white" />}
+                          </h4>
+                          <p className="text-[10px] text-gray-400 font-bold">Level: {user.level || 'Bronze'}</p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full font-black uppercase tracking-wider">
+                        Viewed
                       </span>
                     </div>
                   ))
