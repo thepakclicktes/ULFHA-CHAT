@@ -12,6 +12,7 @@ import VoiceCall from './VoiceCall';
 import { triggerPushNotification } from '../utils/notifications';
 import { queuePendingMessage, syncPendingMessages } from '../utils/SyncManager';
 import { useTypingIndicator } from '../hooks/useTypingIndicator';
+import { getLocalMessagesForChat, saveLocalMessages } from '../utils/localDB';
 
 const MessageBubble = React.memo(({ 
   msg, 
@@ -949,23 +950,52 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
 
   useEffect(() => {
     // Pre-load conversation messages from local cache for instant offline rendering
-    try {
-      const cachedMsgsStr = localStorage.getItem(`cached_messages_${currentUser.uid}_${chat.uid}`);
-      if (cachedMsgsStr) {
-        const cachedMsgs = JSON.parse(cachedMsgsStr);
-        setMessages(cachedMsgs);
+    getLocalMessagesForChat(chat.uid).then((indexedDbMsgs) => {
+      if (indexedDbMsgs && indexedDbMsgs.length > 0) {
+        setMessages(indexedDbMsgs);
         const map: Record<string, Message> = {};
-        cachedMsgs.forEach((m: Message) => { if (m.id) map[m.id] = m; });
+        indexedDbMsgs.forEach((m: Message) => { if (m.id) map[m.id] = m; });
         setMessageMap(map);
       } else {
+        // Fallback to localStorage
+        try {
+          const cachedMsgsStr = localStorage.getItem(`cached_messages_${currentUser.uid}_${chat.uid}`);
+          if (cachedMsgsStr) {
+            const cachedMsgs = JSON.parse(cachedMsgsStr);
+            setMessages(cachedMsgs);
+            const map: Record<string, Message> = {};
+            cachedMsgs.forEach((m: Message) => { if (m.id) map[m.id] = m; });
+            setMessageMap(map);
+          } else {
+            setMessages([]);
+            setMessageMap({});
+          }
+        } catch (e) {
+          console.warn('Failed to pre-load cached messages from localStorage:', e);
+          setMessages([]);
+          setMessageMap({});
+        }
+      }
+    }).catch((err) => {
+      console.warn('Failed to load messages from IndexedDB:', err);
+      // Fallback on error
+      try {
+        const cachedMsgsStr = localStorage.getItem(`cached_messages_${currentUser.uid}_${chat.uid}`);
+        if (cachedMsgsStr) {
+          const cachedMsgs = JSON.parse(cachedMsgsStr);
+          setMessages(cachedMsgs);
+          const map: Record<string, Message> = {};
+          cachedMsgs.forEach((m: Message) => { if (m.id) map[m.id] = m; });
+          setMessageMap(map);
+        } else {
+          setMessages([]);
+          setMessageMap({});
+        }
+      } catch (e) {
         setMessages([]);
         setMessageMap({});
       }
-    } catch (e) {
-      console.warn('Failed to pre-load cached messages:', e);
-      setMessages([]);
-      setMessageMap({});
-    }
+    });
 
     // Load backup / in-memory history when Firestore is exhausted
     const loadBackupHistory = async () => {
@@ -1088,6 +1118,14 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
       const map: Record<string, Message> = {};
       msgs.forEach(m => { if (m.id) map[m.id] = m; });
       setMessageMap(prev => ({ ...prev, ...map }));
+
+      // Cache messages to IndexedDB and localStorage for offline reading
+      saveLocalMessages(msgs, chat.uid);
+      try {
+        localStorage.setItem(`cached_messages_${currentUser.uid}_${chat.uid}`, JSON.stringify(msgs.slice(-50)));
+      } catch (e) {
+        console.warn('Failed to cache messages to localStorage:', e);
+      }
 
       // Mark unread messages as read (Read Receipts Logic)
       const readReceiptsEnabled = currentUser.userSettings?.readReceipts !== false;

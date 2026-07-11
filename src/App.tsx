@@ -57,7 +57,8 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export default function App() {
-  const { user, profile, loading } = useAuth();
+  const { user: authUser, profile, loading } = useAuth();
+  const user = authUser || (profile ? { uid: profile.uid, email: profile.email, phoneNumber: profile.phoneNumber, displayName: profile.displayName, photoURL: profile.photoURL } as any : null);
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedChat, setSelectedChat] = useState<any | null>(() => {
@@ -247,6 +248,18 @@ useEffect(() => {
 
     window.addEventListener('online', handleOnline);
     
+    // Listen for background sync trigger from the Service Worker
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'TRIGGER_BACKGROUND_SYNC') {
+        console.log('[App] Received TRIGGER_BACKGROUND_SYNC from Service Worker, syncing messages...');
+        syncPendingMessages().catch(err => console.error('Background sync failed:', err));
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+    }
+    
     // Also try syncing initially if already online
     if (navigator.onLine) {
       syncPendingMessages().catch(err => console.error('Initial offline sync failed:', err));
@@ -254,6 +267,9 @@ useEffect(() => {
 
     return () => {
       window.removeEventListener('online', handleOnline);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+      }
     };
   }, []);
 
@@ -756,7 +772,7 @@ useEffect(() => {
     });
   };
 
-  if (loading) {
+  if (loading && !profile) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F0F2F5] dark:bg-[#111B21] transition-colors duration-500">
         <motion.div

@@ -51,6 +51,15 @@ export const queuePendingMessage = async (msg: Message): Promise<number> => {
         resolve(request.result as number);
         // Also dispatch a custom event to notify components that queue changed
         window.dispatchEvent(new CustomEvent('ulfha_pending_queue_changed'));
+
+        // Try to register Background Sync with Service Worker
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+          navigator.serviceWorker.ready.then((reg: any) => {
+            return reg.sync.register('sync-messages');
+          }).catch((err) => {
+            console.warn('Background sync registration failed inside queuePendingMessage:', err);
+          });
+        }
       };
       request.onerror = () => {
         reject(request.error);

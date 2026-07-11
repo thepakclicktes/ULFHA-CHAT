@@ -7,6 +7,12 @@ import { UserProfile, GroupOrChannel } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, UserPlus, Circle, MoreVertical, Filter, BadgeCheck, Users, Megaphone, Plus, Globe, Check, X, ShieldAlert, Archive, Lock, VolumeX, Pin, CheckCheck, ListPlus, Ban, Eraser, Trash2, MessageSquare, Smartphone, Sparkles } from 'lucide-react';
 import { cn, resolveApiUrl } from '../utils';
+import { 
+  saveCachedUserProfiles, 
+  saveCachedGroupsAndChannels, 
+  getAllCachedUserProfiles, 
+  getAllCachedGroupsAndChannels 
+} from '../utils/localDB';
 
 const ChatSkeleton = () => (
   <div className="flex items-center p-3 border-b border-[#F5F6F6] animate-pulse">
@@ -624,6 +630,19 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
       console.warn('Failed to pre-load cached users or groups:', e);
     }
 
+    // Load from robust IndexedDB cache for a native, fast-opening feel
+    getAllCachedUserProfiles().then((profiles) => {
+      if (profiles && profiles.length > 0) {
+        setUsers(profiles);
+      }
+    }).catch(e => console.warn('IndexedDB user profiles load failed:', e));
+
+    getAllCachedGroupsAndChannels().then((cachedGroups) => {
+      if (cachedGroups && cachedGroups.length > 0) {
+        setGroups(cachedGroups);
+      }
+    }).catch(e => console.warn('IndexedDB groups/channels load failed:', e));
+
     const q = query(
       collection(db, 'messages'),
       or(
@@ -634,7 +653,8 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      setIsLoading(true);
+      // Avoid flickering loading screen/skeleton if we already have users to display
+      setIsLoading(prev => (snapshot.docs.length > 0 ? false : prev));
       const activeUserIds = new Set<string>();
       const counts: Record<string, number> = {};
       
@@ -686,6 +706,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
         
         setUsers(activeUsers);
         // Cache newly loaded user profiles locally
+        saveCachedUserProfiles(activeUsers);
         try {
           localStorage.setItem(`cached_users_${auth.currentUser.uid}`, JSON.stringify(activeUsers));
         } catch (e) {
@@ -728,6 +749,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
       }));
       setGroups(list);
       // Cache newly loaded groups locally
+      saveCachedGroupsAndChannels(list);
       try {
         localStorage.setItem(`cached_groups_${auth.currentUser?.uid}`, JSON.stringify(list));
       } catch (e) {

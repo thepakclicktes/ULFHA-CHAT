@@ -58,6 +58,13 @@ self.addEventListener('push', (event) => {
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-messages') {
     console.log('[Service Worker] Background Syncing messages...');
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+        clientList.forEach((client) => {
+          client.postMessage({ type: 'TRIGGER_BACKGROUND_SYNC' });
+        });
+      })
+    );
   }
 });
 

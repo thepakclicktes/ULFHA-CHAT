@@ -921,7 +921,7 @@ export default function Status({ profile }: StatusProps) {
                 onLike={handleToggleLike}
                 onDelete={handleDeletePost}
                 onShare={triggerShare}
-                onComment={handleComment}
+                onComment={handleAddComment}
                 onOpenProfile={(uid) => navigate(`/contacts`)}
                 onShowLikes={(p) => setLikesModalPost(p)}
                 onShowViews={(p) => setViewsModalPost(p)}
