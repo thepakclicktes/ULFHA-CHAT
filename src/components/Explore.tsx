@@ -44,6 +44,34 @@ interface ExploreItem {
 }
 
 export default function Explore() {
+  useEffect(() => {
+    // Load UmmahAPI Widget script
+    const scriptId = 'ummah-api-widget-script';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = "https://www.ummahapi.com/widget.js";
+      script.async = true;
+      script.onload = () => {
+        // @ts-ignore
+        if (window.UmmahApiWidget && typeof window.UmmahApiWidget.refresh === 'function') {
+          const el = document.getElementById('umh_b3cc3206545b480a96ad6e93b0e715e9511a676d');
+          // @ts-ignore
+          if (el) window.UmmahApiWidget.refresh(el);
+        }
+      };
+      document.body.appendChild(script);
+    } else {
+      // If script already exists, try to refresh
+      // @ts-ignore
+      if (window.UmmahApiWidget && typeof window.UmmahApiWidget.refresh === 'function') {
+        const el = document.getElementById('umh_b3cc3206545b480a96ad6e93b0e715e9511a676d');
+        // @ts-ignore
+        if (el) window.UmmahApiWidget.refresh(el);
+      }
+    }
+  }, []);
+
   const [showQuran, setShowQuran] = useState(false);
   const [showHadith, setShowHadith] = useState(false);
   const [showNoorAI, setShowNoorAI] = useState(false);
@@ -422,24 +450,24 @@ export default function Explore() {
 
         {/* Card of the Day */}
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="mt-8 bg-gradient-to-br from-[#00a884] to-[#128c7e] rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden"
+          className="mt-8 mb-8"
         >
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Moon size={120} />
-          </div>
           <div className="relative z-10">
-            <h3 className="text-2xl font-black Urdu mb-4 italic">آج کی آیت (Verse of the Day)</h3>
-            <p className="text-xl Urdu leading-relaxed mb-6 italic opacity-90">
-              "بے شک اللہ صبر کرنے والوں کے ساتھ ہے۔"
-            </p>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-bold uppercase tracking-widest opacity-70">Al-Baqarah 2:153</span>
-              <button className="bg-white/20 hover:bg-white/30 p-3 rounded-full transition-colors">
-                <Heart size={20} />
-              </button>
+            <h3 className="text-xl font-bold text-[#111B21] dark:text-white Urdu mb-4">آج کی آیت (Verse of the Day)</h3>
+            
+            {/* UmmahAPI Verse of the Day Widget */}
+            <div 
+              data-ummahapi="verse-of-day" 
+              id="umh_b3cc3206545b480a96ad6e93b0e715e9511a676d"
+              className="ummah-api-widget-container"
+            >
+              <div className="flex items-center gap-3 animate-pulse opacity-50">
+                <div className="w-1.5 h-1.5 bg-[#00a884] rounded-full"></div>
+                <p className="text-sm text-gray-500 Urdu italic">لوڈنگ... (Loading Verse of the Day...)</p>
+              </div>
             </div>
           </div>
         </motion.div>

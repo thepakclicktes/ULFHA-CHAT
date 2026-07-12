@@ -28,6 +28,7 @@ import firebaseConfig from '../firebase-applet-config.json';
 import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock, MessageCircle, Loader2 } from 'lucide-react';
 import { cn, resolveApiUrl } from './utils';
 import Header from './components/Header';
+import UpdateNotification from './components/UpdateNotification';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
 import { Toaster, toast } from 'sonner';
@@ -980,6 +981,8 @@ return (
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      <UpdateNotification />
+
       {/* Offline Indicator */}
       {!isOnline && (
         <div className="fixed top-0 left-0 w-full bg-red-500 text-white text-[10px] py-1 text-center font-bold z-[1000] animate-pulse">
