@@ -23,7 +23,8 @@ import { handleFirestoreError, OperationType } from '../utils/errorHandlers';
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-json';
-import { BOOKS_DATA, Book as LibraryBookType } from './IslamicLibrary';
+import { CATEGORIES, BOOKS_DATA, Book as LibraryBookType } from './IslamicLibrary';
+console.log("Categories in AdminPanel:", CATEGORIES);
 import 'prismjs/themes/prism-tomorrow.css';
 
 type AdminTab = 'users' | 'announcements' | 'settings' | 'logs' | 'fraud' | 'support' | 'analytics' | 'build' | 'logo' | 'books';
@@ -55,18 +56,6 @@ interface AdminPanelProps {
   onExit?: () => void;
 }
 
-const CATEGORIES = [
-  { id: 'tafseer', title: 'Tafseer', urdu: 'تفسير القرآن' },
-  { id: 'hadith', title: 'Hadith', urdu: 'حدیث' },
-  { id: 'fiqh', title: 'Fiqh & Fatawa', urdu: 'فقہ و فتاویٰ' },
-  { id: 'seerah', title: 'Seerah & History', urdu: 'سیرت و تاریخ' },
-  { id: 'aqaid', title: 'Aqaid & Tasawwuf', urdu: 'عقائد و تصوف' },
-  { id: 'adab', title: 'Adab & Akhlaq', urdu: 'اخلاق و آداب' },
-  { id: 'duas', title: 'Duas & Azkar', urdu: 'دعائیں اور اذکار' },
-  { id: 'uloom', title: 'Quranic Sciences', urdu: 'علوم القرآن' },
-  { id: 'economics', title: 'Islamic Economics', urdu: 'اسلامی معیشت و مالیات' },
-  { id: 'emadrasa', title: 'e-Madrasa', urdu: 'ای مدرسہ' }
-];
 
 const highlightJson = (code: string) => {
   try {
@@ -1802,7 +1791,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                       >
                         <option value="all">All Categories</option>
                         {CATEGORIES.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.urdu} ({cat.title})</option>
+                          <option key={cat.id} value={cat.id}>{cat.parent ? '↳ ' : ''}{cat.urdu} ({cat.title})</option>
                         ))}
                       </select>
                     </div>
@@ -2158,7 +2147,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                       defaultValue={selectedBookToEdit?.category || 'tafseer'}
                     >
                       {CATEGORIES.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.urdu} ({cat.title})</option>
+                        <option key={cat.id} value={cat.id}>{cat.parent ? '↳ ' : ''}{cat.urdu} ({cat.title})</option>
                       ))}
                     </select>
                   </div>

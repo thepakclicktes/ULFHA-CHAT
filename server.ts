@@ -160,8 +160,8 @@ async function startServer() {
             uid: senderUid,
             updatedAt: new Date().toISOString()
           }, { merge: true });
-        } catch (adminErr) {
-          console.warn('Admin DB failed for sender profile, trying client SDK fallback:', adminErr);
+        } catch (adminErr: any) {
+          console.error('CRITICAL: Admin DB operation failed. Error code:', adminErr.code, 'Message:', adminErr.message, 'Stack:', adminErr.stack);
           // Fallback using client SDK (requires relaxed rules)
           await setDoc(doc(db, 'users', senderUid), {
             ...senderProfile,

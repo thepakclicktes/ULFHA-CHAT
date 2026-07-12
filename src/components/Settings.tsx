@@ -1533,7 +1533,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-gray-50 dark:bg-[#0f171c] relative z-40">
+    <div className="flex flex-col flex-1 min-h-0 bg-gray-50 dark:bg-[#0f171c] relative z-40 overflow-y-auto">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
