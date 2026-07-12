@@ -486,7 +486,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderMain = () => (
-    <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] flex-1 overflow-y-auto pb-24 custom-scrollbar">
+    <div className="flex flex-col flex-1 overflow-y-auto pb-24 custom-scrollbar">
       {/* Telegram-style Top Header */}
       <div className="sticky top-0 z-30 bg-gray-50/10 dark:bg-[#0f171c]/20 backdrop-blur-md px-4 py-3.5 flex items-center justify-between safe-area-top select-none">
         <button 
@@ -738,7 +738,7 @@ const cycleVisibility = (key: string, current: string) => {
     ];
 
     return (
-      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] flex-1 overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+      <div className="flex flex-col flex-1 overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
         {renderHeader("Devices")}
         <div className="p-4">
           <div className="bg-white dark:bg-[#1c272d] rounded-2xl p-5 border border-gray-100 dark:border-white/5 mb-4 text-center">
@@ -812,7 +812,7 @@ const cycleVisibility = (key: string, current: string) => {
     ];
 
     return (
-      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] flex-1 overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+      <div className="flex flex-col flex-1 overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
         {renderHeader("Language")}
         <div className="p-4">
           <div className="bg-white dark:bg-[#1c272d] rounded-2xl border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm">
@@ -989,7 +989,7 @@ const cycleVisibility = (key: string, current: string) => {
   };
 
   const renderAccount = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
+    <div className="flex flex-col flex-1 overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Account")}
       <SettingItem 
         icon={Shield} 
@@ -1018,7 +1018,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderPrivacy = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
+    <div className="flex flex-col flex-1 overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Privacy")}
       <div className="px-4 py-3 text-[14px] font-bold text-[#667781] uppercase tracking-wide">Who can see my personal info</div>
       <SettingItem 
@@ -1110,7 +1110,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderLists = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
+    <div className="flex flex-col flex-1 overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Lists")}
       <div className="p-8 flex flex-col items-center text-center">
         <div className="flex gap-[-10px] mb-6">
@@ -1191,7 +1191,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderChats = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
+    <div className="flex flex-col flex-1 overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Chats")}
       <button 
         onClick={() => {
@@ -1533,7 +1533,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 dark:bg-[#0f171c] relative z-40 overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 bg-gray-50 dark:bg-[#0f171c] relative z-40">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -1541,7 +1541,7 @@ const cycleVisibility = (key: string, current: string) => {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.2 }}
-          className="flex-1"
+          className="flex-1 flex flex-col min-h-0"
         >
           {activeTab === 'main' && renderMain()}
           {activeTab === 'account' && renderAccount()}

@@ -115,8 +115,26 @@ export const deletePendingMessage = async (id: number): Promise<void> => {
   }
 };
 
+const MAX_RETRIES = 3;
+
+const retryOperation = async (operation: () => Promise<any>, retries: number): Promise<any> => {
+  try {
+    return await operation();
+  } catch (err) {
+    if (retries > 0) {
+      console.warn(`Sync failed, retrying... (${retries} attempts left)`);
+      // Add a small delay before retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return await retryOperation(operation, retries - 1);
+    }
+    throw err;
+  }
+};
+
 export const syncPendingMessages = async (enrichMessageFn?: (msg: Message) => Message): Promise<void> => {
   if (!navigator.onLine) return;
+  
+  window.dispatchEvent(new CustomEvent('ulfha_sync_started'));
   
   // 1. Sync IndexedDB messages
   try {
@@ -131,15 +149,18 @@ export const syncPendingMessages = async (enrichMessageFn?: (msg: Message) => Me
             timestamp: serverTimestamp(),
           };
           const enriched = enrichMessageFn ? enrichMessageFn(processedMsg as Message) : processedMsg;
-          await addDoc(collection(db, 'messages'), enriched);
+          
+          await retryOperation(() => addDoc(collection(db, 'messages'), enriched), MAX_RETRIES);
           await deletePendingMessage(id);
+          window.dispatchEvent(new CustomEvent('ulfha_sync_progress', { detail: { processed: 1 } }));
         } catch (err) {
-          console.error('Failed to sync individual message from IndexedDB:', err);
+          console.error('Failed to sync individual message from IndexedDB after retries:', err);
         }
       }
     }
   } catch (e) {
     console.error('IndexedDB sync failed:', e);
+    window.dispatchEvent(new CustomEvent('ulfha_sync_failed'));
   }
 
   // 2. Sync localStorage fallback messages
@@ -157,9 +178,11 @@ export const syncPendingMessages = async (enrichMessageFn?: (msg: Message) => Me
               timestamp: serverTimestamp(),
             };
             const enriched = enrichMessageFn ? enrichMessageFn(processedMsg as Message) : processedMsg;
-            await addDoc(collection(db, 'messages'), enriched);
+            
+            await retryOperation(() => addDoc(collection(db, 'messages'), enriched), MAX_RETRIES);
+            window.dispatchEvent(new CustomEvent('ulfha_sync_progress', { detail: { processed: 1 } }));
           } catch (err) {
-            console.error('Failed to sync individual message from localStorage:', err);
+            console.error('Failed to sync individual message from localStorage after retries:', err);
             remaining.push(msg);
           }
         }
@@ -174,4 +197,6 @@ export const syncPendingMessages = async (enrichMessageFn?: (msg: Message) => Me
   } catch (e) {
     console.error('localStorage sync failed:', e);
   }
+  
+  window.dispatchEvent(new CustomEvent('ulfha_sync_completed'));
 };

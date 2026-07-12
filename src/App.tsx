@@ -114,6 +114,8 @@ export default function App() {
   }, [profile?.uid]);
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showIOSInvite, setShowIOSInvite] = useState(false);
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
@@ -122,6 +124,25 @@ export default function App() {
   // Swipe tab navigation logic
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+
+  useEffect(() => {
+    const handleSyncStarted = () => { setIsSyncing(true); setSyncProgress(0); };
+    const handleSyncProgress = (e: any) => { setSyncProgress(prev => prev + e.detail.processed); };
+    const handleSyncCompleted = () => { setIsSyncing(false); setSyncProgress(0); };
+    const handleSyncFailed = () => { setIsSyncing(false); setSyncProgress(0); };
+    
+    window.addEventListener('ulfha_sync_started', handleSyncStarted);
+    window.addEventListener('ulfha_sync_progress', handleSyncProgress);
+    window.addEventListener('ulfha_sync_completed', handleSyncCompleted);
+    window.addEventListener('ulfha_sync_failed', handleSyncFailed);
+
+    return () => {
+        window.removeEventListener('ulfha_sync_started', handleSyncStarted);
+        window.removeEventListener('ulfha_sync_progress', handleSyncProgress);
+        window.removeEventListener('ulfha_sync_completed', handleSyncCompleted);
+        window.removeEventListener('ulfha_sync_failed', handleSyncFailed);
+    };
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     // Only handle single touch swipe if no chat is open
@@ -963,6 +984,13 @@ return (
       {!isOnline && (
         <div className="fixed top-0 left-0 w-full bg-red-500 text-white text-[10px] py-1 text-center font-bold z-[1000] animate-pulse">
           You are currently offline. Using cached data.
+        </div>
+      )}
+
+      {/* Sync Indicator */}
+      {isSyncing && (
+        <div className="fixed top-0 left-0 w-full bg-blue-500 text-white text-[10px] py-1 text-center font-bold z-[1000] animate-pulse">
+          Syncing messages... {syncProgress > 0 && `(${syncProgress})`}
         </div>
       )}
 
