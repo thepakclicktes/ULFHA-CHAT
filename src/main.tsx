@@ -99,6 +99,7 @@ import {createRoot} from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
+import { PermissionInterceptorProvider } from './components/PermissionInterceptor';
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
@@ -112,7 +113,9 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <PermissionInterceptorProvider>
+        <App />
+      </PermissionInterceptorProvider>
     </BrowserRouter>
   </StrictMode>,
 );

@@ -6,9 +6,11 @@ import {
   updateProfile,
   sendEmailVerification,
   sendPasswordResetEmail,
+  GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth, db, googleProvider } from '../firebase';
 import { doc, setDoc, serverTimestamp, query, collection, where, getDocs, onSnapshot, getDoc } from 'firebase/firestore';
+import { getDocWithRetry, getDocsWithRetry } from '../utils/firestoreRetry';
 import { LogIn, Mail, Lock, User, ArrowRight, Github, ImageIcon, AtSign, Eye, EyeOff, Key, ShieldCheck, Smartphone, CheckCircle2, Chrome } from 'lucide-react';
 import { cn } from '../utils';
 import { AppSettings } from '../types';
@@ -83,7 +85,7 @@ export default function Auth() {
     try {
       // Check if username is taken in Firestore
       const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase().trim()));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocsWithRetry(q);
       if (!querySnapshot.empty) {
         setError('This username is already taken. Please choose another username.');
         setLoading(false);
@@ -130,12 +132,15 @@ export default function Auth() {
 
     } catch (err: any) {
       console.error('Email password signup error:', err);
+      const errStr = err?.message || String(err);
       if (err.code === 'auth/email-already-in-use') {
         setError('This email address is already in use. Try signing in instead.');
       } else if (err.code === 'auth/invalid-email') {
         setError('The email address format is invalid.');
       } else if (err.code === 'auth/weak-password') {
         setError('The password is too weak. Please use a stronger password.');
+      } else if (errStr.toLowerCase().includes('offline') || errStr.toLowerCase().includes('network') || errStr.toLowerCase().includes('unreachable') || err.code === 'unavailable') {
+        setError('Network unstable hai ya offline hai. Apne internet connection check karke dobara koshish karein. (Network connection is unstable or offline. Please check your internet connection and try again.)');
       } else if (err.message && err.message.includes('auth/operation-not-allowed')) {
         setError('Email/Password provider is not enabled in Firebase Console. Please ask the administrator to enable Email/Password Authentication.');
       } else {
@@ -197,7 +202,7 @@ export default function Auth() {
       // Check if the input is a username (doesn't contain '@')
       if (!targetEmail.includes('@')) {
         const q = query(collection(db, 'users'), where('username', '==', targetEmail));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocsWithRetry(q);
         if (querySnapshot.empty) {
           setError('No user found with this username. Try using your email instead.');
           setLoading(false);
@@ -226,10 +231,13 @@ export default function Auth() {
 
     } catch (err: any) {
       console.error('Email password login error:', err);
+      const errStr = err?.message || String(err);
       if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('Incorrect email/username or password. Please try again.');
       } else if (err.code === 'auth/user-not-found') {
         setError('No account found with this email.');
+      } else if (errStr.toLowerCase().includes('offline') || errStr.toLowerCase().includes('network') || errStr.toLowerCase().includes('unreachable') || err.code === 'unavailable') {
+        setError('Network unstable hai ya offline hai. Apne internet connection check karke dobara koshish karein. (Network connection is unstable or offline. Please check your internet connection and try again.)');
       } else if (err.message && err.message.includes('auth/operation-not-allowed')) {
         setError('Email/Password provider is not enabled in Firebase Console. Please ask the administrator to enable Email/Password Authentication.');
       } else {
@@ -249,7 +257,7 @@ export default function Auth() {
 
       // Check if user exists in Firestore
       const userRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userRef);
+      const userDoc = await getDocWithRetry(userRef);
 
       if (!userDoc.exists()) {
         // Generate a random username for Google users if they don't have one
@@ -283,8 +291,11 @@ export default function Auth() {
       }
     } catch (err: any) {
       console.error('Google login error:', err);
+      const errStr = err?.message || String(err);
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Login cancelled. Please try again.');
+      } else if (errStr.toLowerCase().includes('offline') || errStr.toLowerCase().includes('network') || errStr.toLowerCase().includes('unreachable') || err.code === 'unavailable') {
+        setError('Network unstable hai ya offline hai. Apne internet connection check karke dobara koshish karein. (Network connection is unstable or offline. Please check your internet connection and try again.)');
       } else {
         setError(err.message || 'Failed to login with Google.');
       }

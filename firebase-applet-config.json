@@ -6,5 +6,6 @@
   "firestoreDatabaseId": "ai-studio-ulfhachat-fed8e7e6-b499-4a08-af02-7c649bc592dc",
   "storageBucket": "ulfhachat.firebasestorage.app",
   "messagingSenderId": "684407740624",
-  "measurementId": ""
+  "measurementId": "",
+  "oAuthClientId": "684407740624-81lersm3ngfrph7tc869st7i32dbkee7.apps.googleusercontent.com"
 }

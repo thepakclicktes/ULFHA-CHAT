@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getDocWithRetry } from '../utils/firestoreRetry';
 import { auth, db } from '../firebase';
 import { UserProfile } from '../types';
 import { handleFirestoreError, OperationType } from '../firebaseError';
@@ -31,7 +32,7 @@ export function useAuth() {
       if (firebaseUser) {
         try {
           const userRef = doc(db, 'users', firebaseUser.uid);
-          const userSnap = await getDoc(userRef);
+          const userSnap = await getDocWithRetry(userRef);
 
           if (!userSnap.exists()) {
             // ... (rest of registration logic)

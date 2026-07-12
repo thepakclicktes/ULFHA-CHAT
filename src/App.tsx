@@ -157,37 +157,7 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    // Request permissions proactively on first load for better mobile integration
-    if (!loading && user) {
-      const requestAll = async () => {
-        try {
-          // Notifications
-          if (Notification.permission === 'default') {
-            await Notification.requestPermission();
-          }
-          
-          // Only request media if we haven't asked this session
-          const hasRequested = sessionStorage.getItem('ulfha_permissions_requested');
-          if (!hasRequested) {
-            // Geolocation
-            navigator.geolocation.getCurrentPosition(() => {}, () => {}, { timeout: 1000 });
-            
-            // Try to trigger camera/mic dialog if supported
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-               // We don't actually need to keep the stream, just trigger the prompt
-               const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).catch(() => null);
-               if (stream) stream.getTracks().forEach(t => t.stop());
-            }
-            sessionStorage.setItem('ulfha_permissions_requested', 'true');
-          }
-        } catch (e) {
-          console.warn('Proactive permission request failed:', e);
-        }
-      };
-      requestAll();
-    }
-  }, [loading, user]);
+
 
   
   useEffect(() => {

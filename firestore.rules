@@ -1,27 +1,223 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if true;
+    // Catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
     }
-    match /users/{userId}/contacts/{contactId} { allow read, write: if true; }
-    match /users/{userId}/bookmarks/{bookmarkId} { allow read, write: if true; }
-    match /follows/{followId} { allow read, write: if true; }
-    match /messages/{messageId} { allow read, write: if true; }
-    match /groups/{groupId} { allow read, write: if true; }
-    match /calls/{callId} { allow read, write: if true; }
-    match /statuses/{statusId} { allow read, write: if true; }
-    match /announcements/{announcementId} { allow read, write: if true; }
-    match /supportTickets/{ticketId} { allow read, write: if true; }
-    match /activityLogs/{logId} { allow read, write: if true; }
-    match /notifications/{notificationId} { allow read, write: if true; }
-    match /chats/{chatId}/status/{userId} { allow read, write: if true; }
-    match /library_books/{bookId} { allow read, write: if true; }
-    match /system_configs/{configId} { allow read, write: if true; }
-    match /settings/{settingId} { allow read, write: if true; }
-    match /classes/{classId} { allow read, write: if request.auth != null; }
-    match /book_categories/{categoryId} { allow read, write: if request.auth != null; }
-    match /books/{bookId} { allow read, write: if request.auth != null; }
-    match /sharahs/{sharahId} { allow read, write: if request.auth != null; }
+    
+    // Global helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isVerified() {
+      return isSignedIn();
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'teemabdulrehman.com@gmail.com' ||
+        request.auth.token.email == 'abdulrehmanhabib.com@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+    
+    // Schema-level validation blueprints
+    function isValidUser(data) {
+      return data.uid is string && data.uid == request.auth.uid &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 256)) &&
+             (!('username' in data) || (data.username is string && data.username.size() <= 50)) &&
+             (!('role' in data) || data.role == 'user' || data.role == 'admin') &&
+             (!('isOnline' in data) || data.isOnline is bool) &&
+             (!('isBanned' in data) || data.isBanned is bool);
+    }
+    
+    function isValidMessage(data) {
+      return data.senderId is string && data.senderId == request.auth.uid &&
+             data.receiverId is string && data.receiverId.size() <= 128 &&
+             (!('text' in data) || (data.text is string && data.text.size() <= 5000));
+    }
+    
+    function isValidContact(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100));
+    }
+    
+    function isValidGroup(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             data.creatorId is string && data.creatorId == request.auth.uid;
+    }
+    
+    function isValidStatus(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.imageUrl is string && data.imageUrl.size() <= 2048;
+    }
+
+    function isValidCall(data) {
+      return data.callerId is string && data.callerId == request.auth.uid &&
+             data.receiverId is string && data.receiverId.size() <= 128 &&
+             data.status is string && data.status.size() <= 50 &&
+             data.type is string && data.type.size() <= 50;
+    }
+
+    // Collection: Users
+    match /users/{userId} {
+      allow get: if true;
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && (incoming().role == 'user' || isAdmin());
+      allow update: if isSignedIn() && (
+        isAdmin() || (
+          isOwner(userId) && isValidUser(incoming()) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'username', 'photoURL', 'phoneNumber', 'bio', 'isOnline', 'lastSeen', 'experience', 'level', 'pendingPassword'])
+        )
+      );
+      allow delete: if isAdmin();
+    }
+    
+    // Sub-Collection: Contacts
+    match /users/{userId}/contacts/{contactId} {
+      allow read, list: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidContact(incoming());
+      allow delete: if isOwner(userId);
+    }
+    
+    // Sub-Collection: Bookmarks
+    match /users/{userId}/bookmarks/{bookmarkId} {
+      allow read, list: if isOwner(userId);
+      allow create, update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+    
+    // Collection: Follows
+    match /follows/{followId} {
+      allow read, list: if isVerified();
+      allow create: if isVerified() && incoming().followerId == request.auth.uid;
+      allow delete: if isVerified() && (existing().followerId == request.auth.uid || isAdmin());
+    }
+    
+    // Collection: Messages
+    match /messages/{messageId} {
+      allow get, list: if isVerified() && (
+        resource.data.senderId == request.auth.uid || 
+        resource.data.receiverId == request.auth.uid || 
+        (exists(/databases/$(database)/documents/groups/$(resource.data.receiverId)) && 
+         (request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.receiverId)).data.members || 
+          request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.receiverId)).data.admins))
+      );
+      allow create: if isVerified() && isValidMessage(incoming());
+      allow update, delete: if isAdmin();
+    }
+    
+    // Collection: Groups / Channels
+    match /groups/{groupId} {
+      allow get, list: if isVerified();
+      allow create: if isVerified() && isValidGroup(incoming());
+      allow update: if isVerified() && (request.auth.uid in existing().admins || request.auth.uid == existing().creatorId || isAdmin());
+      allow delete: if isVerified() && (request.auth.uid == existing().creatorId || isAdmin());
+    }
+    
+    // Collection: Calls
+    match /calls/{callId} {
+      allow get, list: if isVerified() && (resource.data.callerId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && isValidCall(incoming());
+      allow update, delete: if isVerified() && (existing().callerId == request.auth.uid || existing().receiverId == request.auth.uid || isAdmin());
+    }
+    
+    // Collection: Statuses / Stories
+    match /statuses/{statusId} {
+      allow get, list: if isVerified();
+      allow create: if isVerified() && isValidStatus(incoming());
+      allow update, delete: if isVerified() && (existing().userId == request.auth.uid || isAdmin());
+    }
+    
+    // Collection: Announcements
+    match /announcements/{announcementId} {
+      allow read, list: if isVerified();
+      allow write: if isAdmin();
+    }
+    
+    // Collection: Support Tickets
+    match /supportTickets/{ticketId} {
+      allow get, list: if isVerified() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified() && incoming().userId == request.auth.uid;
+      allow update: if isVerified() && (existing().userId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Collection: Activity Logs
+    match /activityLogs/{logId} {
+      allow read, list: if isAdmin();
+      allow create: if isVerified() && incoming().userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    
+    // Collection: Notifications
+    match /notifications/{notificationId} {
+      allow get, list: if isVerified() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isVerified();
+      allow update, delete: if isVerified() && (existing().userId == request.auth.uid || isAdmin());
+    }
+    
+    // Typing indicator status sub-collection
+    match /chats/{chatId}/status/{userId} {
+      allow read, list: if isVerified();
+      allow write: if isVerified() && userId == request.auth.uid;
+    }
+    
+    // Islamic Library / Madrasa content
+    match /library_books/{bookId} {
+      allow read, list: if isVerified();
+      allow write: if isAdmin();
+    }
+    
+    match /classes/{classId} {
+      allow read, list: if isVerified();
+      allow write: if isAdmin();
+    }
+    
+    match /book_categories/{categoryId} {
+      allow read, list: if isVerified();
+      allow write: if isAdmin();
+    }
+    
+    match /books/{bookId} {
+      allow read, list: if isVerified();
+      allow write: if isAdmin();
+    }
+    
+    match /sharahs/{sharahId} {
+      allow read, list: if isVerified();
+      allow write: if isAdmin();
+    }
+    
+    // Configuration & settings
+    match /system_configs/{configId} {
+      allow read, list: if isVerified();
+      allow write: if isAdmin();
+    }
+    
+    match /settings/{settingId} {
+      allow read, list: if isVerified();
+      allow write: if isAdmin();
+    }
   }
 }

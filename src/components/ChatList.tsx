@@ -5,7 +5,7 @@ import { db, auth } from '../firebase';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { UserProfile, GroupOrChannel } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, UserPlus, Circle, MoreVertical, Filter, BadgeCheck, Users, Megaphone, Plus, Globe, Check, X, ShieldAlert, Archive, Lock, VolumeX, Pin, CheckCheck, ListPlus, Ban, Eraser, Trash2, MessageSquare, Smartphone, Sparkles } from 'lucide-react';
+import { Search, UserPlus, Circle, MoreVertical, Filter, BadgeCheck, Users, Megaphone, Plus, Globe, Check, X, ShieldAlert, Archive, Lock, VolumeX, Pin, CheckCheck, ListPlus, Ban, Eraser, Trash2, MessageSquare, Smartphone, Sparkles, MessageCircle, Loader2, RefreshCw } from 'lucide-react';
 import { cn, resolveApiUrl } from '../utils';
 import { 
   saveCachedUserProfiles, 
@@ -1231,7 +1231,6 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
           )}
         </div>
       </div>
-
 
       {/* MAIN LIST container */}
       <div className="flex-1 overflow-y-auto custom-scrollbar relative">

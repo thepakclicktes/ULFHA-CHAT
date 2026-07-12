@@ -13,7 +13,7 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 
-const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+const dbId = (firebaseConfig as any).firestoreDatabaseId || '(default)';
 
 // Initialize Firestore with persistent cache for faster offline-first loads
 export const db = initializeFirestore(app, {
@@ -31,6 +31,8 @@ try {
 
 export const messaging = getMessaging(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
+googleProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
 export const appleProvider = new OAuthProvider('apple.com');
 appleProvider.addScope('email');
 appleProvider.addScope('name');
