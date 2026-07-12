@@ -18,7 +18,6 @@ export interface UserProfile {
   level: 'Bronze' | 'Silver' | 'Gold';
   experience: number;
   currentGame?: string;
-  createdAt?: string;
   blockedUntil?: string;
   wallpaper?: string;
   ipAddress?: string;

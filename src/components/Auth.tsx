@@ -12,7 +12,6 @@ import { auth, db, googleProvider } from '../firebase';
 import { doc, setDoc, serverTimestamp, query, collection, where, getDocs, onSnapshot, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getDocWithRetry, getDocsWithRetry } from '../utils/firestoreRetry';
-import { toast } from 'sonner';
 import { LogIn, Mail, Lock, User, ArrowRight, Github, ImageIcon, AtSign, Eye, EyeOff, Key, ShieldCheck, Smartphone, CheckCircle2, Chrome } from 'lucide-react';
 import { cn } from '../utils';
 import { AppSettings } from '../types';
@@ -103,6 +102,9 @@ export default function Auth() {
       const result = await createUserWithEmailAndPassword(auth, email.toLowerCase().trim(), password);
       const user = result.user;
 
+      // Send verification email
+      await sendEmailVerification(user);
+
       // Update Firebase auth display name
       await updateProfile(user, {
         displayName: displayName.trim()
@@ -122,7 +124,7 @@ export default function Auth() {
           role: 'user',
           isOnline: true,
           lastSeen: new Date().toISOString(),
-          isVerified: true, // Default to true for faster experience
+          isVerified: false,
           isBanned: false,
           level: 'Bronze',
           experience: 0,
@@ -132,8 +134,12 @@ export default function Auth() {
         handleFirestoreError(err, OperationType.CREATE, 'users');
       }
 
-      toast.success('Account created successfully!');
-      // No longer signing out or requiring verification for faster flow
+      setVerificationSent(true);
+      setSuccessMessage('Verification email sent! Please check your inbox and verify your email before signing in.');
+      
+      // Sign out the user until they verify their email
+      await auth.signOut();
+
     } catch (err: any) {
       console.error('Email password signup error:', err);
       const errStr = err?.message || String(err);
@@ -227,8 +233,17 @@ export default function Auth() {
       }
 
       // Perform sign in
-      await signInWithEmailAndPassword(auth, targetEmail, password);
-      toast.success('Login successful!');
+      const result = await signInWithEmailAndPassword(auth, targetEmail, password);
+      const user = result.user;
+
+      // Check if email is verified
+      if (!user.emailVerified) {
+        setError('Please verify your email address before signing in. Check your inbox for the verification link.');
+        await auth.signOut();
+        setLoading(false);
+        return;
+      }
+
     } catch (err: any) {
       console.error('Email password login error:', err);
       const errStr = err?.message || String(err);
@@ -270,34 +285,37 @@ export default function Auth() {
         const randomSuffix = Math.floor(1000 + Math.random() * 9000);
         const finalUsername = `${baseUsername}${randomSuffix}`;
 
-        // Create the user profile in background
-        setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName || 'Ulfah User',
-          username: finalUsername,
-          photoURL: user.photoURL || '',
-          phoneNumber: user.phoneNumber || '',
-          balance: 0,
-          role: 'user',
-          isOnline: true,
-          lastSeen: new Date().toISOString(),
-          isVerified: true, // Google accounts are usually verified
-          isBanned: false,
-          level: 'Bronze',
-          experience: 0,
-          createdAt: serverTimestamp()
-        }, { merge: true }).catch(err => {
+        try {
+          await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || 'Ulfah User',
+            username: finalUsername,
+            photoURL: user.photoURL || '',
+            phoneNumber: user.phoneNumber || '',
+            balance: 0,
+            role: 'user',
+            isOnline: true,
+            lastSeen: new Date().toISOString(),
+            isVerified: true, // Google accounts are usually verified
+            isBanned: false,
+            level: 'Bronze',
+            experience: 0,
+            createdAt: serverTimestamp()
+          }, { merge: true });
+        } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, 'users');
-        });
+        }
       } else {
-        // Update online status in background
-        setDoc(userRef, {
-          isOnline: true,
-          lastSeen: new Date().toISOString()
-        }, { merge: true }).catch(err => {
+        // Update online status
+        try {
+          await setDoc(userRef, {
+            isOnline: true,
+            lastSeen: new Date().toISOString()
+          }, { merge: true });
+        } catch (err) {
           handleFirestoreError(err, OperationType.UPDATE, 'users');
-        });
+        }
       }
     } catch (err: any) {
       console.error('Google login error:', err);
@@ -318,7 +336,12 @@ export default function Auth() {
     <div className="flex flex-col items-center justify-center min-h-dvh bg-[#F0F2F5] p-4 font-sans relative overflow-hidden">
       {/* Background Pattern */}
       <div 
-        className="absolute inset-0 opacity-[0.03] pointer-events-none bg-emerald-500/5"
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{ 
+          backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
+          backgroundSize: '400px',
+          backgroundRepeat: 'repeat'
+        }}
       ></div>
 
       <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-md w-full border border-gray-100 z-10">

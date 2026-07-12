@@ -428,6 +428,34 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.post("/api/messages/mark-read", (req, res) => {
+    const { chatUid, userUid } = req.body;
+    if (!chatUid || !userUid) {
+      return res.status(400).json({ error: "Missing parameters" });
+    }
+
+    let updatedCount = 0;
+    inMemoryMessages.forEach(msg => {
+      // If the message was sent by chatUid (the sender) to userUid (the receiver) and is not yet read
+      if (msg.senderId === chatUid && msg.receiverId === userUid && msg.status !== 'read') {
+        msg.status = 'read';
+        updatedCount++;
+        
+        // Broadcast the updated message state via SSE to all active web clients
+        const data = `data: ${JSON.stringify({ ...msg, type: 'status_update' })}\n\n`;
+        sseClients.forEach(client => {
+          try {
+            client.write(data);
+          } catch (err) {
+            // Client connection closed
+          }
+        });
+      }
+    });
+
+    res.json({ success: true, updatedCount });
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });

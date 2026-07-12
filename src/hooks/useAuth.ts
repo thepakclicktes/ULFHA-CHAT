@@ -30,94 +30,75 @@ export function useAuth() {
       }
 
       if (firebaseUser) {
-        const userRef = doc(db, 'users', firebaseUser.uid);
-        
-        // Timeout fallback to prevent stuck loading screen
-        const timeoutId = setTimeout(() => {
-          setLoading(false);
-        }, 6000);
+        try {
+          const userRef = doc(db, 'users', firebaseUser.uid);
+          const userSnap = await getDocWithRetry(userRef);
 
-        unsubProfile = onSnapshot(userRef, (docSnap) => {
-          clearTimeout(timeoutId);
-          if (docSnap.exists()) {
-            const data = docSnap.data() as UserProfile;
+          if (!userSnap.exists()) {
+            // ... (rest of registration logic)
+            let regDisplayName = firebaseUser.displayName || '';
+            let regUsername = '';
+
+            try {
+              const pendingReg = localStorage.getItem('pending_registration');
+              if (pendingReg) {
+                const parsed = JSON.parse(pendingReg);
+                if (parsed.displayName) regDisplayName = parsed.displayName;
+                if (parsed.username) regUsername = parsed.username;
+                localStorage.removeItem('pending_registration');
+              }
+            } catch (e) {
+              console.error('Pending registration parsing error:', e);
+            }
+
             const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
-            const mergedProfile = { 
-              ...data, 
+            const newProfile: UserProfile = {
               uid: firebaseUser.uid,
-              role: isAdminEmail ? 'admin' : data.role,
-              username: data.username || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5))
-            } as UserProfile;
-
-            setProfile(mergedProfile);
-            localStorage.setItem('ulfha_user_profile', JSON.stringify(mergedProfile));
-            setLoading(false);
-          } else {
-            handleNewUser(firebaseUser);
+              email: firebaseUser.email || '',
+              displayName: regDisplayName || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              username: regUsername || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5)),
+              photoURL: firebaseUser.photoURL || '',
+              phoneNumber: firebaseUser.phoneNumber || '',
+              balance: 0,
+              role: isAdminEmail ? 'admin' : 'user',
+              isOnline: true,
+              lastSeen: new Date().toISOString(),
+              isVerified: false,
+              isBanned: false,
+              level: 'Bronze',
+              experience: 0,
+            };
+            await setDoc(userRef, newProfile);
+            setProfile(newProfile);
+            localStorage.setItem('ulfha_user_profile', JSON.stringify(newProfile));
           }
-        }, (error) => {
-          clearTimeout(timeoutId);
-          handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-          setLoading(false);
-        });
 
-        if (profile && profile.uid === firebaseUser.uid) {
-          setLoading(false);
-          clearTimeout(timeoutId);
+          // Listen for real-time profile updates for all logged-in users (newly registered or existing)
+          unsubProfile = onSnapshot(userRef, (docSnap) => {
+            if (docSnap.exists()) {
+              const data = docSnap.data() as UserProfile;
+              const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
+              const mergedProfile = { 
+                ...data, 
+                role: isAdminEmail ? 'admin' : data.role,
+                username: data.username || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5))
+              } as UserProfile;
+
+              setProfile(mergedProfile);
+              localStorage.setItem('ulfha_user_profile', JSON.stringify(mergedProfile));
+            }
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+          });
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
         }
       } else {
         setProfile(null);
         localStorage.removeItem('ulfha_user_profile');
-        setLoading(false);
       }
+      setLoading(false);
     });
-
-    const handleNewUser = async (firebaseUser: User) => {
-      const userRef = doc(db, 'users', firebaseUser.uid);
-      let regDisplayName = firebaseUser.displayName || '';
-      let regUsername = '';
-
-      try {
-        const pendingReg = localStorage.getItem('pending_registration');
-        if (pendingReg) {
-          const parsed = JSON.parse(pendingReg);
-          regDisplayName = parsed.displayName || regDisplayName;
-          regUsername = parsed.username || regUsername;
-          localStorage.removeItem('pending_registration');
-        }
-      } catch (e) {
-        // ignore
-      }
-
-      const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
-      const newProfile: UserProfile = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email || '',
-        displayName: regDisplayName || 'User',
-        username: regUsername || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5)),
-        photoURL: firebaseUser.photoURL || '',
-        phoneNumber: firebaseUser.phoneNumber || '',
-        balance: 0,
-        role: isAdminEmail ? 'admin' : 'user',
-        isOnline: true,
-        lastSeen: new Date().toISOString(),
-        isVerified: false,
-        isBanned: false,
-        level: 'Bronze',
-        experience: 0,
-        createdAt: new Date().toISOString()
-      };
-      
-      try {
-        await setDoc(userRef, newProfile, { merge: true });
-        setProfile(newProfile);
-        localStorage.setItem('ulfha_user_profile', JSON.stringify(newProfile));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, `users/${firebaseUser.uid}`);
-      } finally {
-        setLoading(false);
-      }
-    };
 
     return () => {
       unsubscribe();

@@ -955,6 +955,52 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
     setIsWallpaperModalOpen(false);
   };
 
+  const markMessagesAsRead = async () => {
+    try {
+      const readReceiptsEnabled = currentUser.userSettings?.readReceipts !== false;
+      if (!readReceiptsEnabled || !chat?.uid || !currentUser?.uid) return;
+
+      // 1. Mark in Firestore
+      const unreadMsgs = messages.filter(m => m.senderId === chat.uid && m.receiverId === currentUser.uid && m.status !== 'read');
+      if (unreadMsgs.length > 0) {
+        const batch = writeBatch(db);
+        let count = 0;
+        unreadMsgs.forEach(m => {
+          if (m.id && !m.id.startsWith('temp-') && !m.id.startsWith('mem_')) {
+            batch.update(doc(db, 'messages', m.id), { status: 'read' });
+            count++;
+          }
+        });
+        if (count > 0) {
+          await batch.commit().catch(e => console.error('Failed to update read status batch:', e));
+        }
+      }
+
+      // 2. Mark in backup server (for SSE/in-memory fallback)
+      await fetch(resolveApiUrl('/api/messages/mark-read'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatUid: chat.uid, userUid: currentUser.uid })
+      }).catch(e => console.warn('Failed to call backup mark-read endpoint:', e));
+    } catch (err) {
+      console.warn('Failed to mark messages as read:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!chat?.uid || !currentUser?.uid) return;
+    
+    // Check if there are any unread messages from the other user
+    const hasUnread = messages.some(m => m.senderId === chat.uid && m.receiverId === currentUser.uid && m.status !== 'read');
+    if (hasUnread) {
+      // Delay slightly to prevent rapid consecutive writes
+      const timer = setTimeout(() => {
+        markMessagesAsRead();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [chat?.uid, currentUser?.uid, messages.length]);
+
   useEffect(() => {
     // Pre-load conversation messages from local cache for instant offline rendering
     getLocalMessagesForChat(chat.uid).then((indexedDbMsgs) => {
@@ -1059,7 +1105,7 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
             });
             return combined;
           });
-          if (msg.type !== 'reaction_update') {
+          if (msg.type !== 'reaction_update' && msg.type !== 'status_update') {
             setTimeout(() => {
               scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
             }, 100);
@@ -1136,7 +1182,7 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
 
       // Mark unread messages as read (Read Receipts Logic)
       const readReceiptsEnabled = currentUser.userSettings?.readReceipts !== false;
-      if (readReceiptsEnabled && !snapshot.metadata.fromCache) {
+      if (readReceiptsEnabled) {
         const unreadDocs = snapshot.docs.filter(d => {
           const data = d.data();
           return data.receiverId === currentUser.uid && data.status !== 'read';

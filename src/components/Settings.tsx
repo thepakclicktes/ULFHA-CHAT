@@ -9,7 +9,7 @@ import {
   Palette, Send, EyeOff, Languages, Volume2, History,
   Database, HelpCircle, Users, Smile, BadgePlus, QrCode, PlusCircle,
   Ban, Camera, Mic, MapPin, ShieldCheck, Star, Globe, Folder, Laptop,
-  Bookmark, Phone, MessageCircle, Youtube, Facebook, Instagram, MoreHorizontal
+  Bookmark, Phone, MessageCircle, Youtube, Facebook, Instagram
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../types';
@@ -640,54 +640,6 @@ const cycleVisibility = (key: string, current: string) => {
       {/* Main Telegram Style Settings Cards */}
       {!isEditingProfile && (
         <div className="animate-in fade-in duration-200">
-          {/* Connect & Share - Moved to top for visibility */}
-          <TelegramCard>
-            <div className="px-4 py-2 border-b border-gray-100/5 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
-              <h4 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-1.5">
-                <MoreHorizontal size={12} />
-                Connect & Share
-              </h4>
-            </div>
-            <TelegramGroupItem 
-              icon={MessageCircle} 
-              iconColor="bg-[#00a884]" 
-              title="Follow on WhatsApp" 
-              onClick={() => {
-                window.open("https://whatsapp.com/channel/0029Vb84Skx7NoZxmLHWPI1K", "_blank", "noopener,noreferrer");
-              }} 
-            />
-            <TelegramGroupItem 
-              icon={Youtube} 
-              iconColor="bg-[#ff0000]" 
-              title="Sub on YouTube" 
-              onClick={() => {
-                window.open("https://youtube.com/@ulfhachat", "_blank", "noopener,noreferrer");
-              }} 
-            />
-            <TelegramGroupItem 
-              icon={Facebook} 
-              iconColor="bg-[#1877f2]" 
-              title="Follow on Facebook" 
-              onClick={() => {
-                window.open("https://www.facebook.com/share/19UFkJK6wE/", "_blank", "noopener,noreferrer");
-              }} 
-            />
-            <TelegramGroupItem 
-              icon={Instagram} 
-              iconColor="bg-[#e1306c]" 
-              title="Follow on Instagram" 
-              onClick={() => {
-                window.open("https://www.instagram.com/ulfhachat?igsh=aGZnNnZ0bDVlZmI=", "_blank", "noopener,noreferrer");
-              }} 
-            />
-            <TelegramGroupItem 
-              icon={Share2} 
-              iconColor="bg-[#007aff]" 
-              title={copied ? "Link Copied!" : "Share App"} 
-              onClick={handleShare} 
-            />
-          </TelegramCard>
-
           {/* Card Block 1 */}
           <TelegramCard>
             <TelegramGroupItem 
@@ -802,6 +754,48 @@ const cycleVisibility = (key: string, current: string) => {
               iconColor="bg-[#ffcc00]" 
               title="Ulfha Chat Features" 
               onClick={() => setActiveTab('features')} 
+            />
+          </TelegramCard>
+
+          {/* Connect & Share */}
+          <TelegramCard>
+            <TelegramGroupItem 
+              icon={MessageCircle} 
+              iconColor="bg-[#00a884]" 
+              title="Follow on WhatsApp" 
+              onClick={() => {
+                window.open("https://whatsapp.com/channel/0029Vb84Skx7NoZxmLHWPI1K", "_blank", "noopener,noreferrer");
+              }} 
+            />
+            <TelegramGroupItem 
+              icon={Youtube} 
+              iconColor="bg-[#ff0000]" 
+              title="Sub on YouTube" 
+              onClick={() => {
+                window.open("https://youtube.com/@ulfhachat", "_blank", "noopener,noreferrer");
+              }} 
+            />
+            <TelegramGroupItem 
+              icon={Facebook} 
+              iconColor="bg-[#1877f2]" 
+              title="Follow on Facebook" 
+              onClick={() => {
+                window.open("https://www.facebook.com/share/19UFkJK6wE/", "_blank", "noopener,noreferrer");
+              }} 
+            />
+            <TelegramGroupItem 
+              icon={Instagram} 
+              iconColor="bg-[#e1306c]" 
+              title="Follow on Instagram" 
+              onClick={() => {
+                window.open("https://www.instagram.com/ulfhachat?igsh=aGZnNnZ0bDVlZmI=", "_blank", "noopener,noreferrer");
+              }} 
+            />
+            <TelegramGroupItem 
+              icon={Share2} 
+              iconColor="bg-[#007aff]" 
+              title={copied ? "Link Copied!" : "Share App"} 
+              onClick={handleShare} 
             />
           </TelegramCard>
         </div>

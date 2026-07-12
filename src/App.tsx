@@ -28,7 +28,6 @@ import firebaseConfig from '../firebase-applet-config.json';
 import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock, MessageCircle, Loader2 } from 'lucide-react';
 import { cn, resolveApiUrl } from './utils';
 import Header from './components/Header';
-import UpdateNotification from './components/UpdateNotification';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
 import { Toaster, toast } from 'sonner';
@@ -850,14 +849,18 @@ useEffect(() => {
 
   if (loading && !profile) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F0F2F5] dark:bg-[#111B21]">
-        <div className="relative">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F0F2F5] dark:bg-[#111B21] transition-colors duration-500">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative"
+        >
           <div className="w-16 h-16 border-4 border-[#00A884]/20 border-t-[#00A884] rounded-full animate-spin" />
           <div className="absolute inset-0 flex items-center justify-center">
             <img src="/logo.png" className="w-8 h-8 opacity-20" alt="" />
           </div>
-        </div>
-        <p className="mt-4 text-[#667781] text-sm font-medium Urdu">درخواست پر کارروائی ہو رہی ہے...</p>
+        </motion.div>
+        <p className="mt-4 text-[#667781] text-sm font-medium Urdu animate-pulse">درخواست پر کارروائی ہو رہی ہے...</p>
       </div>
     );
   }
@@ -977,8 +980,6 @@ return (
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <UpdateNotification />
-
       {/* Offline Indicator */}
       {!isOnline && (
         <div className="fixed top-0 left-0 w-full bg-red-500 text-white text-[10px] py-1 text-center font-bold z-[1000] animate-pulse">
