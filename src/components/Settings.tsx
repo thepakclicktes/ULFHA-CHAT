@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, Search, User, Key, Lock, List as ListIcon, 
@@ -39,7 +39,7 @@ export default function Settings({ profile }: SettingsProps) {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const syncBlocked = () => {
       try {
         const saved = localStorage.getItem('ulfah_blocked_chats');
@@ -56,7 +56,7 @@ export default function Settings({ profile }: SettingsProps) {
     };
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoadingUsers(true);
@@ -289,7 +289,7 @@ export default function Settings({ profile }: SettingsProps) {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (activeTab === 'permissions') {
       checkPermissions();
     }

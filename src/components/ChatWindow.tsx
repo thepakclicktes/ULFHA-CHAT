@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, or, and, runTransaction, getDocs, limit, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -562,7 +562,7 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const displayedMessages = React.useMemo(() => {
+  const displayedMessages = useMemo(() => {
     const unDeleted = messages.filter(m => !m.deletedFor?.includes(currentUser.uid));
     if (!searchQuery.trim()) return unDeleted;
     const queryStr = searchQuery.toLowerCase().trim();

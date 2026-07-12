@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useDeferredValue } from 'react';
+import React, { useState, useEffect, useRef, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot, getDocs, or, orderBy, updateDoc, addDoc, serverTimestamp, limit, doc, setDoc, getDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -465,9 +465,9 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
   };
 
   // Mobile Long-Press Logic
-  const longPressTimeout = React.useRef<any>(null);
-  const longPressActive = React.useRef(false);
-  const chatTouchStartPos = React.useRef({ x: 0, y: 0 });
+  const longPressTimeout = useRef<any>(null);
+  const longPressActive = useRef(false);
+  const chatTouchStartPos = useRef({ x: 0, y: 0 });
 
   const handleTouchStart = (e: React.TouchEvent, chat: any) => {
     longPressActive.current = false;

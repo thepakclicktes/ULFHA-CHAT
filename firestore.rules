@@ -42,7 +42,7 @@ service cloud.firestore {
     
     // Schema-level validation blueprints
     function isValidUser(data) {
-      return data.uid is string && data.uid == request.auth.uid &&
+      return data.uid is string &&  (data.uid == request.auth.uid || isAdmin()) &&
              (!('email' in data) || (data.email is string && data.email.size() <= 256)) &&
              (!('username' in data) || (data.username is string && data.username.size() <= 50)) &&
              (!('role' in data) || data.role == 'user' || data.role == 'admin') &&
@@ -51,7 +51,7 @@ service cloud.firestore {
     }
     
     function isValidMessage(data) {
-      return data.senderId is string && data.senderId == request.auth.uid &&
+      return data.senderId is string &&  (data.senderId == request.auth.uid || isAdmin()) &&
              data.receiverId is string && data.receiverId.size() <= 128 &&
              (!('text' in data) || (data.text is string && data.text.size() <= 5000));
     }
@@ -68,7 +68,7 @@ service cloud.firestore {
     }
     
     function isValidStatus(data) {
-      return data.userId is string && data.userId == request.auth.uid &&
+      return data.userId is string &&  (data.userId == request.auth.uid || isAdmin()) &&
              data.imageUrl is string && data.imageUrl.size() <= 2048;
     }
 
@@ -82,7 +82,7 @@ service cloud.firestore {
     // Collection: Users
     match /users/{userId} {
       allow get: if true;
-      allow list: if isSignedIn();
+      allow list: if true;
       allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && (incoming().role == 'user' || isAdmin());
       allow update: if isSignedIn() && (
         isAdmin() || (
@@ -95,14 +95,14 @@ service cloud.firestore {
     
     // Sub-Collection: Contacts
     match /users/{userId}/contacts/{contactId} {
-      allow read, list: if isOwner(userId);
+      allow read, list: if isOwner(userId) || isAdmin();
       allow create, update: if isOwner(userId) && isValidContact(incoming());
       allow delete: if isOwner(userId);
     }
     
     // Sub-Collection: Bookmarks
     match /users/{userId}/bookmarks/{bookmarkId} {
-      allow read, list: if isOwner(userId);
+      allow read, list: if isOwner(userId) || isAdmin();
       allow create, update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
@@ -118,7 +118,7 @@ service cloud.firestore {
     match /messages/{messageId} {
       allow get, list: if isVerified() && (
         resource.data.senderId == request.auth.uid || 
-        resource.data.receiverId == request.auth.uid || 
+        resource.data.receiverId == request.auth.uid || isAdmin() || 
         (exists(/databases/$(database)/documents/groups/$(resource.data.receiverId)) && 
          (request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.receiverId)).data.members || 
           request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.receiverId)).data.admins))
@@ -137,7 +137,7 @@ service cloud.firestore {
     
     // Collection: Calls
     match /calls/{callId} {
-      allow get, list: if isVerified() && (resource.data.callerId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
+      allow get, list: if isVerified() && (resource.data.callerId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin() || isAdmin());
       allow create: if isVerified() && isValidCall(incoming());
       allow update, delete: if isVerified() && (existing().callerId == request.auth.uid || existing().receiverId == request.auth.uid || isAdmin());
     }

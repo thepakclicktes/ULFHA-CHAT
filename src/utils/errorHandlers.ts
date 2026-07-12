@@ -65,7 +65,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     return;
   }
 
-  // To prevent hard crashes during connection instability, return instead of throwing
-  console.log('[System Status] Database request served via local cache fallback.');
-  return;
+  // Log and throw the error as required by the Firebase Integration Skill
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
 }

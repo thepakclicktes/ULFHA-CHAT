@@ -27,7 +27,7 @@ import { CATEGORIES, BOOKS_DATA, Book as LibraryBookType } from './IslamicLibrar
 console.log("Categories in AdminPanel:", CATEGORIES);
 import 'prismjs/themes/prism-tomorrow.css';
 
-type AdminTab = 'users' | 'announcements' | 'settings' | 'logs' | 'fraud' | 'support' | 'analytics' | 'build' | 'logo' | 'books';
+type AdminTab = 'users' | 'announcements' | 'settings' | 'logs' | 'fraud' | 'support' | 'analytics' | 'build' | 'logo' | 'books' | 'userActivity';
 
 interface SupportTicket {
   id?: string;
@@ -112,6 +112,57 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
   const [bookCategoryFilter, setBookCategoryFilter] = useState('all');
   const [bookSearchQuery, setBookSearchQuery] = useState('');
   const [bookPage, setBookPage] = useState(1);
+  const [selectedActivityUser, setSelectedActivityUser] = useState<UserProfile | null>(null);
+  const [userMessages, setUserMessages] = useState<any[]>([]);
+  const [userStatuses, setUserStatuses] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!selectedActivityUser) {
+      setUserMessages([]);
+      setUserStatuses([]);
+      return;
+    }
+
+    const fetchActivity = async () => {
+      try {
+        // Fetch messages where user is sender
+        const messagesRef = collection(db, 'messages');
+        const qMessages = query(messagesRef, where('senderId', '==', selectedActivityUser.uid));
+        const messagesUnsub = onSnapshot(qMessages, (snapshot) => {
+          const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // sort locally since we might not have a composite index
+          msgs.sort((a: any, b: any) => {
+            const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
+            const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
+            return timeB - timeA;
+          });
+          setUserMessages(msgs);
+        });
+
+        // Fetch statuses
+        const statusesRef = collection(db, 'statuses');
+        const qStatuses = query(statusesRef, where('userId', '==', selectedActivityUser.uid));
+        const statusesUnsub = onSnapshot(qStatuses, (snapshot) => {
+          const stats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setUserStatuses(stats);
+        });
+
+        return () => {
+          messagesUnsub();
+          statusesUnsub();
+        };
+      } catch (err) {
+        console.error("Error fetching user activity:", err);
+      }
+    };
+
+    const cleanup = fetchActivity();
+    return () => {
+      if (cleanup && typeof cleanup.then === 'function') {
+        cleanup.then(unsub => { if (unsub) unsub(); });
+      }
+    };
+  }, [selectedActivityUser]);
 
   const handleResetPassword = async (email: string) => {
     const newPassword = prompt(`Enter new password for ${email}:`);
@@ -149,6 +200,26 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
     } catch (error) {
       console.error('Delete user error:', error);
       alert('Failed to delete user data.');
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!window.confirm('Are you sure you want to delete this message?')) return;
+    try {
+      await deleteDoc(doc(db, 'messages', messageId));
+    } catch (err) {
+      console.error('Error deleting message:', err);
+      alert('Failed to delete message.');
+    }
+  };
+
+  const handleDeleteStatus = async (statusId: string) => {
+    if (!window.confirm('Are you sure you want to delete this status?')) return;
+    try {
+      await deleteDoc(doc(db, 'statuses', statusId));
+    } catch (err) {
+      console.error('Error deleting status:', err);
+      alert('Failed to delete status.');
     }
   };
 
@@ -518,6 +589,13 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
           <Users size={20} />
         </button>
         <button 
+          onClick={() => setActiveTab('userActivity')}
+          className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'userActivity' ? "text-white border-l-2 border-indigo-500" : "text-[#858585] hover:text-white")}
+          title="User Activity Viewer"
+        >
+          <Activity size={20} />
+        </button>
+        <button 
           onClick={() => setActiveTab('fraud')}
           className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'fraud' ? "text-white border-l-2 border-red-500" : "text-[#858585] hover:text-white")}
           title="Fraud Monitor"
@@ -866,6 +944,134 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            {activeTab === 'userActivity' && (
+              <motion.div 
+                key="userActivity"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                <div className="flex flex-row justify-between items-center gap-4">
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Activity size={20} className="text-indigo-500" />
+                    User Activity Viewer
+                  </h2>
+                  <div className="relative w-72">
+                    <input
+                      type="text"
+                      placeholder="Search users..."
+                      className="w-full bg-[#3c3c3c] border border-[#3c3c3c] focus:border-indigo-500 py-1.5 pl-10 pr-4 rounded text-sm text-white outline-none transition-all"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <Search className="absolute left-3 top-2 text-[#858585]" size={16} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Left Column: User Selection */}
+                  <div className="col-span-1 bg-[#252526] rounded border border-[#333333] overflow-hidden shadow-2xl flex flex-col h-[600px]">
+                    <div className="p-3 border-b border-[#333333] bg-[#37373d] text-[#858585] text-sm uppercase tracking-wider font-medium">
+                      Select User
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {filteredUsers.map((u) => (
+                        <div 
+                          key={u.uid} 
+                          onClick={() => setSelectedActivityUser(u)}
+                          className={cn("p-3 flex items-center gap-3 cursor-pointer border-b border-[#333333] transition-colors", selectedActivityUser?.uid === u.uid ? "bg-[#37373d]" : "hover:bg-[#2a2d2e]")}
+                        >
+                          <img src={u.photoURL || `https://ui-avatars.com/api/?name=${u.displayName}`} className="w-10 h-10 rounded border border-[#333333]" />
+                          <div className="flex-1 overflow-hidden">
+                            <div className="text-sm text-white truncate font-medium">{u.displayName}</div>
+                            <div className="text-xs text-[#858585] truncate">{u.email || u.phoneNumber}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Activity Details */}
+                  <div className="col-span-2 bg-[#252526] rounded border border-[#333333] overflow-hidden shadow-2xl flex flex-col h-[600px]">
+                    {selectedActivityUser ? (
+                      <div className="flex flex-col h-full">
+                        <div className="p-4 border-b border-[#333333] flex justify-between items-center bg-[#2a2d2e]">
+                          <div className="flex items-center gap-3">
+                            <img src={selectedActivityUser.photoURL || `https://ui-avatars.com/api/?name=${selectedActivityUser.displayName}`} className="w-12 h-12 rounded" />
+                            <div>
+                              <div className="text-lg text-white font-medium">{selectedActivityUser.displayName}</div>
+                              <div className="text-sm text-[#858585]">{selectedActivityUser.uid}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                          {/* Messages Section */}
+                          <section>
+                            <h3 className="text-md font-bold text-white mb-3 flex items-center gap-2">
+                              <MessageSquare size={16} className="text-indigo-400" /> Recent Messages ({userMessages.length})
+                            </h3>
+                            {userMessages.length === 0 ? (
+                              <p className="text-sm text-[#858585]">No messages found.</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {userMessages.slice(0, 50).map((msg) => (
+                                  <div key={msg.id} className="bg-[#333333] p-3 rounded flex justify-between items-start gap-4">
+                                    <div className="flex-1">
+                                      <div className="text-xs text-[#858585] mb-1">
+                                        To: {msg.receiverId} • {msg.timestamp ? new Date(msg.timestamp.toMillis ? msg.timestamp.toMillis() : msg.timestamp).toLocaleString() : ''}
+                                      </div>
+                                      <div className="text-sm text-white">{msg.text || '[Attachment]'}</div>
+                                    </div>
+                                    <button onClick={() => handleDeleteMessage(msg.id)} className="text-red-400 hover:text-red-300 p-1">
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </section>
+
+                          {/* Statuses Section */}
+                          <section>
+                            <h3 className="text-md font-bold text-white mb-3 flex items-center gap-2">
+                              <ImageIcon size={16} className="text-emerald-400" /> Status Updates / Posts ({userStatuses.length})
+                            </h3>
+                            {userStatuses.length === 0 ? (
+                              <p className="text-sm text-[#858585]">No statuses found.</p>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-3">
+                                {userStatuses.map((status) => (
+                                  <div key={status.id} className="bg-[#333333] rounded overflow-hidden relative group">
+                                    {status.imageUrl && (
+                                      <img src={status.imageUrl} className="w-full h-32 object-cover" />
+                                    )}
+                                    {status.text && (
+                                      <div className="p-2 text-sm text-white">{status.text}</div>
+                                    )}
+                                    <div className="p-2 text-xs text-[#858585]">
+                                      {status.timestamp ? new Date(status.timestamp.toMillis ? status.timestamp.toMillis() : status.timestamp).toLocaleString() : ''}
+                                    </div>
+                                    <button onClick={() => handleDeleteStatus(status.id)} className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </section>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-[#858585]">
+                        Select a user to view their activity
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>

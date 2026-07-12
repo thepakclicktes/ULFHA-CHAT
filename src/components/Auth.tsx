@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth, db, googleProvider } from '../firebase';
 import { doc, setDoc, serverTimestamp, query, collection, where, getDocs, onSnapshot, getDoc } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getDocWithRetry, getDocsWithRetry } from '../utils/firestoreRetry';
 import { LogIn, Mail, Lock, User, ArrowRight, Github, ImageIcon, AtSign, Eye, EyeOff, Key, ShieldCheck, Smartphone, CheckCircle2, Chrome } from 'lucide-react';
 import { cn } from '../utils';
@@ -84,9 +85,14 @@ export default function Auth() {
 
     try {
       // Check if username is taken in Firestore
-      const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase().trim()));
-      const querySnapshot = await getDocsWithRetry(q);
-      if (!querySnapshot.empty) {
+      let querySnapshot;
+      try {
+        const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase().trim()));
+        querySnapshot = await getDocsWithRetry(q);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, 'users');
+      }
+      if (querySnapshot && !querySnapshot.empty) {
         setError('This username is already taken. Please choose another username.');
         setLoading(false);
         return;
@@ -106,23 +112,27 @@ export default function Auth() {
 
       // Setup the user profile document in Firestore
       const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, {
-        uid: user.uid,
-        email: email.toLowerCase().trim(),
-        displayName: displayName.trim(),
-        username: username.toLowerCase().trim(),
-        photoURL: user.photoURL || '',
-        phoneNumber: user.phoneNumber || '',
-        balance: 0,
-        role: 'user',
-        isOnline: true,
-        lastSeen: new Date().toISOString(),
-        isVerified: false,
-        isBanned: false,
-        level: 'Bronze',
-        experience: 0,
-        createdAt: serverTimestamp()
-      }, { merge: true });
+      try {
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: email.toLowerCase().trim(),
+          displayName: displayName.trim(),
+          username: username.toLowerCase().trim(),
+          photoURL: user.photoURL || '',
+          phoneNumber: user.phoneNumber || '',
+          balance: 0,
+          role: 'user',
+          isOnline: true,
+          lastSeen: new Date().toISOString(),
+          isVerified: false,
+          isBanned: false,
+          level: 'Bronze',
+          experience: 0,
+          createdAt: serverTimestamp()
+        }, { merge: true });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.CREATE, 'users');
+      }
 
       setVerificationSent(true);
       setSuccessMessage('Verification email sent! Please check your inbox and verify your email before signing in.');
@@ -201,14 +211,19 @@ export default function Auth() {
 
       // Check if the input is a username (doesn't contain '@')
       if (!targetEmail.includes('@')) {
-        const q = query(collection(db, 'users'), where('username', '==', targetEmail));
-        const querySnapshot = await getDocsWithRetry(q);
-        if (querySnapshot.empty) {
+        let querySnapshot;
+        try {
+          const q = query(collection(db, 'users'), where('username', '==', targetEmail));
+          querySnapshot = await getDocsWithRetry(q);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.GET, 'users');
+        }
+        if (querySnapshot && querySnapshot.empty) {
           setError('No user found with this username. Try using your email instead.');
           setLoading(false);
           return;
         }
-        const userData = querySnapshot.docs[0].data();
+        const userData = querySnapshot!.docs[0].data();
         if (!userData.email) {
           setError('User found, but no email is associated with this username.');
           setLoading(false);
@@ -257,37 +272,50 @@ export default function Auth() {
 
       // Check if user exists in Firestore
       const userRef = doc(db, 'users', user.uid);
-      const userDoc = await getDocWithRetry(userRef);
+      let userDoc;
+      try {
+        userDoc = await getDocWithRetry(userRef);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, 'users');
+      }
 
-      if (!userDoc.exists()) {
+      if (userDoc && !userDoc.exists()) {
         // Generate a random username for Google users if they don't have one
         const baseUsername = (user.displayName || 'user').toLowerCase().replace(/\s+/g, '_');
         const randomSuffix = Math.floor(1000 + Math.random() * 9000);
         const finalUsername = `${baseUsername}${randomSuffix}`;
 
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName || 'Ulfah User',
-          username: finalUsername,
-          photoURL: user.photoURL || '',
-          phoneNumber: user.phoneNumber || '',
-          balance: 0,
-          role: 'user',
-          isOnline: true,
-          lastSeen: new Date().toISOString(),
-          isVerified: true, // Google accounts are usually verified
-          isBanned: false,
-          level: 'Bronze',
-          experience: 0,
-          createdAt: serverTimestamp()
-        }, { merge: true });
+        try {
+          await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || 'Ulfah User',
+            username: finalUsername,
+            photoURL: user.photoURL || '',
+            phoneNumber: user.phoneNumber || '',
+            balance: 0,
+            role: 'user',
+            isOnline: true,
+            lastSeen: new Date().toISOString(),
+            isVerified: true, // Google accounts are usually verified
+            isBanned: false,
+            level: 'Bronze',
+            experience: 0,
+            createdAt: serverTimestamp()
+          }, { merge: true });
+        } catch (err) {
+          handleFirestoreError(err, OperationType.CREATE, 'users');
+        }
       } else {
         // Update online status
-        await setDoc(userRef, {
-          isOnline: true,
-          lastSeen: new Date().toISOString()
-        }, { merge: true });
+        try {
+          await setDoc(userRef, {
+            isOnline: true,
+            lastSeen: new Date().toISOString()
+          }, { merge: true });
+        } catch (err) {
+          handleFirestoreError(err, OperationType.UPDATE, 'users');
+        }
       }
     } catch (err: any) {
       console.error('Google login error:', err);
