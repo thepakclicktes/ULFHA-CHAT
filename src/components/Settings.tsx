@@ -486,7 +486,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderMain = () => (
-    <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 custom-scrollbar">
+    <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] flex-1 overflow-y-auto pb-24 custom-scrollbar">
       {/* Telegram-style Top Header */}
       <div className="sticky top-0 z-30 bg-gray-50/10 dark:bg-[#0f171c]/20 backdrop-blur-md px-4 py-3.5 flex items-center justify-between safe-area-top select-none">
         <button 
@@ -738,7 +738,7 @@ const cycleVisibility = (key: string, current: string) => {
     ];
 
     return (
-      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] flex-1 overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
         {renderHeader("Devices")}
         <div className="p-4">
           <div className="bg-white dark:bg-[#1c272d] rounded-2xl p-5 border border-gray-100 dark:border-white/5 mb-4 text-center">
@@ -812,7 +812,7 @@ const cycleVisibility = (key: string, current: string) => {
     ];
 
     return (
-      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] flex-1 overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
         {renderHeader("Language")}
         <div className="p-4">
           <div className="bg-white dark:bg-[#1c272d] rounded-2xl border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm">
@@ -865,7 +865,7 @@ const cycleVisibility = (key: string, current: string) => {
     };
 
     return (
-      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] flex-1 overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
         {renderHeader("Ulfha Chat Premium")}
         <div className="p-4">
           <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white rounded-3xl p-6 shadow-xl mb-6 relative overflow-hidden select-none">
@@ -932,7 +932,7 @@ const cycleVisibility = (key: string, current: string) => {
     ];
 
     return (
-      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] flex-1 overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
         {renderHeader("Ulfha Chat FAQ")}
         <div className="p-4 space-y-4">
           {faqs.map((f, i) => (
@@ -961,7 +961,7 @@ const cycleVisibility = (key: string, current: string) => {
     ];
 
     return (
-      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] flex-1 overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
         {renderHeader("Ulfha Chat Features")}
         <div className="p-4 space-y-4">
           <div className="bg-white dark:bg-[#1c272d] border border-gray-100 dark:border-white/5 p-5 rounded-2xl shadow-sm text-center">
@@ -997,14 +997,6 @@ const cycleVisibility = (key: string, current: string) => {
         toggle 
         toggleValue={settings.securityNotifications}
         onClick={() => updateSetting('securityNotifications', !settings.securityNotifications)}
-      />
-      <SettingItem 
-        icon={BadgePlus} 
-        title="App Lock (Biometric/PIN)" 
-        subtitle="Require authentication to open Ulfah Chat" 
-        toggle
-        toggleValue={settings.appLockEnabled || false}
-        onClick={handleToggleAppLock}
       />
       <SettingItem icon={Mail} title="Email address" subtitle={profile.email} />
       <SettingItem icon={Smartphone} title="Two-step verification" subtitle="Extra security for your account" />
@@ -1085,6 +1077,16 @@ const cycleVisibility = (key: string, current: string) => {
         </div>
       </div>
 
+      <div className="h-px bg-gray-100 my-2" />
+      <SettingItem 
+        icon={BadgePlus} 
+        title="App Lock (Biometric/PIN)" 
+        subtitle="Require authentication to open Ulfah Chat" 
+        toggle
+        toggleValue={settings.appLockEnabled || false}
+        onClick={handleToggleAppLock}
+      />
+
       <div className="px-4 py-3 text-[14px] font-bold text-[#667781] uppercase tracking-wide">Disappearing messages</div>
       <SettingItem 
         icon={Clock} 
@@ -1108,7 +1110,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderLists = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
+    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Lists")}
       <div className="p-8 flex flex-col items-center text-center">
         <div className="flex gap-[-10px] mb-6">
@@ -1189,7 +1191,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderChats = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
+    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Chats")}
       <button 
         onClick={() => {
@@ -1249,7 +1251,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderNotifications = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
+    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Notifications")}
       <SettingItem 
         icon={Volume2} 
@@ -1285,7 +1287,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderAccessibility = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
+    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Accessibility")}
       <div className="p-4">
         <div className="flex justify-between items-start">
@@ -1322,7 +1324,7 @@ const cycleVisibility = (key: string, current: string) => {
     const blockedUsersList = allUsers.filter(u => blockedChats.includes(u.uid));
 
     return (
-      <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
+      <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
         {renderHeader("Blocked contacts")}
         <div className="px-4 py-3 text-[14px] font-bold text-[#667781] uppercase tracking-wide">
           Blocked Users ({blockedUsersList.length})
@@ -1379,7 +1381,7 @@ const cycleVisibility = (key: string, current: string) => {
   };
 
   const renderPermissions = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
+    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("App Permissions")}
       
       <div className="p-4 bg-gray-50 border-b border-gray-100">
