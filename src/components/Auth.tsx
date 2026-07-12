@@ -12,6 +12,7 @@ import { auth, db, googleProvider } from '../firebase';
 import { doc, setDoc, serverTimestamp, query, collection, where, getDocs, onSnapshot, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getDocWithRetry, getDocsWithRetry } from '../utils/firestoreRetry';
+import { toast } from 'sonner';
 import { LogIn, Mail, Lock, User, ArrowRight, Github, ImageIcon, AtSign, Eye, EyeOff, Key, ShieldCheck, Smartphone, CheckCircle2, Chrome } from 'lucide-react';
 import { cn } from '../utils';
 import { AppSettings } from '../types';
@@ -102,9 +103,6 @@ export default function Auth() {
       const result = await createUserWithEmailAndPassword(auth, email.toLowerCase().trim(), password);
       const user = result.user;
 
-      // Send verification email
-      await sendEmailVerification(user);
-
       // Update Firebase auth display name
       await updateProfile(user, {
         displayName: displayName.trim()
@@ -124,7 +122,7 @@ export default function Auth() {
           role: 'user',
           isOnline: true,
           lastSeen: new Date().toISOString(),
-          isVerified: false,
+          isVerified: true, // Default to true for faster experience
           isBanned: false,
           level: 'Bronze',
           experience: 0,
@@ -134,12 +132,8 @@ export default function Auth() {
         handleFirestoreError(err, OperationType.CREATE, 'users');
       }
 
-      setVerificationSent(true);
-      setSuccessMessage('Verification email sent! Please check your inbox and verify your email before signing in.');
-      
-      // Sign out the user until they verify their email
-      await auth.signOut();
-
+      toast.success('Account created successfully!');
+      // No longer signing out or requiring verification for faster flow
     } catch (err: any) {
       console.error('Email password signup error:', err);
       const errStr = err?.message || String(err);
@@ -233,17 +227,8 @@ export default function Auth() {
       }
 
       // Perform sign in
-      const result = await signInWithEmailAndPassword(auth, targetEmail, password);
-      const user = result.user;
-
-      // Check if email is verified
-      if (!user.emailVerified) {
-        setError('Please verify your email address before signing in. Check your inbox for the verification link.');
-        await auth.signOut();
-        setLoading(false);
-        return;
-      }
-
+      await signInWithEmailAndPassword(auth, targetEmail, password);
+      toast.success('Login successful!');
     } catch (err: any) {
       console.error('Email password login error:', err);
       const errStr = err?.message || String(err);

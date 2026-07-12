@@ -32,32 +32,38 @@ export function useAuth() {
       if (firebaseUser) {
         const userRef = doc(db, 'users', firebaseUser.uid);
         
-        // Start listening immediately - Firestore handles caching and fast initial response
+        // Timeout fallback to prevent stuck loading screen
+        const timeoutId = setTimeout(() => {
+          setLoading(false);
+        }, 6000);
+
         unsubProfile = onSnapshot(userRef, (docSnap) => {
+          clearTimeout(timeoutId);
           if (docSnap.exists()) {
             const data = docSnap.data() as UserProfile;
             const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
             const mergedProfile = { 
               ...data, 
+              uid: firebaseUser.uid,
               role: isAdminEmail ? 'admin' : data.role,
               username: data.username || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5))
             } as UserProfile;
 
             setProfile(mergedProfile);
             localStorage.setItem('ulfha_user_profile', JSON.stringify(mergedProfile));
-            setLoading(false); // Found a profile, we can stop loading
+            setLoading(false);
           } else {
-            // Profile doesn't exist yet (e.g. first time login)
             handleNewUser(firebaseUser);
           }
         }, (error) => {
+          clearTimeout(timeoutId);
           handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-          setLoading(false); // Even on error, stop loading so app can show something
+          setLoading(false);
         });
 
-        // If we already have a profile from localStorage, we can stop loading immediately
-        if (profile) {
+        if (profile && profile.uid === firebaseUser.uid) {
           setLoading(false);
+          clearTimeout(timeoutId);
         }
       } else {
         setProfile(null);
@@ -75,19 +81,19 @@ export function useAuth() {
         const pendingReg = localStorage.getItem('pending_registration');
         if (pendingReg) {
           const parsed = JSON.parse(pendingReg);
-          if (parsed.displayName) regDisplayName = parsed.displayName;
-          if (parsed.username) regUsername = parsed.username;
+          regDisplayName = parsed.displayName || regDisplayName;
+          regUsername = parsed.username || regUsername;
           localStorage.removeItem('pending_registration');
         }
       } catch (e) {
-        console.error('Pending registration parsing error:', e);
+        // ignore
       }
 
       const isAdminEmail = firebaseUser.email === 'teemabdulrehman.com@gmail.com' || firebaseUser.email === 'abdulrehmanhabib.com@gmail.com';
       const newProfile: UserProfile = {
         uid: firebaseUser.uid,
         email: firebaseUser.email || '',
-        displayName: regDisplayName || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+        displayName: regDisplayName || 'User',
         username: regUsername || (firebaseUser.email ? firebaseUser.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + firebaseUser.uid.substring(0, 5)),
         photoURL: firebaseUser.photoURL || '',
         phoneNumber: firebaseUser.phoneNumber || '',
@@ -99,16 +105,18 @@ export function useAuth() {
         isBanned: false,
         level: 'Bronze',
         experience: 0,
+        createdAt: new Date().toISOString()
       };
       
       try {
-        await setDoc(userRef, newProfile);
+        await setDoc(userRef, newProfile, { merge: true });
         setProfile(newProfile);
         localStorage.setItem('ulfha_user_profile', JSON.stringify(newProfile));
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, `users/${firebaseUser.uid}`);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     return () => {

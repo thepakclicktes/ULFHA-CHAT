@@ -4,13 +4,13 @@ import { RefreshCw, X, ChevronRight, Sparkles, MessageCircle, Share2 } from 'luc
 import { cn } from '../utils';
 
 // Update this version whenever you make significant changes to the app
-const CURRENT_VERSION = '1.3.0';
+const CURRENT_VERSION = '1.4.0';
 
 // List of recent changes to show the user
 const LATEST_CHANGES = [
   {
-    title: 'Super Fast Login',
-    description: 'We have optimized the login process. Now you can sign in and access your chats instantly without any delays.',
+    title: 'Login Fix',
+    description: 'Fixed a critical issue where some users were stuck on the loading screen after signing in. Accessing your account is now faster and more reliable.',
     icon: RefreshCw,
     color: 'text-emerald-500'
   },
