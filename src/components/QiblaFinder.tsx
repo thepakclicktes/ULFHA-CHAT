@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Compass } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 export default function QiblaFinder({ onClose }: { onClose: () => void }) {
   const [lat, setLat] = useState<number>(40.71);

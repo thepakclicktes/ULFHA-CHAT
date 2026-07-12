@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, Search, User, Key, Lock, List as ListIcon, 
@@ -9,7 +9,7 @@ import {
   Palette, Send, EyeOff, Languages, Volume2, History,
   Database, HelpCircle, Users, Smile, BadgePlus, QrCode, PlusCircle,
   Ban, Camera, Mic, MapPin, ShieldCheck, Star, Globe, Folder, Laptop,
-  Bookmark, Phone, MessageCircle, Youtube, Facebook, Instagram
+  Bookmark, Phone
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../types';
@@ -39,7 +39,7 @@ export default function Settings({ profile }: SettingsProps) {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const syncBlocked = () => {
       try {
         const saved = localStorage.getItem('ulfah_blocked_chats');
@@ -56,7 +56,7 @@ export default function Settings({ profile }: SettingsProps) {
     };
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoadingUsers(true);
@@ -289,7 +289,7 @@ export default function Settings({ profile }: SettingsProps) {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (activeTab === 'permissions') {
       checkPermissions();
     }
@@ -379,38 +379,6 @@ const cycleVisibility = (key: string, current: string) => {
       setActiveTab('privacy');
     } else {
       setActiveTab('main');
-    }
-  };
-
-  const [copied, setCopied] = useState(false);
-
-  const handleShare = async () => {
-    let shareUrl = window.location.origin;
-    let title = 'Ulfha Chat';
-    let text = 'Join me on Ulfha Chat!';
-
-    const shareData = {
-      title,
-      text,
-      url: shareUrl
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (err) {
-        console.warn('Web Share failed or cancelled, falling back to clipboard copy:', err);
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      alert("Share link copied to clipboard!");
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy link:', err);
     }
   };
 
@@ -754,48 +722,6 @@ const cycleVisibility = (key: string, current: string) => {
               iconColor="bg-[#ffcc00]" 
               title="Ulfha Chat Features" 
               onClick={() => setActiveTab('features')} 
-            />
-          </TelegramCard>
-
-          {/* Connect & Share */}
-          <TelegramCard>
-            <TelegramGroupItem 
-              icon={MessageCircle} 
-              iconColor="bg-[#00a884]" 
-              title="Follow on WhatsApp" 
-              onClick={() => {
-                window.open("https://whatsapp.com/channel/0029Vb84Skx7NoZxmLHWPI1K", "_blank", "noopener,noreferrer");
-              }} 
-            />
-            <TelegramGroupItem 
-              icon={Youtube} 
-              iconColor="bg-[#ff0000]" 
-              title="Sub on YouTube" 
-              onClick={() => {
-                window.open("https://youtube.com/@ulfhachat", "_blank", "noopener,noreferrer");
-              }} 
-            />
-            <TelegramGroupItem 
-              icon={Facebook} 
-              iconColor="bg-[#1877f2]" 
-              title="Follow on Facebook" 
-              onClick={() => {
-                window.open("https://www.facebook.com/share/19UFkJK6wE/", "_blank", "noopener,noreferrer");
-              }} 
-            />
-            <TelegramGroupItem 
-              icon={Instagram} 
-              iconColor="bg-[#e1306c]" 
-              title="Follow on Instagram" 
-              onClick={() => {
-                window.open("https://www.instagram.com/ulfhachat?igsh=aGZnNnZ0bDVlZmI=", "_blank", "noopener,noreferrer");
-              }} 
-            />
-            <TelegramGroupItem 
-              icon={Share2} 
-              iconColor="bg-[#007aff]" 
-              title={copied ? "Link Copied!" : "Share App"} 
-              onClick={handleShare} 
             />
           </TelegramCard>
         </div>

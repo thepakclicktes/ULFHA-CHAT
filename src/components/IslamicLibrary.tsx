@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Fuse from 'fuse.js';
 import { 
@@ -216,7 +216,7 @@ export default function IslamicLibrary({
   });
 
   // Track real download requests
-  const activeXHRs = useRef<Record<string, XMLHttpRequest>>({});
+  const activeXHRs = React.useRef<Record<string, XMLHttpRequest>>({});
 
   useEffect(() => {
     try {

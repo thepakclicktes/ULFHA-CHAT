@@ -33,7 +33,6 @@ import PrayerTimesViewer from './PrayerTimesViewer';
 import OfflineLibrary from './OfflineLibrary';
 import CategorySelector from './CategorySelector';
 import QiblaFinder from './QiblaFinder';
-import IslamicCalendarViewer from './IslamicCalendarViewer';
 
 interface ExploreItem {
   id: string;
@@ -53,7 +52,6 @@ export default function Explore() {
   const [showDuas, setShowDuas] = useState(false);
   const [showPrayer, setShowPrayer] = useState(false);
   const [showQibla, setShowQibla] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [libraryCategory, setLibraryCategory] = useState('all');
 
@@ -225,7 +223,10 @@ export default function Explore() {
         setShowQibla(true);
         break;
       case 'calendar':
-        setShowCalendar(true);
+        setEmbeddedUrl('https://www.islamicfinder.org/islamic-calendar/');
+        setEmbeddedTitle('Islamic Calendar');
+        setEmbeddedUrduTitle('اسلامی کیلنڈر (Islamic Calendar)');
+        setShowEmbedded(true);
         break;
       case 'mosques':
         setEmbeddedUrl('https://www.google.com/maps/search/mosques+near+me');
@@ -280,10 +281,6 @@ export default function Explore() {
 
   if (showQibla) {
     return <QiblaFinder onClose={() => setShowQibla(false)} />;
-  }
-
-  if (showCalendar) {
-    return <IslamicCalendarViewer onClose={() => setShowCalendar(false)} />;
   }
 
   if (showEmbedded) {
