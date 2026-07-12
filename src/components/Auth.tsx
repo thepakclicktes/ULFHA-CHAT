@@ -285,37 +285,34 @@ export default function Auth() {
         const randomSuffix = Math.floor(1000 + Math.random() * 9000);
         const finalUsername = `${baseUsername}${randomSuffix}`;
 
-        try {
-          await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName || 'Ulfah User',
-            username: finalUsername,
-            photoURL: user.photoURL || '',
-            phoneNumber: user.phoneNumber || '',
-            balance: 0,
-            role: 'user',
-            isOnline: true,
-            lastSeen: new Date().toISOString(),
-            isVerified: true, // Google accounts are usually verified
-            isBanned: false,
-            level: 'Bronze',
-            experience: 0,
-            createdAt: serverTimestamp()
-          }, { merge: true });
-        } catch (err) {
+        // Create the user profile in background
+        setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || 'Ulfah User',
+          username: finalUsername,
+          photoURL: user.photoURL || '',
+          phoneNumber: user.phoneNumber || '',
+          balance: 0,
+          role: 'user',
+          isOnline: true,
+          lastSeen: new Date().toISOString(),
+          isVerified: true, // Google accounts are usually verified
+          isBanned: false,
+          level: 'Bronze',
+          experience: 0,
+          createdAt: serverTimestamp()
+        }, { merge: true }).catch(err => {
           handleFirestoreError(err, OperationType.CREATE, 'users');
-        }
+        });
       } else {
-        // Update online status
-        try {
-          await setDoc(userRef, {
-            isOnline: true,
-            lastSeen: new Date().toISOString()
-          }, { merge: true });
-        } catch (err) {
+        // Update online status in background
+        setDoc(userRef, {
+          isOnline: true,
+          lastSeen: new Date().toISOString()
+        }, { merge: true }).catch(err => {
           handleFirestoreError(err, OperationType.UPDATE, 'users');
-        }
+        });
       }
     } catch (err: any) {
       console.error('Google login error:', err);
@@ -336,12 +333,7 @@ export default function Auth() {
     <div className="flex flex-col items-center justify-center min-h-dvh bg-[#F0F2F5] p-4 font-sans relative overflow-hidden">
       {/* Background Pattern */}
       <div 
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{ 
-          backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
-          backgroundSize: '400px',
-          backgroundRepeat: 'repeat'
-        }}
+        className="absolute inset-0 opacity-[0.03] pointer-events-none bg-emerald-500/5"
       ></div>
 
       <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-md w-full border border-gray-100 z-10">

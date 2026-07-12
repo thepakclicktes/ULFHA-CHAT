@@ -4,27 +4,27 @@ import { RefreshCw, X, ChevronRight, Sparkles, MessageCircle, Share2 } from 'luc
 import { cn } from '../utils';
 
 // Update this version whenever you make significant changes to the app
-const CURRENT_VERSION = '1.2.0';
+const CURRENT_VERSION = '1.3.0';
 
 // List of recent changes to show the user
 const LATEST_CHANGES = [
   {
+    title: 'Super Fast Login',
+    description: 'We have optimized the login process. Now you can sign in and access your chats instantly without any delays.',
+    icon: RefreshCw,
+    color: 'text-emerald-500'
+  },
+  {
     title: 'Verse of the Day',
-    description: 'Added a beautiful real-time Verse of the Day widget from UmmahAPI in the Explore section.',
+    description: 'A beautiful daily Quranic verse widget is now available in the Explore section.',
     icon: Sparkles,
     color: 'text-amber-500'
   },
   {
-    title: 'Connect & Share',
-    description: 'New social links in Settings to follow Ulfha Chat on WhatsApp, YouTube, and more.',
+    title: 'Visual Improvements',
+    description: 'Cleaned up the Explore section and improved overall app performance.',
     icon: Share2,
     color: 'text-blue-500'
-  },
-  {
-    title: 'Performance & UI',
-    description: 'Optimized sidebar navigation and improved overall layout for a smoother experience.',
-    icon: RefreshCw,
-    color: 'text-emerald-500'
   }
 ];
 

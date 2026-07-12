@@ -456,17 +456,18 @@ export default function Explore() {
           className="mt-8 mb-8"
         >
           <div className="relative z-10">
-            <h3 className="text-xl font-bold text-[#111B21] dark:text-white Urdu mb-4">آج کی آیت (Verse of the Day)</h3>
+            <h3 className="text-lg font-bold text-[#111B21] dark:text-white Urdu mb-3">آج کی آیت (Verse of the Day)</h3>
             
             {/* UmmahAPI Verse of the Day Widget */}
             <div 
               data-ummahapi="verse-of-day" 
+              data-theme="light"
               id="umh_b3cc3206545b480a96ad6e93b0e715e9511a676d"
               className="ummah-api-widget-container"
             >
-              <div className="flex items-center gap-3 animate-pulse opacity-50">
+              <div className="flex items-center gap-3 animate-pulse opacity-40">
                 <div className="w-1.5 h-1.5 bg-[#00a884] rounded-full"></div>
-                <p className="text-sm text-gray-500 Urdu italic">لوڈنگ... (Loading Verse of the Day...)</p>
+                <p className="text-xs text-gray-500 Urdu italic">لوڈنگ... (Loading...)</p>
               </div>
             </div>
           </div>
