@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Auth from './components/Auth';
@@ -118,6 +118,63 @@ export default function App() {
   const [showIOSInvite, setShowIOSInvite] = useState(false);
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
   const [isAuthenticatingLock, setIsAuthenticatingLock] = useState(false);
+
+  // Swipe tab navigation logic
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Only handle single touch swipe if no chat is open
+    if (selectedChat || e.touches.length !== 1) return;
+    
+    // Check if touch target is inside an input, textarea, button or other ignore selector
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('input') || 
+      target.closest('textarea') || 
+      target.closest('button') || 
+      target.closest('a') ||
+      target.closest('.no-swipe') ||
+      target.closest('[drag]') ||
+      target.closest('.chat-item-container') ||
+      target.closest('.scrollable-content')
+    ) {
+      return;
+    }
+    
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    
+    const diffX = e.changedTouches[0].clientX - touchStartX.current;
+    const diffY = e.changedTouches[0].clientY - touchStartY.current;
+    
+    touchStartX.current = null;
+    touchStartY.current = null;
+    
+    // Check swipe threshold and horizontal direction
+    if (Math.abs(diffX) > 80 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      const tabPaths = ['/', '/status', '/contacts', '/explore', '/settings'];
+      const currentIndex = tabPaths.indexOf(location.pathname);
+      
+      if (currentIndex === -1) return;
+      
+      if (diffX > 0) {
+        // Swiped right -> go to previous tab
+        if (currentIndex > 0) {
+          navigate(tabPaths[currentIndex - 1]);
+        }
+      } else {
+        // Swiped left -> go to next tab
+        if (currentIndex < tabPaths.length - 1) {
+          navigate(tabPaths[currentIndex + 1]);
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -899,6 +956,8 @@ useEffect(() => {
 return (
     <div 
       className={cn(activeTab === 'admin' ? "w-full h-dvh flex flex-col bg-[#1e1e1e] relative overflow-hidden" : "layout-shield relative")}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Offline Indicator */}
       {!isOnline && (

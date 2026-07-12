@@ -13,7 +13,8 @@ import {
   Youtube, 
   Facebook, 
   Instagram, 
-  ExternalLink
+  ExternalLink,
+  User
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase';
@@ -90,6 +91,7 @@ const Sidebar = React.memo(({ profile, selectedChat }: SidebarProps) => {
     { path: '/status', label: 'Updates', icon: CircleDashed },
     { path: '/contacts', label: 'Communities', icon: Users },
     { path: '/explore', label: 'Explore', icon: Compass },
+    { path: '/settings', label: 'Profile', icon: User },
   ];
 
   if (profile.role === 'admin' || profile.email === 'abdulrehmanhabib.com@gmail.com' || profile.email === 'teemabdulrehman.com@gmail.com') {

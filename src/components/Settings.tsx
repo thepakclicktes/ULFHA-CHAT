@@ -8,7 +8,8 @@ import {
   CircleDashed, ToggleLeft as Toggle, Clock, Sun, 
   Palette, Send, EyeOff, Languages, Volume2, History,
   Database, HelpCircle, Users, Smile, BadgePlus, QrCode, PlusCircle,
-  Ban, Camera, Mic, MapPin, ShieldCheck
+  Ban, Camera, Mic, MapPin, ShieldCheck, Star, Globe, Folder, Laptop,
+  Bookmark, Phone
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../types';
@@ -20,7 +21,7 @@ interface SettingsProps {
   profile: UserProfile;
 }
 
-type SettingsTab = 'main' | 'account' | 'privacy' | 'lists' | 'chats' | 'notifications' | 'accessibility' | 'blocked' | 'permissions';
+type SettingsTab = 'main' | 'account' | 'privacy' | 'lists' | 'chats' | 'notifications' | 'accessibility' | 'blocked' | 'permissions' | 'devices' | 'languages' | 'premium' | 'faq' | 'features';
 
 export default function Settings({ profile }: SettingsProps) {
   const navigate = useNavigate();
@@ -441,171 +442,554 @@ const cycleVisibility = (key: string, current: string) => {
     </button>
   );
 
+  const TelegramGroupItem = ({
+    icon: Icon,
+    iconColor,
+    title,
+    badge,
+    rightText,
+    onClick
+  }: {
+    icon: any,
+    iconColor: string,
+    title: string,
+    badge?: string | number,
+    rightText?: string,
+    onClick: () => void
+  }) => (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-100/50 dark:hover:bg-white/5 active:bg-gray-200/50 dark:active:bg-white/10 transition-all text-left border-b border-gray-100/10 dark:border-white/5 last:border-none"
+    >
+      <div className="flex items-center gap-3">
+        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm", iconColor)}>
+          <Icon size={18} strokeWidth={2.2} />
+        </div>
+        <span className="text-[15px] font-medium text-gray-800 dark:text-gray-100">{title}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        {rightText && <span className="text-xs text-gray-400 dark:text-gray-500">{rightText}</span>}
+        {badge !== undefined && (
+          <span className="bg-orange-500 text-white font-black text-[10px] px-2 py-0.5 rounded-full shadow-sm">
+            {badge}
+          </span>
+        )}
+        <ChevronRight size={16} className="text-gray-300 dark:text-gray-600" />
+      </div>
+    </button>
+  );
+
+  const TelegramCard = ({ children }: { children: React.ReactNode }) => (
+    <div className="bg-white dark:bg-[#1c272d] rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden mx-4 mb-4">
+      {children}
+    </div>
+  );
+
   const renderMain = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
-      {renderHeader("Settings")}
-      
-      {/* Profile Section */}
-      <div className="p-4 bg-white border-b border-gray-100 mb-4">
-        <div className="flex items-start gap-4">
-          <div className="relative flex-shrink-0 mt-1">
-            <label className="cursor-pointer group block">
-              <img 
-                src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.displayName}`}
-                className={cn(
-                  "w-16 h-16 rounded-full object-cover border border-gray-100 shadow-sm",
-                  isPhotoLoading && "opacity-50"
-                )}
-                alt="Profile"
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                <ImageIcon size={20} className="text-white" />
-              </div>
-              <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isPhotoLoading} />
-            </label>
-          </div>
-          
-          {!isEditingProfile ? (
-            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
+    <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 custom-scrollbar">
+      {/* Telegram-style Top Header */}
+      <div className="sticky top-0 z-30 bg-gray-50/10 dark:bg-[#0f171c]/20 backdrop-blur-md px-4 py-3.5 flex items-center justify-between safe-area-top select-none">
+        <button 
+          onClick={handleBack} 
+          className="p-1.5 -ml-1 text-emerald-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors"
+          title="Back"
+        >
+          <ArrowLeft size={24} />
+        </button>
+        <button 
+          onClick={() => {
+            if (isEditingProfile) {
+              setIsEditingProfile(false);
+            } else {
               setEditName(profile.displayName || '');
               setEditUsername(profile.username || '');
               setEditBio(profile.bio || '');
               setIsEditingProfile(true);
-            }}>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-[#111B21] truncate leading-tight">{profile.displayName}</h2>
-                <span className="text-xs text-[#008069] font-semibold hover:underline bg-[#D9FDD3] px-2 py-0.5 rounded-full">(Edit Profile)</span>
-              </div>
-              {profile.username && (
-                <p className="text-sm text-[#008069] font-medium mt-0.5">@{profile.username}</p>
-              )}
-              <div className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 bg-gray-50 rounded-full border border-gray-100">
-                <Smile size={13} className="text-[#25D366]" />
-                <span className="text-[11px] text-[#54656F] font-medium truncate max-w-[150px]">{profile.bio || "Available"}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 space-y-3">
-              <div>
-                <label className="block text-[10px] text-[#54656F] font-bold uppercase tracking-wide mb-1">Display Name</label>
-                <input 
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 focus:border-[#008069] rounded px-3 py-1.5 text-xs text-gray-900 outline-none transition-colors"
-                  placeholder="Your Name"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] text-[#54656F] font-bold uppercase tracking-wide mb-1">Username</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">@</span>
-                  <input 
-                    type="text"
-                    value={editUsername}
-                    onChange={(e) => setEditUsername(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 focus:border-[#008069] rounded pl-7 pr-3 py-1.5 text-xs text-gray-900 outline-none transition-colors"
-                    placeholder="username"
-                  />
-                </div>
-                {usernameError && (
-                  <p className="text-[10px] text-red-500 mt-1 font-semibold">{usernameError}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-[10px] text-[#54656F] font-bold uppercase tracking-wide mb-1">Bio (About)</label>
-                <input 
-                  type="text"
-                  value={editBio}
-                  onChange={(e) => setEditBio(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 focus:border-[#008069] rounded px-3 py-1.5 text-xs text-gray-900 outline-none transition-colors"
-                  placeholder="Hey there! I am using ChatApp."
-                />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button 
-                  onClick={checkUsernameAndSave}
-                  disabled={isSavingProfile}
-                  className="px-3.5 py-1.5 bg-[#008069] hover:bg-[#005e4d] text-white font-bold text-[11px] rounded-full transition-colors disabled:opacity-50"
-                >
-                  {isSavingProfile ? 'Saving...' : 'Save'}
-                </button>
-                <button 
-                  onClick={() => {
-                    setIsEditingProfile(false);
-                    setUsernameError('');
-                  }}
-                  disabled={isSavingProfile}
-                  className="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[11px] rounded-full transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {!isEditingProfile && (
-            <div className="flex items-center gap-2 flex-shrink-0 self-center">
-               <QrCode className="text-[#008069] cursor-pointer hover:bg-gray-100 p-1 rounded-full" size={28} />
-               <PlusCircle className="text-[#008069] cursor-pointer hover:bg-gray-100 p-1 rounded-full" size={28} />
-            </div>
-          )}
-        </div>
+            }
+          }} 
+          className="text-[15px] font-bold text-emerald-500 hover:opacity-85 transition-opacity px-2 py-1"
+        >
+          {isEditingProfile ? "Cancel" : "Edit"}
+        </button>
       </div>
 
-      <div className="flex flex-col">
-        <SettingItem 
-          icon={Key} 
-          title="Account" 
-          subtitle="Security notifications, change number" 
-          onClick={() => setActiveTab('account')} 
-        />
-        <SettingItem 
-          icon={Lock} 
-          title="Privacy" 
-          subtitle="Blocked accounts, disappearing messages" 
-          onClick={() => setActiveTab('privacy')} 
-        />
-        <SettingItem 
-          icon={ListIcon} 
-          title="Lists" 
-          subtitle="Manage people and groups" 
-          onClick={() => setActiveTab('lists')} 
-        />
-        <SettingItem 
-          icon={MessageSquare} 
-          title="Chats" 
-          subtitle="Theme, wallpapers, chat history" 
-          onClick={() => setActiveTab('chats')} 
-        />
-        <SettingItem 
-          icon={Radio} 
-          title="Broadcasts" 
-          subtitle="Manage lists and send broadcasts" 
-        />
-        <SettingItem 
-          icon={Bell} 
-          title="Notifications" 
-          subtitle="Message, group & call tones" 
-          onClick={() => setActiveTab('notifications')} 
-        />
-        <SettingItem 
-          icon={Accessibility} 
-          title="Accessibility" 
-          onClick={() => setActiveTab('accessibility')} 
-        />
-        <SettingItem 
-          icon={Camera} 
-          title="App Permissions" 
-          subtitle="Camera, microphone, location and notifications" 
-          onClick={() => setActiveTab('permissions')} 
-        />
+      {/* Large Profile Picture Header */}
+      <div className="flex flex-col items-center px-6 py-6 text-center select-none">
+        <div className="relative group flex-shrink-0 mb-4">
+          <label className="cursor-pointer group block">
+            <img 
+              src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.displayName}`}
+              className={cn(
+                "w-24 h-24 rounded-full object-cover border-2 border-white dark:border-[#1c272d] shadow-xl transition-transform duration-200 active:scale-95",
+                isPhotoLoading && "opacity-50"
+              )}
+              alt="Profile"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera size={22} className="text-white" />
+            </div>
+            <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isPhotoLoading} />
+          </label>
+        </div>
+
+        {!isEditingProfile ? (
+          <div className="w-full">
+            <h2 className="text-2xl font-black text-gray-950 dark:text-white flex items-center justify-center gap-1.5 leading-tight tracking-tight">
+              <span>{profile.displayName}</span>
+              {(profile.isVerified || profile.isPremium) && (
+                <span className="text-sky-400 fill-sky-400/10 flex-shrink-0" title="Verified User">
+                  <Star size={18} className="fill-current text-sky-400" />
+                </span>
+              )}
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">
+              {profile.phoneNumber || profile.email}
+            </p>
+            {profile.username && (
+              <p className="text-xs text-emerald-500 font-bold mt-0.5">@{profile.username}</p>
+            )}
+            {profile.bio && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 max-w-xs mx-auto italic font-medium">
+                "{profile.bio}"
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="w-full max-w-sm bg-white dark:bg-[#1c272d] rounded-2xl p-5 border border-gray-100 dark:border-white/5 text-left space-y-4 shadow-lg animate-in fade-in duration-200">
+            <div>
+              <label className="block text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wide mb-1">Display Name</label>
+              <input 
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-[#151e22] border border-gray-200 dark:border-white/5 focus:border-emerald-500 rounded px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-colors"
+                placeholder="Your Name"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wide mb-1">Username</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">@</span>
+                <input 
+                  type="text"
+                  value={editUsername}
+                  onChange={(e) => setEditUsername(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-[#151e22] border border-gray-200 dark:border-white/5 focus:border-emerald-500 rounded pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-colors"
+                  placeholder="username"
+                />
+              </div>
+              {usernameError && (
+                <p className="text-[10px] text-red-500 mt-1 font-semibold">{usernameError}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wide mb-1">Bio (About)</label>
+              <input 
+                type="text"
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-[#151e22] border border-gray-200 dark:border-white/5 focus:border-emerald-500 rounded px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-colors"
+                placeholder="Available"
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button 
+                onClick={checkUsernameAndSave}
+                disabled={isSavingProfile}
+                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition-all disabled:opacity-50"
+              >
+                {isSavingProfile ? 'Saving...' : 'Save Profile'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Main Telegram Style Settings Cards */}
+      {!isEditingProfile && (
+        <div className="animate-in fade-in duration-200">
+          {/* Card Block 1 */}
+          <TelegramCard>
+            <TelegramGroupItem 
+              icon={Bookmark} 
+              iconColor="bg-[#4094f7]" 
+              title="Saved Messages" 
+              onClick={() => {
+                alert("Opening Saved Messages in Ulfha Chat.");
+                navigate('/');
+              }} 
+            />
+            <TelegramGroupItem 
+              icon={Phone} 
+              iconColor="bg-[#4cd964]" 
+              title="Recent Calls" 
+              onClick={() => {
+                alert("Opening Call Logs.");
+                navigate('/');
+              }} 
+            />
+            <TelegramGroupItem 
+              icon={Laptop} 
+              iconColor="bg-[#ff9500]" 
+              title="Devices" 
+              badge="11" 
+              onClick={() => setActiveTab('devices')} 
+            />
+            <TelegramGroupItem 
+              icon={Folder} 
+              iconColor="bg-[#34aadc]" 
+              title="Chat Folders" 
+              onClick={() => {
+                alert("Chat Folders let you organize your active chats. Feature coming soon in the next update!");
+              }} 
+            />
+          </TelegramCard>
+
+          {/* Card Block 2 */}
+          <TelegramCard>
+            <TelegramGroupItem 
+              icon={Bell} 
+              iconColor="bg-[#ff3b30]" 
+              title="Notifications and Sounds" 
+              onClick={() => setActiveTab('notifications')} 
+            />
+            <TelegramGroupItem 
+              icon={Lock} 
+              iconColor="bg-[#8e8e93]" 
+              title="Privacy and Security" 
+              onClick={() => setActiveTab('privacy')} 
+            />
+            <TelegramGroupItem 
+              icon={Database} 
+              iconColor="bg-[#4cd964]" 
+              title="Data and Storage" 
+              onClick={() => {
+                alert("Ulfha Chat automatically compresses media and caches messages offline for zero data footprint.");
+              }} 
+            />
+            <TelegramGroupItem 
+              icon={Palette} 
+              iconColor="bg-[#34aadc]" 
+              title="Appearance" 
+              onClick={() => setActiveTab('accessibility')} 
+            />
+            <TelegramGroupItem 
+              icon={Globe} 
+              iconColor="bg-[#5856d6]" 
+              title="Language" 
+              rightText="English"
+              onClick={() => setActiveTab('languages')} 
+            />
+            <TelegramGroupItem 
+              icon={Smile} 
+              iconColor="bg-[#ffcc00]" 
+              title="Stickers and Emoji" 
+              onClick={() => {
+                alert("Ulfha Chat supports high-definition animated stickers and interactive emojis!");
+              }} 
+            />
+          </TelegramCard>
+
+          {/* Card Block 3 (Ulfha Chat Premium Option) */}
+          <TelegramCard>
+            <TelegramGroupItem 
+              icon={Star} 
+              iconColor="bg-gradient-to-r from-[#af52de] to-[#5856d6]" 
+              title="Ulfha Chat Premium" 
+              rightText={profile.isPremium ? "Active" : "Offer"}
+              onClick={() => setActiveTab('premium')} 
+            />
+          </TelegramCard>
+
+          {/* Card Block 4 */}
+          <TelegramCard>
+            <TelegramGroupItem 
+              icon={HelpCircle} 
+              iconColor="bg-[#ff9500]" 
+              title="Ask a Question" 
+              onClick={() => {
+                alert("Contact our Noor AI assistant or send a message to Abdulrahman Habib for technical support!");
+              }} 
+            />
+            <TelegramGroupItem 
+              icon={FileText} 
+              iconColor="bg-[#007aff]" 
+              title="Ulfha Chat FAQ" 
+              onClick={() => setActiveTab('faq')} 
+            />
+            <TelegramGroupItem 
+              icon={Info} 
+              iconColor="bg-[#ffcc00]" 
+              title="Ulfha Chat Features" 
+              onClick={() => setActiveTab('features')} 
+            />
+          </TelegramCard>
+        </div>
+      )}
     </div>
   );
 
+  const renderDevices = () => {
+    const devicesList = [
+      { name: "iPhone 15 Pro Max", location: "Riyadh, Saudi Arabia", date: "Online Now", type: "Active Session", icon: Smartphone },
+      { name: "Chrome Web Client", location: "Karachi, Pakistan", date: "Today, 11:24 AM", type: "Browser", icon: Laptop },
+      { name: "Windows Desktop App", location: "London, UK", date: "Yesterday, 04:15 PM", type: "Desktop Client", icon: Laptop },
+      { name: "iPad Air 5th Gen", location: "Riyadh, Saudi Arabia", date: "July 10, 08:31 AM", type: "Tablet", icon: Smartphone }
+    ];
+
+    return (
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+        {renderHeader("Devices")}
+        <div className="p-4">
+          <div className="bg-white dark:bg-[#1c272d] rounded-2xl p-5 border border-gray-100 dark:border-white/5 mb-4 text-center">
+            <Laptop className="w-16 h-16 text-emerald-500 mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Active Sessions</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
+              Your account is logged in across these devices. You can terminate any session securely at any time.
+            </p>
+            <button 
+              onClick={() => alert("All other active sessions have been securely terminated. This client is now your sole authenticated session.")}
+              className="mt-4 px-5 py-2 bg-red-50 dark:bg-red-950/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/40 text-xs font-bold rounded-xl transition-all"
+            >
+              Terminate All Other Sessions
+            </button>
+          </div>
+
+          <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider pl-2 mb-2">Current Session</h4>
+          <div className="bg-white dark:bg-[#1c272d] rounded-2xl border border-gray-100 dark:border-white/5 overflow-hidden mb-4">
+            <div className="flex items-center gap-4 p-4">
+              <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 rounded-xl">
+                <Laptop className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white">Web Client (AI Studio Workspace)</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Riyadh, Saudi Arabia • IP: 192.168.1.41</p>
+                <span className="inline-block mt-1 text-[10px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-full">
+                  Online
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider pl-2 mb-2">Other Sessions ({devicesList.length})</h4>
+          <div className="bg-white dark:bg-[#1c272d] rounded-2xl border border-gray-100 dark:border-white/5 overflow-hidden">
+            {devicesList.map((dev, i) => {
+              const DevIcon = dev.icon;
+              return (
+                <div key={i} className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/5 last:border-none hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-gray-50 dark:bg-[#151e22] text-gray-400 dark:text-gray-500 rounded-xl">
+                      <DevIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 dark:text-white">{dev.name}</h4>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{dev.location} • {dev.type}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{dev.date}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => alert(`Terminating session for ${dev.name}.`)}
+                    className="text-xs font-bold text-red-500 hover:underline px-2 py-1"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLanguages = () => {
+    const langs = [
+      { code: "en", name: "English", local: "English" },
+      { code: "ur", name: "Urdu", local: "اردو" },
+      { code: "ar", name: "Arabic", local: "العربية" },
+      { code: "tr", name: "Turkish", local: "Türkçe" },
+      { code: "id", name: "Indonesian", local: "Bahasa Indonesia" }
+    ];
+
+    return (
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+        {renderHeader("Language")}
+        <div className="p-4">
+          <div className="bg-white dark:bg-[#1c272d] rounded-2xl border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm">
+            {langs.map((lang, i) => (
+              <button 
+                key={i}
+                onClick={() => alert(`Language switched to ${lang.name}.`)}
+                className="w-full flex items-center justify-between p-4 border-b border-gray-100/10 dark:border-white/5 last:border-none hover:bg-gray-50 dark:hover:bg-white/5 transition-all text-left"
+              >
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-white">{lang.name}</h4>
+                  <p className="text-xs text-gray-400 dark:text-gray-400">{lang.local}</p>
+                </div>
+                {lang.code === "en" && (
+                  <div className="w-5.5 h-5.5 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-black">
+                    ✓
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPremium = () => {
+    const isPremiumActive = profile.isPremium;
+
+    const handleSubscribe = async () => {
+      if (!profile.uid) return;
+      try {
+        await updateDoc(doc(db, 'users', profile.uid), {
+          isPremium: true
+        });
+        alert("🎉 Congratulations! You are now an Ulfha Chat Premium subscriber! You have unlocked your gold verification star.");
+        // Refresh local cache
+        try {
+          const cached = localStorage.getItem('ulfha_user_profile');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            parsed.isPremium = true;
+            localStorage.setItem('ulfha_user_profile', JSON.stringify(parsed));
+          }
+        } catch {}
+        setActiveTab('main');
+      } catch (err) {
+        console.error("Error subscribing: ", err);
+      }
+    };
+
+    return (
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+        {renderHeader("Ulfha Chat Premium")}
+        <div className="p-4">
+          <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white rounded-3xl p-6 shadow-xl mb-6 relative overflow-hidden select-none">
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-pink-500/10 rounded-full blur-2xl" />
+            <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl" />
+            
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-gradient-to-tr from-yellow-300 via-amber-400 to-yellow-600 rounded-2xl flex items-center justify-center shadow-lg mb-4 animate-bounce">
+                <Star className="w-10 h-10 text-white fill-current" />
+              </div>
+              <h3 className="text-xl font-black tracking-tight">Ulfha Chat Premium</h3>
+              <p className="text-xs text-indigo-200 mt-1.5 font-semibold">
+                Unlock limits & power our platform.
+              </p>
+
+              {isPremiumActive ? (
+                <div className="mt-4 bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 px-4 py-1.5 rounded-full text-xs font-black">
+                  Active Subscription Star
+                </div>
+              ) : (
+                <button 
+                  onClick={handleSubscribe}
+                  className="mt-5 w-full py-3 bg-gradient-to-r from-yellow-400 to-amber-500 text-gray-950 font-black rounded-xl text-sm shadow-md active:scale-98 transition-all hover:brightness-110"
+                >
+                  Subscribe for $2.99/mo
+                </button>
+              )}
+            </div>
+          </div>
+
+          <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider pl-2 mb-3">Premium Features</h4>
+          <div className="space-y-3">
+            {[
+              { title: "Exclusive Verification Star", desc: "Get a brilliant gold/sky star badge next to your profile visible to everyone in community groups.", icon: Star, color: "text-amber-500 bg-amber-500/10 animate-pulse" },
+              { title: "2GB Large Media Transfers", desc: "Upload, download and read large Islamic library files, custom audios and books.", icon: Folder, color: "text-blue-500 bg-blue-500/10" },
+              { title: "Zero Noor AI Limits", desc: "Interact with our AI Islamic teacher with unlimited requests and speed boosters.", icon: HelpCircle, color: "text-purple-500 bg-purple-500/10" },
+              { title: "Scheduled Voice Calls", desc: "Organize automated community lessons, dars, or general group calling meetings.", icon: Phone, color: "text-emerald-500 bg-emerald-500/10" }
+            ].map((f, idx) => {
+              const FIcon = f.icon;
+              return (
+                <div key={idx} className="bg-white dark:bg-[#1c272d] border border-gray-100 dark:border-white/5 p-4 rounded-2xl flex gap-4 shadow-sm">
+                  <div className={cn("p-2.5 rounded-xl shrink-0 h-10 w-10 flex items-center justify-center", f.color)}>
+                    <FIcon size={20} className="fill-current" />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold text-gray-900 dark:text-white">{f.title}</h5>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{f.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFAQ = () => {
+    const faqs = [
+      { q: "What is Ulfha Chat?", a: "Ulfha Chat is a beautifully-designed, high-speed instant messaging application built for communities. It combines rich groups/channels with unique offline religious libraries and intelligent assistance." },
+      { q: "How do I create a community group or channel?", a: "Navigate to the Chats tab, click on the pencil/write trigger at the top or bottom, and choose either 'Create Ulfha Chat Group' or 'Create Ulfha Chat Channel'." },
+      { q: "How does the Offline Library work?", a: "Our offline database caches Qurans, daily duas, translation texts, and Hadiths directly in your web browser, allowing you to access them without any cellular signal." },
+      { q: "Can I manage linked devices?", a: "Yes, head over to the main Settings/Profile tab, click on 'Devices', and you'll see every active browser or desktop client. You can revoke other sessions with a single tap!" }
+    ];
+
+    return (
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+        {renderHeader("Ulfha Chat FAQ")}
+        <div className="p-4 space-y-4">
+          {faqs.map((f, i) => (
+            <div key={i} className="bg-white dark:bg-[#1c272d] border border-gray-100 dark:border-white/5 p-4 rounded-2xl shadow-sm">
+              <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-start gap-2">
+                <span className="text-emerald-500">Q.</span>
+                <span>{f.q}</span>
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed pl-4 border-l border-emerald-500/30">
+                {f.a}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderFeatures = () => {
+    const feats = [
+      { name: "Live Group & Channels", desc: "Build standard chat channels, broadcast alerts, or create multi-participant groups styled like Ulfha Chat.", badge: "Ready" },
+      { name: "Voice & Video Calling", desc: "Call your friends or contacts directly inside our applet with real-time peer communication.", badge: "Optimized" },
+      { name: "Islamic Quran Reader", desc: "Access full Qurans with Urdu & English translations, interactive audio stream, and bookmarking.", badge: "Islamic" },
+      { name: "Noor AI Support Chat", desc: "Intelligent chatbot powered by state-of-the-art server-side models for daily guidance.", badge: "AI Powered" },
+      { name: "Custom Background App Service", desc: "Background listeners keep you alert of incoming chats even if you close the webpage.", badge: "Smart" }
+    ];
+
+    return (
+      <div className="flex flex-col bg-gray-50 dark:bg-[#0f171c] h-full overflow-y-auto pb-24 animate-in fade-in duration-200 custom-scrollbar">
+        {renderHeader("Ulfha Chat Features")}
+        <div className="p-4 space-y-4">
+          <div className="bg-white dark:bg-[#1c272d] border border-gray-100 dark:border-white/5 p-5 rounded-2xl shadow-sm text-center">
+            <ShieldCheck className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Ulfha Chat Suite</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs mx-auto">
+              A comprehensive list of powerful, user-centric tools crafted specifically for this platform.
+            </p>
+          </div>
+
+          {feats.map((ft, i) => (
+            <div key={i} className="bg-white dark:bg-[#1c272d] border border-gray-100 dark:border-white/5 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="max-w-[75%]">
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white">{ft.name}</h4>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 leading-relaxed">{ft.desc}</p>
+              </div>
+              <span className="text-[10px] font-black bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 px-2.5 py-1 rounded-md">
+                {ft.badge}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const renderAccount = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
+    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Account")}
       <SettingItem 
         icon={Shield} 
@@ -642,7 +1026,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   const renderPrivacy = () => (
-    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20">
+    <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Privacy")}
       <div className="px-4 py-3 text-[14px] font-bold text-[#667781] uppercase tracking-wide">Who can see my personal info</div>
       <SettingItem 
@@ -1147,7 +1531,7 @@ const cycleVisibility = (key: string, current: string) => {
   );
 
   return (
-    <div className="flex flex-col h-full bg-[#f0f2f5] relative z-40 overflow-hidden">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-[#0f171c] relative z-40 overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -1166,6 +1550,11 @@ const cycleVisibility = (key: string, current: string) => {
           {activeTab === 'accessibility' && renderAccessibility()}
           {activeTab === 'blocked' && renderBlocked()}
           {activeTab === 'permissions' && renderPermissions()}
+          {activeTab === 'devices' && renderDevices()}
+          {activeTab === 'languages' && renderLanguages()}
+          {activeTab === 'premium' && renderPremium()}
+          {activeTab === 'faq' && renderFAQ()}
+          {activeTab === 'features' && renderFeatures()}
         </motion.div>
       </AnimatePresence>
     </div>

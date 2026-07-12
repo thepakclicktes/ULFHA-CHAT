@@ -878,7 +878,7 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
                 <ArrowLeft size={20} />
               </button>
               <div>
-                <h2 className="text-lg font-black text-[#111B21]">Create Telegram Group</h2>
+                <h2 className="text-lg font-black text-[#111B21]">Create Ulfha Chat Group</h2>
                 <p className="text-[11px] text-gray-500 font-bold">Assemble multiple participants here</p>
               </div>
             </div>

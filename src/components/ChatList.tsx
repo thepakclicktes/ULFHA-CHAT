@@ -1291,14 +1291,14 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
                   className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-sm text-[#111B21] font-medium border-b border-gray-50 transition-colors"
                 >
                   <Users size={16} className="text-blue-500" />
-                  <span>Create Telegram Group</span>
+                  <span>Create Ulfha Chat Group</span>
                 </button>
                 <button
                   onClick={() => { setShowCreateOption(false); setShowChannelModal(true); }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-sm text-[#111B21] font-medium border-b border-gray-50 transition-colors"
                 >
                   <Megaphone size={16} className="text-purple-500" />
-                  <span>Create Telegram Channel</span>
+                  <span>Create Ulfha Chat Channel</span>
                 </button>
                 <button
                   onClick={() => { setShowCreateOption(false); setShowDiscoverModal(true); }}
@@ -1373,7 +1373,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
                   <p className="text-[#8696A0] text-xs mt-2 max-w-[200px] mx-auto leading-relaxed">
                     {searchTerm 
                       ? "Try searching for a full email address or exact username" 
-                      : "Start a conversation, open a telegram Channel or Group from the Create menu!"}
+                      : "Start a conversation, open an Ulfha Chat Channel or Group from the Create menu!"}
                   </p>
                 </motion.div>
               ) : (
@@ -1421,7 +1421,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
             >
               <div className="p-6 bg-gradient-to-r from-blue-500 to-[#00a884] text-white flex justify-between items-center">
                 <div>
-                  <h3 className="text-xl font-bold">Create Telegram Group</h3>
+                  <h3 className="text-xl font-bold">Create Ulfha Chat Group</h3>
                   <p className="text-xs opacity-90 mt-0.5">Everyone can join and message each other</p>
                 </div>
                 <button onClick={() => setShowGroupModal(false)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
@@ -1535,7 +1535,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
             >
               <div className="p-6 bg-gradient-to-r from-purple-600 to-[#00a884] text-white flex justify-between items-center">
                 <div>
-                  <h3 className="text-xl font-bold">Create Telegram Channel</h3>
+                  <h3 className="text-xl font-bold">Create Ulfha Chat Channel</h3>
                   <p className="text-xs opacity-90 mt-0.5">Only you/admins can post announcements</p>
                 </div>
                 <button onClick={() => setShowChannelModal(false)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
@@ -1777,7 +1777,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
                     <Globe size={22} className="animate-spin-slow text-yellow-300" />
                     <span>Discover Public Spaces</span>
                   </h3>
-                  <p className="text-xs opacity-90 mt-0.5">Find and join Telegram-style Groups & Channels instantly!</p>
+                  <p className="text-xs opacity-90 mt-0.5">Find and join Ulfha Chat-style Groups & Channels instantly!</p>
                 </div>
                 <button onClick={() => setShowDiscoverModal(false)} className="p-2 hover:bg-black/10 rounded-full transition-colors">
                   <X size={20} />

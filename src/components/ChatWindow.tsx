@@ -4,7 +4,7 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp,
 import { db } from '../firebase';
 import { UserProfile, Message, AppSettings } from '../types';
 import { handleFirestoreError, OperationType } from '../firebaseError';
-import { Send, Plus, Search, MoreVertical, Smile, Mic, Gamepad2, ArrowLeft, Image, BadgeCheck, XCircle, Phone, Play, Pause, Trash2, Share2, Check, Camera, Wallet, File, Video, FileText, Download, RefreshCw, Megaphone, Pin, Bookmark, Reply, CornerUpRight, Sparkles, CheckSquare, AlertTriangle, Copy } from 'lucide-react';
+import { Send, Plus, Search, MoreVertical, Smile, Mic, Gamepad2, ArrowLeft, Image, BadgeCheck, XCircle, Phone, Play, Pause, Trash2, Share2, Check, Camera, Wallet, File, Video, FileText, Download, RefreshCw, Megaphone, Pin, Bookmark, Reply, CornerUpRight, Sparkles, CheckSquare, AlertTriangle, Copy, ChevronDown } from 'lucide-react';
 import { formatMessageTime, cn, formatChatDate, toSafeDate, copyToClipboard, resolveApiUrl } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { updateDoc, doc } from 'firebase/firestore';
@@ -576,6 +576,13 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
 
   const [messageMap, setMessageMap] = useState<Record<string, Message>>({});
   const [newMessage, setNewMessage] = useState('');
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    setShowScrollBottomBtn(distanceFromBottom > 350);
+  };
 
   // --- Draft Restoration & Saving Logic ---
   const prevChatIdRef = useRef<string | null>(null);
@@ -1906,6 +1913,7 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
       {/* Messages Area */}
       <div 
         ref={scrollRef}
+        onScroll={handleScroll}
         className="scrollable-content p-4 space-y-1 z-10"
       >
         {displayedMessages.length === 0 && searchQuery.trim() !== '' ? (
@@ -1943,6 +1951,24 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
           ))
         )}
       </div>
+
+      {/* Scroll to bottom button */}
+      <AnimatePresence>
+        {showScrollBottomBtn && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            onClick={() => {
+              scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+            }}
+            className="absolute bottom-24 right-6 w-11 h-11 bg-white dark:bg-[#202c33] hover:bg-gray-50 dark:hover:bg-[#2b3942] text-[#008069] dark:text-[#00a884] rounded-full shadow-lg flex items-center justify-center z-30 transition-all border border-gray-100 dark:border-white/5 cursor-pointer active:scale-90 animate-bounce"
+            title="Scroll to bottom"
+          >
+            <ChevronDown size={22} strokeWidth={2.5} />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Media Preview Modal */}
       <AnimatePresence>

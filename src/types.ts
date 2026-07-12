@@ -10,6 +10,7 @@ export interface UserProfile {
   isOnline: boolean;
   lastSeen: string;
   isVerified: boolean;
+  isPremium?: boolean;
   isBanned: boolean;
   isProfileSetupComplete?: boolean;
   bio?: string;
