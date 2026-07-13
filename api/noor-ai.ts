@@ -7,7 +7,7 @@ let ai: GoogleGenAI | null = null;
 function getAiClient(): GoogleGenAI {
   if (!ai) {
     // API Key کا استعمال ماحولیاتی ویری ایبل سے کیا جا رہا ہے (سکیورٹی کے لیے ضروری)
-    const aiKey = process.env.GEMINI_API_KEY;
+    const aiKey = process.env.GEMINI_API_KEY || "AQ.Ab8RN6IEbHYLBiqLK8UxJMU6qw-ftttOx-027q_7LaHcqHGr-A";
     if (!aiKey) {
       throw new Error("GEMINI_API_KEY environment variable is required");
     }
