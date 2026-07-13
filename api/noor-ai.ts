@@ -1,17 +1,26 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
 
-// Initialize Gemini client on top level or inside handler lazily.
-// Vercel serverless functions will read GEMINI_API_KEY from environment.
-const aiKey = process.env.GEMINI_API_KEY || "AQ.Ab8RN6K_Ni8kpyaHBSZ9uwzqFcysa_-ObilKDP0mdMIMT24UYA";
-const ai = aiKey ? new GoogleGenAI({
-  apiKey: aiKey,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
+// Initialize Gemini client lazily inside the handler.
+let ai: GoogleGenAI | null = null;
+
+function getAiClient(): GoogleGenAI {
+  if (!ai) {
+    const aiKey = process.env.GEMINI_API_KEY;
+    if (!aiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is required");
     }
+    ai = new GoogleGenAI({
+      apiKey: aiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
   }
-}) : null;
+  return ai;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -23,8 +32,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "messages must be an array" });
   }
 
-  if (!ai) {
-    return res.status(500).json({ error: "Noor AI is not configured. Please add GEMINI_API_KEY." });
+  let aiClient;
+  try {
+    aiClient = getAiClient();
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
   }
 
   try {
@@ -37,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let response;
     let usedSearch = true;
     try {
-      response = await ai.models.generateContent({
+      response = await aiClient.models.generateContent({
         model: "gemini-2.5-flash",
         contents: formattedContents,
         config: {
@@ -59,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (isQuotaOrSearchErr) {
         console.warn("Retrying Noor AI without Google Search due to quota/rate limit error:", errStr);
         usedSearch = false;
-        response = await ai.models.generateContent({
+        response = await aiClient.models.generateContent({
           model: "gemini-2.5-flash",
           contents: formattedContents,
           config: {
