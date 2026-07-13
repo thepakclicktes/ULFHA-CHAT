@@ -157,6 +157,8 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
 
             // Run extremely reliable multi-path prefix, exact, and fallback scanning queries in parallel
             const queryPromises = [];
+            const capitalizedSearch = cleanSearch.charAt(0).toUpperCase() + cleanSearch.slice(1);
+            const cleanPhone = cleanSearch.replace(/[^\d+]/g, '');
 
             // Prefix query on username
             queryPromises.push(
@@ -184,6 +186,60 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
               })
             );
 
+            // Prefix query on displayName (original case, e.g. "Arman")
+            queryPromises.push(
+              getDocs(query(
+                collection(db, 'users'),
+                where('displayName', '>=', cleanSearch),
+                where('displayName', '<=', cleanSearch + '\uf8ff'),
+                limit(100)
+              )).catch(err => {
+                console.warn("displayName original prefix query failed in Contacts:", err);
+                return null;
+              })
+            );
+
+            // Prefix query on displayName (capitalized first letter, e.g. "Arman" if typed "arman")
+            queryPromises.push(
+              getDocs(query(
+                collection(db, 'users'),
+                where('displayName', '>=', capitalizedSearch),
+                where('displayName', '<=', capitalizedSearch + '\uf8ff'),
+                limit(100)
+              )).catch(err => {
+                console.warn("displayName capitalized prefix query failed in Contacts:", err);
+                return null;
+              })
+            );
+
+            // Prefix query on displayName (lowercase, e.g. "arman")
+            queryPromises.push(
+              getDocs(query(
+                collection(db, 'users'),
+                where('displayName', '>=', lowerSearch),
+                where('displayName', '<=', lowerSearch + '\uf8ff'),
+                limit(100)
+              )).catch(err => {
+                console.warn("displayName lowercase prefix query failed in Contacts:", err);
+                return null;
+              })
+            );
+
+            // Prefix query on phoneNumber
+            if (cleanPhone) {
+              queryPromises.push(
+                getDocs(query(
+                  collection(db, 'users'),
+                  where('phoneNumber', '>=', cleanPhone),
+                  where('phoneNumber', '<=', cleanPhone + '\uf8ff'),
+                  limit(100)
+                )).catch(err => {
+                  console.warn("phoneNumber prefix query failed in Contacts:", err);
+                  return null;
+                })
+              );
+            }
+
             // Exact query on username
             queryPromises.push(
               getDocs(query(
@@ -208,9 +264,9 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
               })
             );
 
-            // Fallback scan query
+            // Fallback scan query (higher limit for excellent substring coverage)
             queryPromises.push(
-              getDocs(query(collection(db, 'users'), limit(300))).catch(err => {
+              getDocs(query(collection(db, 'users'), limit(1000))).catch(err => {
                 console.warn("Users fallback scan failed in Contacts:", err);
                 return null;
               })
@@ -276,6 +332,8 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
 
       // Run extremely reliable multi-path prefix, exact, and fallback scanning queries in parallel
       const queryPromises = [];
+      const capitalizedSearch = cleanSearch.charAt(0).toUpperCase() + cleanSearch.slice(1);
+      const cleanPhone = cleanSearch.replace(/[^\d+]/g, '');
 
       // Prefix query on username
       queryPromises.push(
@@ -303,6 +361,60 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
         })
       );
 
+      // Prefix query on displayName (original case, e.g. "Arman")
+      queryPromises.push(
+        getDocs(query(
+          collection(db, 'users'),
+          where('displayName', '>=', cleanSearch),
+          where('displayName', '<=', cleanSearch + '\uf8ff'),
+          limit(100)
+        )).catch(err => {
+          console.warn("displayName original prefix query failed in Contacts Search:", err);
+          return null;
+        })
+      );
+
+      // Prefix query on displayName (capitalized first letter, e.g. "Arman" if typed "arman")
+      queryPromises.push(
+        getDocs(query(
+          collection(db, 'users'),
+          where('displayName', '>=', capitalizedSearch),
+          where('displayName', '<=', capitalizedSearch + '\uf8ff'),
+          limit(100)
+        )).catch(err => {
+          console.warn("displayName capitalized prefix query failed in Contacts Search:", err);
+          return null;
+        })
+      );
+
+      // Prefix query on displayName (lowercase, e.g. "arman")
+      queryPromises.push(
+        getDocs(query(
+          collection(db, 'users'),
+          where('displayName', '>=', lowerSearch),
+          where('displayName', '<=', lowerSearch + '\uf8ff'),
+          limit(100)
+        )).catch(err => {
+          console.warn("displayName lowercase prefix query failed in Contacts Search:", err);
+          return null;
+        })
+      );
+
+      // Prefix query on phoneNumber
+      if (cleanPhone) {
+        queryPromises.push(
+          getDocs(query(
+            collection(db, 'users'),
+            where('phoneNumber', '>=', cleanPhone),
+            where('phoneNumber', '<=', cleanPhone + '\uf8ff'),
+            limit(100)
+          )).catch(err => {
+            console.warn("phoneNumber prefix query failed in Contacts Search:", err);
+            return null;
+          })
+        );
+      }
+
       // Exact query on username
       queryPromises.push(
         getDocs(query(
@@ -327,9 +439,9 @@ export default function Contacts({ onSelectChat, onBack, nicknames }: ContactsPr
         })
       );
 
-      // Fallback scan query
+      // Fallback scan query (higher limit for excellent substring coverage)
       queryPromises.push(
-        getDocs(query(collection(db, 'users'), limit(300))).catch(err => {
+        getDocs(query(collection(db, 'users'), limit(1000))).catch(err => {
           console.warn("Users fallback scan failed in Contacts Search:", err);
           return null;
         })

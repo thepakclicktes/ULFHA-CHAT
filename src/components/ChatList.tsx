@@ -831,13 +831,15 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
         const cleanPhone = cleanSearch.replace(/[^\d+]/g, '');
 
         // To search with absolute reliability across any number of users, we use a multi-path query strategy:
-        // 1. Prefix query on username
-        // 2. Prefix query on email
-        // 3. Prefix query on displayName
-        // 4. Exact query on username
-        // 5. Exact query on email
-        // 6. Local substring fallback from a scan
+        // 1. Prefix query on username (lowercase)
+        // 2. Prefix query on email (lowercase)
+        // 3. Prefix queries on displayName (original case, capitalized first-letter, and lowercase)
+        // 4. Prefix query on phoneNumber (if numeric)
+        // 5. Exact query on username
+        // 6. Exact query on email
+        // 7. Local substring fallback from a scan (increased limit for higher capacity)
         const queryPromises = [];
+        const capitalizedSearch = cleanSearch.charAt(0).toUpperCase() + cleanSearch.slice(1);
 
         // Prefix query on username
         queryPromises.push(
@@ -865,6 +867,60 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
           })
         );
 
+        // Prefix query on displayName (original case, e.g. "Arman")
+        queryPromises.push(
+          getDocs(query(
+            collection(db, 'users'),
+            where('displayName', '>=', cleanSearch),
+            where('displayName', '<=', cleanSearch + '\uf8ff'),
+            limit(100)
+          )).catch(err => {
+            console.warn("displayName original prefix query failed:", err);
+            return null;
+          })
+        );
+
+        // Prefix query on displayName (capitalized first letter, e.g. "Arman" if typed "arman")
+        queryPromises.push(
+          getDocs(query(
+            collection(db, 'users'),
+            where('displayName', '>=', capitalizedSearch),
+            where('displayName', '<=', capitalizedSearch + '\uf8ff'),
+            limit(100)
+          )).catch(err => {
+            console.warn("displayName capitalized prefix query failed:", err);
+            return null;
+          })
+        );
+
+        // Prefix query on displayName (lowercase, e.g. "arman")
+        queryPromises.push(
+          getDocs(query(
+            collection(db, 'users'),
+            where('displayName', '>=', lowerSearch),
+            where('displayName', '<=', lowerSearch + '\uf8ff'),
+            limit(100)
+          )).catch(err => {
+            console.warn("displayName lowercase prefix query failed:", err);
+            return null;
+          })
+        );
+
+        // Prefix query on phoneNumber
+        if (cleanPhone) {
+          queryPromises.push(
+            getDocs(query(
+              collection(db, 'users'),
+              where('phoneNumber', '>=', cleanPhone),
+              where('phoneNumber', '<=', cleanPhone + '\uf8ff'),
+              limit(100)
+            )).catch(err => {
+              console.warn("phoneNumber prefix query failed:", err);
+              return null;
+            })
+          );
+        }
+
         // Exact query on username
         queryPromises.push(
           getDocs(query(
@@ -889,9 +945,9 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
           })
         );
 
-        // Fallback scan query
+        // Fallback scan query (higher limit for excellent substring coverage)
         queryPromises.push(
-          getDocs(query(collection(db, 'users'), limit(300))).catch(err => {
+          getDocs(query(collection(db, 'users'), limit(1000))).catch(err => {
             console.warn("Users fallback scan failed:", err);
             return null;
           })
