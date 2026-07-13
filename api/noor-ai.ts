@@ -6,13 +6,13 @@ let ai: GoogleGenAI | null = null;
 
 function getAiClient(): GoogleGenAI {
   if (!ai) {
-    // API Key کو درست اسٹرنگ فارمیٹ میں سیٹ کر دیا ہے
-    const aiKey = "AQ.Ab8RN6IEbHYLBiqLK8UxJMU6qw-ftttOx-027q_7LaHcqHGr-A";
+    // API Key کا استعمال ماحولیاتی ویری ایبل سے کیا جا رہا ہے (سکیورٹی کے لیے ضروری)
+    const aiKey = process.env.GEMINI_API_KEY;
     if (!aiKey) {
       throw new Error("GEMINI_API_KEY environment variable is required");
     }
     ai = new GoogleGenAI({
-      apiKey: aiKey, // یہاں کاما (,) مسنگ تھا، وہ لگا دیا ہے
+      apiKey: aiKey,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -101,7 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({ text, sources });
   } catch (error: any) {
     console.error("Noor AI API Error:", error);
-    const errorStr = error instanceof Error ? error.message : String(err);
+    const errorStr = error instanceof Error ? error.message : String(error);
     const isQuotaError = 
       errorStr.toLowerCase().includes('quota') ||
       errorStr.toLowerCase().includes('resource-exhausted') ||
