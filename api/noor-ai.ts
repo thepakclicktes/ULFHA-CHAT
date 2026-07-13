@@ -6,12 +6,12 @@ let ai: GoogleGenAI | null = null;
 
 function getAiClient(): GoogleGenAI {
   if (!ai) {
-    const aiKey = process.env.GEMINI_API_KEY;
+    const aiKey = process.env.AQ.Ab8RN6Ier-EGwN5uuOIzDy8yFriEobvp3JPl5BWixFAHpfDhxw;
     if (!aiKey) {
       throw new Error("GEMINI_API_KEY environment variable is required");
     }
     ai = new GoogleGenAI({
-      apiKey: aiKey,
+      apiKey: AQ.Ab8RN6Ier-EGwN5uuOIzDy8yFriEobvp3JPl5BWixFAHpfDhxw,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
