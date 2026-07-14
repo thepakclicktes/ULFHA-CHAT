@@ -1,4 +1,13 @@
 User-agent: *
 Allow: /
+# Robots.txt for ulfhachats.vercel.app
 
+# Block access to private/functional pages
+User-agent: *
+Disallow: /login
+Disallow: /settings
+Disallow: /reply
+
+# Sitemap location
+Sitemap: https://ulfhachats.vercel.app/sitemap.xml 
 Sitemap: https://ulfhachats.vercel.app/sitemap.xml
