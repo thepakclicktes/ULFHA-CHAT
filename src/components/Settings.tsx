@@ -1337,15 +1337,21 @@ const cycleVisibility = (key: string, current: string) => {
   const renderNotifications = () => (
     <div className="flex flex-col bg-white h-full overflow-y-auto pb-20 custom-scrollbar">
       {renderHeader("Notifications")}
+      <div className="px-4 py-3 border-b border-gray-100">
+        <h3 className="text-sm font-bold text-gray-900">Push Notifications Status</h3>
+        <p className="text-xs text-gray-500 mb-3">Status: <span className="font-bold text-emerald-600">{notificationStatus === 'granted' ? 'Enabled' : notificationStatus === 'denied' ? 'Blocked' : 'Not Requested'}</span></p>
+        {notificationStatus !== 'granted' && (
+          <button 
+            onClick={requestNotification}
+            className="w-full bg-[#00A884] hover:bg-[#008f70] text-white py-2 rounded-xl text-xs font-bold transition-all"
+          >
+            Enable Push Notifications
+          </button>
+        )}
+      </div>
+
+      <div className="px-4 py-3 text-[14px] font-bold text-[#667781] uppercase tracking-wide">Messages</div>
       <SettingItem 
-        icon={Volume2} 
-        title="Conversation tones" 
-        subtitle="Play sounds for incoming and outgoing messages." 
-        toggle 
-        toggleValue={settings.conversationTones}
-        onClick={() => updateSetting('conversationTones', !settings.conversationTones)} 
-      />
-       <SettingItem 
         icon={Clock} 
         title="Reminders" 
         subtitle="Get occasional reminders about messages, calls or status updates you haven't seen" 
