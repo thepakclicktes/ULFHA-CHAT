@@ -108,6 +108,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
   const [selectedBookToEdit, setSelectedBookToEdit] = useState<any | null>(null);
   const [formVolumes, setFormVolumes] = useState<{ name: string; url: string; size?: string; }[]>([]);
   const [formPreviewImages, setFormPreviewImages] = useState<string[]>([]);
+  const [formCategories, setFormCategories] = useState<string[]>([]); // New state
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [bookCategoryFilter, setBookCategoryFilter] = useState('all');
   const [bookSearchQuery, setBookSearchQuery] = useState('');
@@ -241,7 +242,8 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
       urduAuthor: (formData.get('urduAuthor') as string || '').trim(),
       description: (formData.get('description') as string || '').trim(),
       urduDescription: (formData.get('urduDescription') as string || '').trim(),
-      category: formData.get('category') as string || 'tafseer',
+      category: formCategories[0] || 'tafseer',
+      categories: formCategories.length > 0 ? formCategories : ['tafseer'],
       language: formData.get('language') as string || 'Urdu',
       url: (formData.get('url') as string || '').trim(),
       coverUrl: (formData.get('coverUrl') as string || '').trim(),
@@ -1969,6 +1971,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                         setSelectedBookToEdit(null);
                         setFormVolumes([]);
                         setFormPreviewImages([]);
+                        setFormCategories([]);
                         setIsBookModalOpen(true);
                       }}
                       className="bg-[#00a884] hover:bg-[#008f72] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-md"
@@ -2076,6 +2079,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                                         setSelectedBookToEdit(book);
                                         setFormVolumes(book.volumes || []);
                                         setFormPreviewImages(book.previewImages || []);
+                                        setFormCategories(book.categories || (book.category ? [book.category] : []));
                                         setIsBookModalOpen(true);
                                       }}
                                       className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-900/30 rounded text-[10px] font-bold transition-all"
@@ -2344,18 +2348,27 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                     />
                   </div>
 
-                  {/* Category */}
+                  {/* Categories */}
                   <div>
-                    <label className="block text-[10px] text-[#858585] uppercase font-bold mb-1">Category</label>
-                    <select 
-                      name="category"
-                      className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-[#00a884] rounded px-3 py-2 text-xs text-white outline-none"
-                      defaultValue={selectedBookToEdit?.category || 'tafseer'}
-                    >
+                    <label className="block text-[10px] text-[#858585] uppercase font-bold mb-1">Categories (Select Multiple)</label>
+                    <div className="grid grid-cols-2 gap-2 bg-[#1e1e1e] border border-[#333333] rounded p-2 max-h-40 overflow-y-auto">
                       {CATEGORIES.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.parent ? '↳ ' : ''}{cat.urdu} ({cat.title})</option>
+                        <label key={cat.id} className="flex items-center gap-2 text-xs text-white cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            checked={formCategories.includes(cat.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormCategories([...formCategories, cat.id]);
+                              } else {
+                                setFormCategories(formCategories.filter(id => id !== cat.id));
+                              }
+                            }}
+                          />
+                          {cat.parent ? '↳ ' : ''}{cat.urdu}
+                        </label>
                       ))}
-                    </select>
+                    </div>
                   </div>
 
                   {/* Urdu Title */}

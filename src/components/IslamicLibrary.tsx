@@ -30,7 +30,8 @@ export interface Book {
   description: string;
   urduDescription: string;
   language: string;
-  category: string;
+  category?: string; // Kept for backward compatibility, will be deprecated
+  categories: string[];
   url?: string;
   coverUrl?: string;
   previewImages?: string[];
@@ -574,7 +575,7 @@ export default function IslamicLibrary({
   const getFilteredBooks = (catId: string) => {
     let filtered = allBooks;
     if (catId !== 'all') {
-      filtered = filtered.filter(b => b.category === catId);
+      filtered = filtered.filter(b => (b.categories && b.categories.includes(catId)) || b.category === catId);
     }
     
     if (!searchQuery.trim()) return filtered;
@@ -1241,7 +1242,10 @@ export default function IslamicLibrary({
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold uppercase tracking-wider text-[#00a884] bg-teal-50 dark:bg-teal-950/40 px-2.5 py-0.5 rounded-md">
-                        {CATEGORIES.find(c => c.id === selectedBook.category)?.urdu || selectedBook.category}
+                        {selectedBook.categories && selectedBook.categories.length > 0 ?
+                            selectedBook.categories.map(cId => CATEGORIES.find(c => c.id === cId)?.urdu || cId).join(', ')
+                            : (CATEGORIES.find(c => c.id === selectedBook.category)?.urdu || selectedBook.category)
+                        }
                       </span>
                       <span className="text-xs text-gray-400 font-medium">({selectedBook.language})</span>
                     </div>
