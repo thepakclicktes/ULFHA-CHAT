@@ -125,7 +125,7 @@ const BOOKS_DATA_CORE: Book[] = [
 
 // Rich deterministic dynamic library generator generating 2150 high-quality searchable books
 const generateBooks = (): Book[] => {
-  return [];
+  return BOOKS_DATA_CORE;
 };
 
 
