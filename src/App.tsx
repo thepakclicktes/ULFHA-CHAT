@@ -622,34 +622,38 @@ useEffect(() => {
   }, [appSettings?.appLogoUrl]);
 
   useEffect(() => {
-    const unsubS = onSnapshot(doc(db, 'settings', 'global'), (doc) => {
-      if (doc.exists()) {
-        const data = doc.data() as AppSettings;
-        setAppSettings(data);
-        localStorage.setItem('ulfha_app_settings', JSON.stringify(data));
+    const fetchSettings = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'global'));
+        if (docSnap.exists()) {
+          const data = docSnap.data() as AppSettings;
+          setAppSettings(data);
+          localStorage.setItem('ulfha_app_settings', JSON.stringify(data));
+        }
+      } catch (error) {
+        handleFirestoreError(error as any, OperationType.GET, 'settings/global');
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/global');
-    });
+    };
 
-    return () => unsubS();
+    fetchSettings();
   }, []);
 
   useEffect(() => {
     if (!user) return;
 
-    const qA = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(10));
-    const unsubA = onSnapshot(qA, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
-      setAnnouncements(data);
-      localStorage.setItem('ulfha_announcements', JSON.stringify(data));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'announcements');
-    });
-
-    return () => {
-      unsubA();
+    const fetchAnnouncements = async () => {
+      try {
+        const qA = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(10));
+        const snapshot = await getDocs(qA);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
+        setAnnouncements(data);
+        localStorage.setItem('ulfha_announcements', JSON.stringify(data));
+      } catch (error) {
+        handleFirestoreError(error as any, OperationType.GET, 'announcements');
+      }
     };
+
+    fetchAnnouncements();
   }, [user]);
 
   useEffect(() => {
