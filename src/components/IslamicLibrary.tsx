@@ -20,7 +20,6 @@ import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import BookReader from './BookReader';
 import { storePDF, deletePDF } from '../utils/pdfStorage';
-import { getAllCachedBooks, saveCachedBooks } from '../utils/localDB';
 
 export interface Book {
   id: string;
@@ -125,7 +124,7 @@ const BOOKS_DATA_CORE: Book[] = [
 
 // Rich deterministic dynamic library generator generating 2150 high-quality searchable books
 const generateBooks = (): Book[] => {
-  return BOOKS_DATA_CORE;
+  return [];
 };
 
 
@@ -138,20 +137,30 @@ export default function IslamicLibrary({
   onBack: () => void;
   defaultCategory?: string;
 }) {
-  const [customBooks, setCustomBooks] = useState<Book[]>([]);
+  const [customBooks, setCustomBooks] = useState<Book[]>(() => {
+    try {
+      const saved = localStorage.getItem('library_books_local');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchBooks = async () => {
       const startTime = Date.now();
       try {
-        // 1. Try to load from IndexedDB immediately
-        const cachedBooks = await getAllCachedBooks();
-        if (cachedBooks && cachedBooks.length > 0) {
-          setCustomBooks(cachedBooks);
+        // Only fetch from Firestore if we don't have local data or want to refresh
+        const localData = localStorage.getItem('library_books_local');
+        if (localData) {
+          const parsed = JSON.parse(localData);
+          if (parsed && parsed.length > 0) {
+            setCustomBooks(parsed);
+          }
         }
         
-        // 2. Fetch from Firestore to get latest
+        // Fetch from Firestore to get latest (one-time fetch instead of onSnapshot)
         const { getDocs } = await import('firebase/firestore');
         const snapshot = await getDocs(collection(db, 'library_books'));
         const booksList = snapshot.docs.map(doc => ({
@@ -160,10 +169,9 @@ export default function IslamicLibrary({
         } as Book));
         
         setCustomBooks(booksList);
-        // 3. Update IndexedDB cache
-        await saveCachedBooks(booksList);
+        localStorage.setItem('library_books_local', JSON.stringify(booksList));
       } catch (error) {
-        console.error("Error loading library books:", error);
+        console.error("Error loading custom library books:", error);
       } finally {
         const elapsed = Date.now() - startTime;
         const remaining = Math.max(0, 600 - elapsed);
