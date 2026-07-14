@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Message, UserProfile } from '../types';
+import { Message, UserProfile, Book } from '../types';
 
 export interface LocalMessage extends Message {
   chatId: string;
@@ -10,14 +10,16 @@ export class UlfhaDatabase extends Dexie {
   user_profiles!: Table<UserProfile, string>;
   groups_channels!: Table<any, string>;
   preferences!: Table<{ key: string; value: any }, string>;
+  books!: Table<Book, string>;
 
   constructor() {
     super('UlfhaDexieCacheDB');
-    this.version(1).stores({
+    this.version(2).stores({
       messages: 'id, chatId, timestamp, type',
       user_profiles: 'uid, displayName, phoneNumber',
       groups_channels: 'uid, name',
-      preferences: 'key'
+      preferences: 'key',
+      books: 'id, category'
     });
   }
 }
@@ -198,5 +200,25 @@ export const getLocalPreference = async (key: string): Promise<any | null> => {
   } catch (e) {
     console.error('getLocalPreference failed:', e);
     return null;
+  }
+};
+
+// --- BOOKS CACHE ---
+export const saveCachedBooks = async (books: Book[]): Promise<void> => {
+  try {
+    if (books.length > 0) {
+      await db.books.bulkPut(books);
+    }
+  } catch (e) {
+    console.error('saveCachedBooks failed:', e);
+  }
+};
+
+export const getAllCachedBooks = async (): Promise<Book[]> => {
+  try {
+    return await db.books.toArray();
+  } catch (e) {
+    console.error('getAllCachedBooks failed:', e);
+    return [];
   }
 };

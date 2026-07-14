@@ -2467,7 +2467,8 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                     <button
                       type="button"
                       onClick={() => {
-                        setFormVolumes([...formVolumes, { name: '', url: '', size: '' }]);
+                        const newVolNum = formVolumes.length + 1;
+                        setFormVolumes([...formVolumes, { name: `Vol ${newVolNum} (جلد ${newVolNum})`, url: '', size: '' }]);
                       }}
                       className="text-xs text-[#00a884] hover:underline flex items-center gap-1 font-bold"
                     >
@@ -2500,6 +2501,10 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                             onChange={(e) => {
                               const updated = [...formVolumes];
                               updated[idx].url = e.target.value;
+                              // Auto-detect PDF
+                              if (e.target.value.toLowerCase().endsWith('.pdf') && !updated[idx].size) {
+                                updated[idx].size = 'PDF';
+                              }
                               setFormVolumes(updated);
                             }}
                             className="flex-1 bg-[#252526] border border-[#333333] focus:border-[#00a884] rounded px-2 py-1.5 text-xs text-white outline-none"

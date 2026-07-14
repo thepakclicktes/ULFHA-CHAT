@@ -20,6 +20,7 @@ import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import BookReader from './BookReader';
 import { storePDF, deletePDF } from '../utils/pdfStorage';
+import { getAllCachedBooks, saveCachedBooks } from '../utils/localDB';
 
 export interface Book {
   id: string;
@@ -82,6 +83,7 @@ const BOOKS_DATA_CORE: Book[] = [
     urduDescription: 'عصر حاضر کے تقاضوں کے مطابق آسان اور عام فہم اردو تفسیر جس میں فقہی مسائل اور روزمرہ زندگی کی رہنمائی شامل ہے۔',
     language: 'Urdu',
     category: 'tafseer',
+    categories: ['tafseer'],
     url: 'https://quran.com'
   },
   {
@@ -94,6 +96,7 @@ const BOOKS_DATA_CORE: Book[] = [
     urduDescription: 'احادیث مبارکہ کا سب سے مستند مجموعہ جس کی صحت پر امت کا اجماع ہے۔',
     language: 'Urdu / Arabic / English',
     category: 'hadith',
+    categories: ['hadith'],
     url: 'https://sunnah.com/bukhari',
     previewImages: [
       'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=400&q=80',
@@ -115,6 +118,7 @@ const BOOKS_DATA_CORE: Book[] = [
     urduDescription: 'انوار اور روحانی بصیرتوں کا خلاصہ۔',
     language: 'Urdu',
     category: 'aqaid',
+    categories: ['aqaid'],
     url: 'https://example.com'
   }
 ];
@@ -134,30 +138,20 @@ export default function IslamicLibrary({
   onBack: () => void;
   defaultCategory?: string;
 }) {
-  const [customBooks, setCustomBooks] = useState<Book[]>(() => {
-    try {
-      const saved = localStorage.getItem('library_books_local');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [customBooks, setCustomBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchBooks = async () => {
       const startTime = Date.now();
       try {
-        // Only fetch from Firestore if we don't have local data or want to refresh
-        const localData = localStorage.getItem('library_books_local');
-        if (localData) {
-          const parsed = JSON.parse(localData);
-          if (parsed && parsed.length > 0) {
-            setCustomBooks(parsed);
-          }
+        // 1. Try to load from IndexedDB immediately
+        const cachedBooks = await getAllCachedBooks();
+        if (cachedBooks && cachedBooks.length > 0) {
+          setCustomBooks(cachedBooks);
         }
         
-        // Fetch from Firestore to get latest (one-time fetch instead of onSnapshot)
+        // 2. Fetch from Firestore to get latest
         const { getDocs } = await import('firebase/firestore');
         const snapshot = await getDocs(collection(db, 'library_books'));
         const booksList = snapshot.docs.map(doc => ({
@@ -166,9 +160,10 @@ export default function IslamicLibrary({
         } as Book));
         
         setCustomBooks(booksList);
-        localStorage.setItem('library_books_local', JSON.stringify(booksList));
+        // 3. Update IndexedDB cache
+        await saveCachedBooks(booksList);
       } catch (error) {
-        console.error("Error loading custom library books:", error);
+        console.error("Error loading library books:", error);
       } finally {
         const elapsed = Date.now() - startTime;
         const remaining = Math.max(0, 600 - elapsed);
@@ -996,7 +991,7 @@ export default function IslamicLibrary({
               </div>
             )}
 
-            {CATEGORIES.map(category => {
+            {CATEGORIES.filter(c => !c.parent).map(category => {
               const catBooks = getFilteredBooks(category.id);
               if (catBooks.length === 0) return null;
               

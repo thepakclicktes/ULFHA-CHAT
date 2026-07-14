@@ -5,7 +5,7 @@ import {
   MessageSquare, Radio, Bell, Accessibility, ChevronRight, 
   Shield, UserPlus, Mail, Smartphone, FileText, Share2, 
   Trash2, Eye, Image as ImageIcon, Info, Link as LinkIcon,
-  CircleDashed, ToggleLeft as Toggle, Clock, Sun, 
+  CircleDashed, ToggleLeft as Toggle, Clock, Sun, RefreshCw,
   Palette, Send, EyeOff, Languages, Volume2, History,
   Database, HelpCircle, Users, Smile, BadgePlus, QrCode, PlusCircle,
   Ban, Camera, Mic, MapPin, ShieldCheck, Star, Globe, Folder, Laptop,
@@ -754,6 +754,16 @@ const cycleVisibility = (key: string, current: string) => {
               iconColor="bg-[#ffcc00]" 
               title="Ulfha Chat Features" 
               onClick={() => setActiveTab('features')} 
+            />
+          </TelegramCard>
+
+          {/* Update Action */}
+          <TelegramCard>
+            <TelegramGroupItem 
+              icon={RefreshCw} 
+              iconColor="bg-emerald-500" 
+              title="Update Application" 
+              onClick={() => window.location.reload()} 
             />
           </TelegramCard>
 

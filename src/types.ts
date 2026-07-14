@@ -207,3 +207,26 @@ export interface GroupOrChannel {
   lastMessageText?: string;
   lastMessageTime?: any;
 }
+
+export interface Book {
+  id: string;
+  title: string;
+  urduTitle: string;
+  author: string;
+  urduAuthor: string;
+  description: string;
+  urduDescription: string;
+  language: string;
+  category?: string;
+  categories: string[];
+  url?: string;
+  coverUrl?: string;
+  previewImages?: string[];
+  volumes?: { 
+    name: string; 
+    url: string; 
+    size?: string;
+  }[];
+  bookType?: 'book' | 'sharh';
+  pageOffset?: number;
+}
