@@ -908,7 +908,7 @@ export default function IslamicLibrary({
           >
             تمام کتب (All)
           </button>
-          {CATEGORIES.filter(cat => !cat.parent || activeCategory === cat.id).map(cat => (
+          {CATEGORIES.filter(cat => !cat.parent).map(cat => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
@@ -919,10 +919,25 @@ export default function IslamicLibrary({
                   : "bg-gray-50 dark:bg-slate-800 border-gray-100 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-100"
               )}
             >
-              {cat.urdu} {cat.parent ? ' ↩' : ''}
+              {cat.urdu}
             </button>
           ))}
         </div>
+        
+        {/* Subcategory Buttons */}
+        {CATEGORIES.filter(cat => cat.parent === activeCategory).length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {CATEGORIES.filter(cat => cat.parent === activeCategory).map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className="px-4 py-2 bg-white dark:bg-slate-800 rounded-lg text-xs font-bold text-gray-800 dark:text-slate-200 border border-emerald-100 dark:border-slate-700 shadow-sm hover:border-[#00a884]/30"
+              >
+                {cat.urdu}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main Scrollable Library Container */}

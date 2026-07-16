@@ -765,6 +765,12 @@ const cycleVisibility = (key: string, current: string) => {
               title="Update Application" 
               onClick={() => window.location.reload()} 
             />
+            <TelegramGroupItem 
+              icon={RefreshCw} 
+              iconColor="bg-orange-500" 
+              title="Reset Session / Reload App" 
+              onClick={() => window.location.reload()} 
+            />
           </TelegramCard>
 
           {/* Connect & Share */}

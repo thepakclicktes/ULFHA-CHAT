@@ -26,6 +26,7 @@ import 'prismjs/components/prism-json';
 import { CATEGORIES, BOOKS_DATA, Book as LibraryBookType } from './IslamicLibrary';
 console.log("Categories in AdminPanel:", CATEGORIES);
 import 'prismjs/themes/prism-tomorrow.css';
+import * as XLSX from 'xlsx';
 
 type AdminTab = 'users' | 'announcements' | 'settings' | 'logs' | 'fraud' | 'support' | 'analytics' | 'build' | 'logo' | 'books' | 'userActivity';
 
@@ -307,6 +308,101 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
         alert('Error deleting book: ' + (err as Error).message);
       }
     }
+  };
+
+  const handleDownloadSample = () => {
+    const sampleData = [{
+      "id": "book_id_unique",
+      "title": "Book Title",
+      "urduTitle": "کتاب کا عنوان",
+      "author": "Author Name",
+      "urduAuthor": "مصنف کا نام",
+      "description": "Description",
+      "urduDescription": "تفصیل",
+      "language": "Urdu",
+      "url": "https://example.com/book.pdf",
+      "coverUrl": "https://example.com/cover.jpg"
+    }];
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Books");
+    XLSX.writeFile(workbook, "sample_books.xlsx");
+  };
+
+  const deleteSalisaBooks = async () => {
+    if (!confirm('Are you sure you want to delete all books in "درجہ ثالثہ"?')) return;
+    
+    try {
+        const q = query(collection(db, 'library_books'), where('category', '==', 'al_salesa'));
+        const snapshot = await getDocs(q);
+        
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        
+        // Also check if category is in array (though for now it seems both are set)
+        const q2 = query(collection(db, 'library_books'), where('categories', 'array-contains', 'al_salesa'));
+        const snapshot2 = await getDocs(q2);
+        snapshot2.docs.forEach(doc => batch.delete(doc.ref));
+        
+        await batch.commit();
+        alert('Deleted ' + (snapshot.size + snapshot2.size) + ' books.');
+        
+        // Refresh
+        const snapshotAll = await getDocs(collection(db, 'library_books'));
+        const booksList = snapshotAll.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setCustomBooks(booksList);
+        localStorage.setItem('library_books_local', JSON.stringify(booksList));
+    } catch (err) {
+        console.error(err);
+        alert('Error: ' + (err as Error).message);
+    }
+  };
+
+  const handleExcelUpload = async (file: File, categoryId: string) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+        
+        // Add books
+        const batch = writeBatch(db);
+        for (const item of json) {
+            const bookId = (item.id || item.title.replace(/\s+/g, '_').toLowerCase()).toString().replace(/[^a-z0-9_]/g, '_');
+            const bookData = {
+              id: bookId,
+              title: item.title || '',
+              urduTitle: item.urduTitle || '',
+              author: item.author || '',
+              urduAuthor: item.urduAuthor || '',
+              description: item.description || '',
+              urduDescription: item.urduDescription || '',
+              category: categoryId,
+              categories: [categoryId],
+              language: item.language || 'Urdu',
+              url: item.url || '',
+              coverUrl: item.coverUrl || '',
+              volumes: [],
+              previewImages: [],
+              createdAt: new Date().toISOString()
+            };
+            batch.set(doc(db, 'library_books', bookId), bookData);
+        }
+        await batch.commit();
+        alert('Books uploaded successfully!');
+        // Refresh books
+        const snapshot = await getDocs(collection(db, 'library_books'));
+        const booksList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setCustomBooks(booksList);
+        localStorage.setItem('library_books_local', JSON.stringify(booksList));
+      } catch (err) {
+        console.error(err);
+        alert('Error uploading books: ' + (err as Error).message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const handleSaveCode = async () => {
@@ -1978,6 +2074,54 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                     >
                       <Plus size={16} /> Add New Book
                     </button>
+                  </div>
+
+                  {/* Excel Upload Section */}
+                  <div className="bg-[#252526] p-4 rounded-xl border border-[#00a884]/30 flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div className="flex items-center gap-2">
+                       <button
+                         onClick={handleDownloadSample}
+                         className="bg-[#333333] hover:bg-[#444444] text-gray-300 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all"
+                       >
+                         <Download size={16} /> Download Sample Excel
+                       </button>
+                       <button
+                         onClick={deleteSalisaBooks}
+                         className="bg-red-900/50 hover:bg-red-800 text-red-200 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all"
+                       >
+                         <Trash2 size={16} /> Delete درجہ ثالثہ
+                       </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+
+                       <select
+                         id="excelCategory"
+                         className="bg-[#1e1e1e] border border-[#333333] focus:border-[#00a884] rounded-lg px-3 py-2 text-xs text-white outline-none"
+                       >
+                         {CATEGORIES.map(cat => (
+                           <option key={cat.id} value={cat.id}>{cat.parent ? '↳ ' : ''}{cat.urdu}</option>
+                         ))}
+                       </select>
+                       <input
+                         type="file"
+                         accept=".xlsx, .xls"
+                         id="excelFileInput"
+                         className="hidden"
+                         onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            const catId = (document.getElementById('excelCategory') as HTMLSelectElement).value;
+                            if (file && catId) {
+                               handleExcelUpload(file, catId);
+                            }
+                         }}
+                       />
+                       <button
+                         onClick={() => document.getElementById('excelFileInput')?.click()}
+                         className="bg-[#00a884] hover:bg-[#008f72] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all"
+                       >
+                         <Database size={16} /> Upload Books from Excel
+                       </button>
+                    </div>
                   </div>
 
                   {/* Filters Row */}
