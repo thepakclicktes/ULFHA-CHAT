@@ -163,7 +163,7 @@ export default function IslamicLibrary({
         }
         
         // Listen to Firestore for real-time updates
-        const { collection, onSnapshot } = await import('firebase/firestore');
+        const { collection, onSnapshot, doc } = await import('firebase/firestore');
         unsub = onSnapshot(collection(db, 'library_books'), (snapshot) => {
           const booksList = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -172,6 +172,14 @@ export default function IslamicLibrary({
           
           setCustomBooks(booksList);
           localStorage.setItem('library_books_local', JSON.stringify(booksList));
+        });
+
+        // Listen for system updates
+        onSnapshot(doc(db, 'system_configs', 'app_state'), (snapshot) => {
+          if (snapshot.exists()) {
+            console.log("System update received, forcing refetch...");
+            localStorage.removeItem('library_books_local');
+          }
         });
         
       } catch (error) {

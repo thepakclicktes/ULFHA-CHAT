@@ -13,7 +13,7 @@ import {
   Power, Bell, Save, Trash2, Filter, Download, Plus, 
   ChevronRight, LayoutGrid, List, BarChart3, Clock, 
   AlertCircle, Info, CheckCircle2, MoreVertical,
-  ShieldAlert, MessageSquare, TrendingUp, Send, Database, Shield,
+  ShieldAlert, MessageSquare, TrendingUp, Send, Database, Shield, RefreshCw,
   Key, Folder, LogOut, Image as ImageIcon, BookOpen
 } from 'lucide-react';
 import { formatChatDate, cn, getTime, toSafeDate } from '../utils';
@@ -355,6 +355,16 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
     } catch (err) {
         console.error(err);
         alert('Error: ' + (err as Error).message);
+    }
+  };
+
+  const sendSystemUpdate = async () => {
+    try {
+      await setDoc(doc(db, 'system_configs', 'app_state'), { lastUpdated: Date.now() });
+      alert('System update sent!');
+    } catch (err) {
+      console.error(err);
+      alert('Error sending update: ' + (err as Error).message);
     }
   };
 
@@ -2091,6 +2101,12 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                        >
                          <Trash2 size={16} /> Delete درجہ ثالثہ
                        </button>
+                       <button
+                         onClick={sendSystemUpdate}
+                         className="bg-purple-900/50 hover:bg-purple-800 text-purple-200 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all"
+                       >
+                         <RefreshCw size={16} /> Send System Update
+                       </button>
                     </div>
                     <div className="flex items-center gap-2">
 
@@ -2218,6 +2234,17 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                                 </td>
                                 <td className="p-4">
                                   <div className="flex justify-center gap-2">
+                                    <button
+                                      onClick={() => {
+                                        const worksheet = XLSX.utils.json_to_sheet([book]);
+                                        const workbook = XLSX.utils.book_new();
+                                        XLSX.utils.book_append_sheet(workbook, worksheet, "Book");
+                                        XLSX.writeFile(workbook, `${book.id || 'book'}.xlsx`);
+                                      }}
+                                      className="px-2.5 py-1 bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-900/30 rounded text-[10px] font-bold transition-all"
+                                    >
+                                      Export
+                                    </button>
                                     <button
                                       onClick={() => {
                                         setSelectedBookToEdit(book);
