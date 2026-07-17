@@ -2060,7 +2060,9 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
               ];
 
               const filteredBooksList = mergedBooksList.filter(book => {
-                const matchesCat = bookCategoryFilter === 'all' || book.category === bookCategoryFilter;
+                const matchesCat = bookCategoryFilter === 'all' || 
+                  book.category === bookCategoryFilter || 
+                  (Array.isArray(book.categories) && book.categories.includes(bookCategoryFilter));
                 const matchesSearch = 
                   !bookSearchQuery ||
                   book.title?.toLowerCase().includes(bookSearchQuery.toLowerCase()) ||
