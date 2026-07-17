@@ -124,7 +124,7 @@ const BOOKS_DATA_CORE: Book[] = [
 
 // Rich deterministic dynamic library generator generating 2150 high-quality searchable books
 const generateBooks = (): Book[] => {
-  return [];
+  return BOOKS_DATA_CORE;
 };
 
 
@@ -148,7 +148,8 @@ export default function IslamicLibrary({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let unsub: () => void;
+    let isMounted = true;
+    const unsubs: (() => void)[] = [];
 
     const initLibrary = async () => {
       const startTime = Date.now();
@@ -162,41 +163,79 @@ export default function IslamicLibrary({
           }
         }
         
+        if (!isMounted) return;
+
         // Listen to Firestore for real-time updates
         const { collection, onSnapshot, doc } = await import('firebase/firestore');
-        unsub = onSnapshot(collection(db, 'library_books'), (snapshot) => {
+        
+        const unsubBooks = onSnapshot(collection(db, 'library_books'), (snapshot) => {
           const booksList = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           } as Book));
           
-          setCustomBooks(booksList);
-          localStorage.setItem('library_books_local', JSON.stringify(booksList));
+          if (isMounted) {
+            setCustomBooks(booksList);
+            localStorage.setItem('library_books_local', JSON.stringify(booksList));
+          }
+        }, (error) => {
+          console.warn("Library books snapshot failed or quota exceeded. Using local cache fallback.", error);
         });
+        unsubs.push(unsubBooks);
 
         // Listen for system updates
-        onSnapshot(doc(db, 'system_configs', 'app_state'), (snapshot) => {
-          if (snapshot.exists()) {
+        let isFirstSnapshot = true;
+        const unsubSystem = onSnapshot(doc(db, 'system_configs', 'app_state'), async (snapshot) => {
+          if (snapshot.exists() && isMounted) {
+            if (isFirstSnapshot) {
+              isFirstSnapshot = false;
+              return;
+            }
             console.log("System update received, forcing refetch...");
-            localStorage.removeItem('library_books_local');
+            try {
+              const { getDocs, collection } = await import('firebase/firestore');
+              const refetchedSnapshot = await getDocs(collection(db, 'library_books'));
+              const refetchedList = refetchedSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+              } as Book));
+              if (refetchedList.length > 0 && isMounted) {
+                setCustomBooks(refetchedList);
+                localStorage.setItem('library_books_local', JSON.stringify(refetchedList));
+              }
+            } catch (refetchError) {
+              console.warn("Background refetch failed or quota exceeded. Keeping current books.", refetchError);
+            }
           }
+        }, (error) => {
+          console.warn("System updates snapshot failed or quota exceeded.", error);
         });
+        unsubs.push(unsubSystem);
         
       } catch (error) {
         console.error("Error loading custom library books:", error);
       } finally {
-        const elapsed = Date.now() - startTime;
-        const remaining = Math.max(0, 600 - elapsed);
-        setTimeout(() => {
-          setIsLoading(false);
-        }, remaining);
+        if (isMounted) {
+          const elapsed = Date.now() - startTime;
+          const remaining = Math.max(0, 600 - elapsed);
+          setTimeout(() => {
+            if (isMounted) setIsLoading(false);
+          }, remaining);
+        }
       }
     };
     
     initLibrary();
     return () => {
-        if (unsub) unsub();
-    }
+      isMounted = false;
+      unsubs.forEach(unsub => {
+        try {
+          unsub();
+        } catch (e) {
+          // ignore cleanup errors
+        }
+      });
+    };
   }, []);
 
   const [deletedSystemBooks, setDeletedSystemBooks] = useState<string[]>(() => {

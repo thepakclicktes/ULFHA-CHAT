@@ -854,7 +854,12 @@ async function startServer() {
     console.log(`Server running on http://localhost:${PORT}`);
     
     // Start Background Service Loop
+    let isQuotaExceeded = false;
     setInterval(async () => {
+      if (isQuotaExceeded) {
+        console.log('[Background Service] Scheduled maintenance suspended due to Firestore Quota Exceeded (Local/Memory fallback modes are active).');
+        return;
+      }
       console.log('[Background Service] Running scheduled maintenance...');
       try {
         // Try Admin SDK first
@@ -864,6 +869,12 @@ async function startServer() {
             console.log(`[Background Service] Admin Health Check: OK. Online users found: ${onlineSnap.size > 0 ? 'Yes' : 'None'}`);
             return;
           } catch (adminErr: any) {
+            const msg = adminErr.message || '';
+            if (msg.includes('Quota exceeded') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('QUOTA_EXCEEDED')) {
+              isQuotaExceeded = true;
+              console.warn('[Background Service] Firestore Quota Exceeded. Suspending maintenance reads to conserve remaining operations.');
+              return;
+            }
             if (adminErr.message?.includes('PERMISSION_DENIED')) {
               console.warn('[Background Service] Admin SDK permission denied, attempting client SDK fallback...');
             } else {
@@ -878,8 +889,14 @@ async function startServer() {
           const onlineSnap = await getDocs(q);
           console.log(`[Background Service] Client Health Check: OK. Online users found: ${onlineSnap.size > 0 ? 'Yes' : 'None'}`);
         }
-      } catch (err) {
-        console.warn('[Background Service] Maintenance loop warning:', err);
+      } catch (err: any) {
+        const errStr = err instanceof Error ? err.message : String(err);
+        if (errStr.includes('Quota exceeded') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('QUOTA_EXCEEDED')) {
+          isQuotaExceeded = true;
+          console.warn('[Background Service] Firestore Quota Exceeded. Suspending maintenance reads.');
+        } else {
+          console.warn('[Background Service] Maintenance loop warning:', errStr);
+        }
       }
     }, 1000 * 60 * 15); // Run every 15 minutes
   });

@@ -368,6 +368,28 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
     }
   };
 
+  const handleRestoreSystemBooks = async () => {
+    if (confirm('Are you sure you want to restore all default system books? This will also clear the local cache.')) {
+      try {
+        setDeletedSystemBooks([]);
+        localStorage.removeItem('deleted_system_books');
+        localStorage.removeItem('library_books_local');
+        setCustomBooks([]);
+        
+        // Trigger a fresh fetch
+        const snapshot = await getDocs(collection(db, 'library_books'));
+        const booksList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setCustomBooks(booksList);
+        localStorage.setItem('library_books_local', JSON.stringify(booksList));
+        
+        alert('Default system books restored successfully!');
+      } catch (error) {
+        console.warn("Restore re-fetch failed:", error);
+        alert('Cleared local deleted list! If Firestore has quota errors, local default static books will be shown.');
+      }
+    }
+  };
+
   const handleExcelUpload = async (file: File, categoryId: string) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -2106,6 +2128,12 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                          className="bg-purple-900/50 hover:bg-purple-800 text-purple-200 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all"
                        >
                          <RefreshCw size={16} /> Send System Update
+                       </button>
+                       <button
+                         onClick={handleRestoreSystemBooks}
+                         className="bg-blue-900/50 hover:bg-blue-800 text-blue-200 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all"
+                       >
+                         <RefreshCw size={16} /> Restore Default Books
                        </button>
                     </div>
                     <div className="flex items-center gap-2">
