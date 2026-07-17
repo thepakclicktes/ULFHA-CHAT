@@ -148,10 +148,12 @@ export default function IslamicLibrary({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchBooks = async () => {
+    let unsub: () => void;
+
+    const initLibrary = async () => {
       const startTime = Date.now();
       try {
-        // Only fetch from Firestore if we don't have local data or want to refresh
+        // Load local data for fast initial display
         const localData = localStorage.getItem('library_books_local');
         if (localData) {
           const parsed = JSON.parse(localData);
@@ -160,16 +162,18 @@ export default function IslamicLibrary({
           }
         }
         
-        // Fetch from Firestore to get latest (one-time fetch instead of onSnapshot)
-        const { getDocs } = await import('firebase/firestore');
-        const snapshot = await getDocs(collection(db, 'library_books'));
-        const booksList = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as Book));
+        // Listen to Firestore for real-time updates
+        const { collection, onSnapshot } = await import('firebase/firestore');
+        unsub = onSnapshot(collection(db, 'library_books'), (snapshot) => {
+          const booksList = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as Book));
+          
+          setCustomBooks(booksList);
+          localStorage.setItem('library_books_local', JSON.stringify(booksList));
+        });
         
-        setCustomBooks(booksList);
-        localStorage.setItem('library_books_local', JSON.stringify(booksList));
       } catch (error) {
         console.error("Error loading custom library books:", error);
       } finally {
@@ -181,7 +185,10 @@ export default function IslamicLibrary({
       }
     };
     
-    fetchBooks();
+    initLibrary();
+    return () => {
+        if (unsub) unsub();
+    }
   }, []);
 
   const [deletedSystemBooks, setDeletedSystemBooks] = useState<string[]>(() => {
