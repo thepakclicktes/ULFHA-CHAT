@@ -25,7 +25,8 @@ export default function Auth() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingType, setLoadingType] = useState<'google' | 'email_login' | 'email_register' | 'forgot' | null>(null);
+  const loading = loadingType !== null;
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
 
   // Email/Password specific states
@@ -79,7 +80,7 @@ export default function Auth() {
       return;
     }
 
-    setLoading(true);
+    setLoadingType('email_register');
     setError(null);
     setSuccessMessage(null);
 
@@ -94,7 +95,7 @@ export default function Auth() {
       }
       if (querySnapshot && !querySnapshot.empty) {
         setError('This username is already taken. Please choose another username.');
-        setLoading(false);
+        setLoadingType(null);
         return;
       }
 
@@ -157,7 +158,7 @@ export default function Auth() {
         setError(err.message || 'An error occurred during sign up.');
       }
     } finally {
-      setLoading(false);
+      setLoadingType(null);
     }
   };
 
@@ -168,7 +169,7 @@ export default function Auth() {
       return;
     }
     
-    setLoading(true);
+    setLoadingType('forgot');
     setError(null);
     setSuccessMessage(null);
     
@@ -186,7 +187,7 @@ export default function Auth() {
         setError(err.message || 'An error occurred while sending the reset link.');
       }
     } finally {
-      setLoading(false);
+      setLoadingType(null);
     }
   };
 
@@ -202,7 +203,7 @@ export default function Auth() {
       return;
     }
 
-    setLoading(true);
+    setLoadingType('email_login');
     setError(null);
     setSuccessMessage(null);
 
@@ -220,13 +221,13 @@ export default function Auth() {
         }
         if (querySnapshot && querySnapshot.empty) {
           setError('No user found with this username. Try using your email instead.');
-          setLoading(false);
+          setLoadingType(null);
           return;
         }
         const userData = querySnapshot!.docs[0].data();
         if (!userData.email) {
           setError('User found, but no email is associated with this username.');
-          setLoading(false);
+          setLoadingType(null);
           return;
         }
         targetEmail = userData.email;
@@ -236,12 +237,20 @@ export default function Auth() {
       const result = await signInWithEmailAndPassword(auth, targetEmail, password);
       const user = result.user;
 
-      // Fast-fetch user profile from Firestore (no-retry first attempt for 0.1s target)
+      // Fast-fetch user profile from Firestore with 400ms timeout fallback to prevent login hanging
       const userRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userRef);
       let userProfileData: any = null;
-      if (userDoc.exists()) {
-        userProfileData = userDoc.data();
+      try {
+        const fetchPromise = getDoc(userRef);
+        const timeoutPromise = new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 400)
+        );
+        const userDoc = await Promise.race([fetchPromise, timeoutPromise]) as any;
+        if (userDoc && userDoc.exists()) {
+          userProfileData = userDoc.data();
+        }
+      } catch (err) {
+        console.warn('Fast profile fetch skipped or timed out, using fallback:', err);
       }
 
       const isAdminEmail = user.email === 'teemabdulrehman.com@gmail.com' || user.email === 'abdulrehmanhabib.com@gmail.com';
@@ -287,24 +296,28 @@ export default function Auth() {
         setError(err.message || 'An error occurred during sign in.');
       }
     } finally {
-      setLoading(false);
+      setLoadingType(null);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
+    setLoadingType('google');
     setError(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
 
-      // Check if user exists in Firestore
+      // Check if user exists in Firestore with 400ms timeout fallback
       const userRef = doc(db, 'users', user.uid);
-      let userDoc;
+      let userDoc: any = null;
       try {
-        userDoc = await getDoc(userRef);
+        const fetchPromise = getDoc(userRef);
+        const timeoutPromise = new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 400)
+        );
+        userDoc = await Promise.race([fetchPromise, timeoutPromise]);
       } catch (err) {
-        handleFirestoreError(err, OperationType.GET, 'users');
+        console.warn('Google fast profile fetch skipped or timed out:', err);
       }
 
       let finalProfileData: any = null;
@@ -337,7 +350,7 @@ export default function Auth() {
         try {
           await setDoc(userRef, finalProfileData, { merge: true });
         } catch (err) {
-          handleFirestoreError(err, OperationType.CREATE, 'users');
+          console.warn('Background setDoc for new Google user failed or skipped:', err);
         }
       }
 
@@ -368,7 +381,7 @@ export default function Auth() {
         setError(err.message || 'Failed to login with Google.');
       }
     } finally {
-      setLoading(false);
+      setLoadingType(null);
     }
   };
 
@@ -420,7 +433,7 @@ export default function Auth() {
                   disabled={loading}
                   className="w-full bg-white hover:bg-gray-50 text-gray-700 font-bold py-3 px-4 rounded-xl border border-gray-200 transition-all shadow-sm flex items-center justify-center gap-3 active:scale-95 mb-4"
                 >
-                  {loading ? (
+                  {loadingType === 'google' ? (
                     <div className="w-5 h-5 border-2 border-gray-300 border-t-[#4285F4] rounded-full animate-spin" />
                   ) : (
                     <>
@@ -577,7 +590,7 @@ export default function Auth() {
                       disabled={loading}
                       className="w-full bg-[#00A884] hover:bg-[#008f70] text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
                     >
-                      {loading ? (
+                      {loadingType === 'email_login' ? (
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
                         <>

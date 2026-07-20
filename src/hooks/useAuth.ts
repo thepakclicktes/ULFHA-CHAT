@@ -125,8 +125,25 @@ export function useAuth() {
           }
         };
 
+        // Direct localStorage check for freshly cached profiles from Auth.tsx (crucial after logout/re-login)
+        let currentProfile = profile;
+        if (!currentProfile) {
+          try {
+            const saved = localStorage.getItem('ulfha_user_profile');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (parsed && parsed.uid === firebaseUser.uid) {
+                currentProfile = parsed;
+                setProfile(currentProfile);
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to parse cached profile in useAuth:', e);
+          }
+        }
+
         // If we already have a cached profile matching this uid, we can turn off loading instantly
-        if (profile && profile.uid === firebaseUser.uid) {
+        if (currentProfile && currentProfile.uid === firebaseUser.uid) {
           setLoading(false);
           fetchProfile(); // refresh and listen in background
         } else {
