@@ -119,19 +119,82 @@ export const AdsterraManager: React.FC<AdsterraManagerProps> = ({ appSettings })
     };
   }, []);
 
-  // 1. Inject Global Scripts (Popunder and Social Bar)
+  // 1. Inject Global Scripts (Popunder and Social Bar) - DISABLED by user request to keep only download ads
   useEffect(() => {
-    if (!appSettings) return;
+    // Global script injection is disabled to keep the UI clean and prevent intrusive popups/floating ads.
+    // The only ads remaining are those within the secure download interstitial modal.
+  }, [appSettings]);
 
-    // Inject Social Bar if enabled and code provided
-    if (appSettings.adsterraSocialBarEnabled && appSettings.adsterraSocialBarCode) {
-      injectAdsterraScript(appSettings.adsterraSocialBarCode);
-    }
+  // 1b. Dynamically optimize floating Adsterra Social Bar size to be much smaller, especially on mobile
+  useEffect(() => {
+    if (!appSettings?.adsterraSocialBarEnabled) return;
 
-    // Inject Popunder script if enabled and code provided
-    if (appSettings.adsterraPopunderEnabled && appSettings.adsterraPopunderCode) {
-      injectAdsterraScript(appSettings.adsterraPopunderCode);
-    }
+    const adjustFloatingAds = () => {
+      const elements = Array.from(document.body.children);
+      elements.forEach((el) => {
+        if (!(el instanceof HTMLElement)) return;
+
+        // Skip our app elements and safe containers
+        if (
+          el.id === 'root' || 
+          el.id === 'vite-ui-client-coauthor' || 
+          el.id === 'profile-setup-modal' ||
+          el.tagName === 'SCRIPT' || 
+          el.tagName === 'STYLE'
+        ) {
+          return;
+        }
+
+        // Check if the element is fixed/absolute and has high z-index
+        const style = window.getComputedStyle(el);
+        const isFixed = style.position === 'fixed' || style.position === 'absolute';
+        const zIndex = parseInt(style.zIndex, 10);
+
+        // Adsterra elements typically have extremely high z-index (e.g. 2147483647) or are floating overlays
+        if (isFixed && (!isNaN(zIndex) && zIndex > 9999 || el.id.startsWith('asb-') || el.className.includes('asb-'))) {
+          // Double-check it's not our download interstitial modal (which is under z-index 9999 but has class containing Urdu/Adsterra)
+          const isOurElement = el.querySelector('.Urdu') !== null || el.classList.contains('z-[9999]');
+          if (isOurElement) return;
+
+          // Apply small scale on mobile & desktop to keep user experience great!
+          const isMobile = window.innerWidth < 768;
+          if (isMobile) {
+            // Mobile styling: make it ultra-compact (55% or 60% size)
+            el.style.setProperty('transform', 'scale(0.6)', 'important');
+            // Check if it's anchored to the top or bottom
+            const topVal = style.top;
+            
+            // Set the correct transform origin so it nests neatly
+            if (topVal !== 'auto' && parseFloat(topVal) < window.innerHeight / 2) {
+              el.style.setProperty('transform-origin', 'top center', 'important');
+              el.style.setProperty('top', '4px', 'important');
+            } else {
+              el.style.setProperty('transform-origin', 'bottom center', 'important');
+              el.style.setProperty('bottom', '4px', 'important');
+            }
+            
+            // Prevent width issues by constraining max-width
+            el.style.setProperty('max-width', '92vw', 'important');
+          } else {
+            // Desktop styling: make it slightly smaller (75% size) and move to top-right
+            el.style.setProperty('transform', 'scale(0.75)', 'important');
+            el.style.setProperty('transform-origin', 'top right', 'important');
+          }
+        }
+      });
+    };
+
+    // Run immediately and periodically to capture newly loaded/injected elements
+    adjustFloatingAds();
+    const interval = setInterval(adjustFloatingAds, 350);
+
+    // Also run on window resize
+    window.addEventListener('resize', adjustFloatingAds);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', adjustFloatingAds);
+    };
   }, [appSettings]);
 
   // 2. Manage Download Interstitial Countdown
