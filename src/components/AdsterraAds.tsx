@@ -4,9 +4,23 @@ import { AppSettings } from '../types';
 
 const globalInjectedScripts = new Set<string>();
 
-// Robust utility to inject raw HTML/Script strings from Adsterra safely
+// Robust utility to inject raw HTML/Script strings safely
 export function injectAdsterraScript(htmlCode: string, targetContainerId?: string) {
   if (!htmlCode) return;
+  
+  // Strict Security Check: Block all Adsterra and effectivecpmnetwork scripts to prevent adult ads or unwanted redirects
+  const lowerCode = htmlCode.toLowerCase();
+  if (
+    lowerCode.includes('effectivecpmnetwork.com') || 
+    lowerCode.includes('adsterra') || 
+    lowerCode.includes('pl304490') ||
+    lowerCode.includes('exoclick') ||
+    lowerCode.includes('juicyads')
+  ) {
+    console.log('[AdShield] Blocked potential adult or intrusive Adsterra/Third-party script injection.');
+    return;
+  }
+
   try {
     const container = targetContainerId 
       ? document.getElementById(targetContainerId) 
@@ -360,7 +374,9 @@ export const AdsterraManager: React.FC<AdsterraManagerProps> = ({ appSettings })
                   Generating secure link...
                 </button>
                 
-                {appSettings?.adsterraDirectLinkUrl && (
+                {appSettings?.adsterraDirectLinkUrl && 
+                 !appSettings.adsterraDirectLinkUrl.includes('effectivecpmnetwork.com') && 
+                 !appSettings.adsterraDirectLinkUrl.includes('adsterra') && (
                   <button
                     onClick={handleSupportClick}
                     className="w-full bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/10 text-emerald-300 hover:text-emerald-200 py-2.5 px-4 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:border-emerald-500/30 cursor-pointer"
@@ -378,7 +394,7 @@ export const AdsterraManager: React.FC<AdsterraManagerProps> = ({ appSettings })
         {/* Footer / Transparency pledge */}
         <div className="bg-[#111113] px-6 py-3 border-t border-[#27272a] flex items-center justify-center gap-1.5 text-[10px] text-gray-500">
           <HelpCircle size={12} />
-          <span>Verified Secure Download &bull; Powered by Adsterra Premium Network</span>
+          <span>Verified Secure Download &bull; Powered by Premium Partner Network</span>
         </div>
 
       </div>
