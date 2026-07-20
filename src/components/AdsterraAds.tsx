@@ -204,14 +204,8 @@ export const AdsterraManager: React.FC<AdsterraManagerProps> = ({ appSettings })
       setCountdown(timerDuration);
       setDownloadReady(false);
       
-      // Auto trigger popunder or direct link on download click to maximize monetization
-      if (appSettings?.adsterraDirectLinkEnabled && appSettings?.adsterraDirectLinkUrl) {
-        try {
-          window.open(appSettings.adsterraDirectLinkUrl, '_blank', 'noopener,noreferrer');
-        } catch (e) {
-          console.warn('Popunder/Direct Link blocked by browser popup blocker:', e);
-        }
-      }
+      // Auto trigger popunder or direct link has been disabled per user request to prevent automatic redirection on download click.
+      // Only the modal countdown and sponsor ad slot inside the modal remain.
 
       // Start Countdown
       countdownInterval.current = setInterval(() => {
