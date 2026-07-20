@@ -27,6 +27,7 @@ import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getPDF, storePDF } from '../utils/pdfStorage';
 import { downloadBlobWithFileSystemAccess } from '../utils/StorageManager';
 import { resolveApiUrl, cn } from '../utils';
+import { triggerDownloadWithAd } from './AdsterraAds';
 
 // Helper to dynamically load a script from CDN
 const loadScript = (src: string): Promise<void> => {
@@ -940,7 +941,7 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           {/* Real Download Button */}
           {!isOffline && (
             <button
-              onClick={handleRealDownload}
+              onClick={() => triggerDownloadWithAd(bookTitle || "Islamic Book", handleRealDownload)}
               disabled={isDownloading}
               className="p-2 bg-emerald-600 border border-emerald-500 text-white hover:bg-emerald-500 rounded-lg disabled:bg-slate-800 disabled:border-slate-700 disabled:text-slate-400 transition-all"
               title="Download"

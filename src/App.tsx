@@ -31,6 +31,7 @@ import Header from './components/Header';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
 import { Toaster, toast } from 'sonner';
+import { AdsterraManager } from './components/AdsterraAds';
 
 const DEFAULT_VAPID_KEY = 'BARsQajcr4y6I9nCfTXGorq433uPL-sAYxTtRlDQbkANR_LSc993JKKlev2TrxjHX4rE_3f4tBVRKlZ70__I708';
 const DEFAULT_APP_LOGO = '/logo.png'; // Improved high-quality fallback logo placeholder
@@ -622,20 +623,17 @@ useEffect(() => {
   }, [appSettings?.appLogoUrl]);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const docSnap = await getDoc(doc(db, 'settings', 'global'));
-        if (docSnap.exists()) {
-          const data = docSnap.data() as AppSettings;
-          setAppSettings(data);
-          localStorage.setItem('ulfha_app_settings', JSON.stringify(data));
-        }
-      } catch (error) {
-        handleFirestoreError(error as any, OperationType.GET, 'settings/global');
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'global'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as AppSettings;
+        setAppSettings(data);
+        localStorage.setItem('ulfha_app_settings', JSON.stringify(data));
       }
-    };
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/global');
+    });
 
-    fetchSettings();
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -1247,6 +1245,7 @@ return (
           </Suspense>
         )}
       </AnimatePresence>
+      <AdsterraManager appSettings={appSettings} />
     </div>
   );
 }

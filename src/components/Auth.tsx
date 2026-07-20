@@ -236,13 +236,41 @@ export default function Auth() {
       const result = await signInWithEmailAndPassword(auth, targetEmail, password);
       const user = result.user;
 
-      // Check if email is verified
-      if (!user.emailVerified) {
-        setError('Please verify your email address before signing in. Check your inbox for the verification link.');
-        await auth.signOut();
-        setLoading(false);
-        return;
+      // Fast-fetch user profile from Firestore (no-retry first attempt for 0.1s target)
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      let userProfileData: any = null;
+      if (userDoc.exists()) {
+        userProfileData = userDoc.data();
       }
+
+      const isAdminEmail = user.email === 'teemabdulrehman.com@gmail.com' || user.email === 'abdulrehmanhabib.com@gmail.com';
+      const finalProfile = {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: userProfileData?.displayName || user.displayName || user.email?.split('@')[0] || 'User',
+        username: userProfileData?.username || (user.email ? user.email.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'user_' + user.uid.substring(0, 5)),
+        photoURL: userProfileData?.photoURL || user.photoURL || '',
+        phoneNumber: userProfileData?.phoneNumber || user.phoneNumber || '',
+        balance: userProfileData?.balance || 0,
+        role: isAdminEmail ? 'admin' : (userProfileData?.role || 'user'),
+        isOnline: true,
+        lastSeen: new Date().toISOString(),
+        isVerified: userProfileData?.isVerified || false,
+        isBanned: userProfileData?.isBanned || false,
+        level: userProfileData?.level || 'Bronze',
+        experience: userProfileData?.experience || 0,
+      };
+
+      // Set localStorage instantly for immediate transition
+      localStorage.setItem('ulfha_user_credential', JSON.stringify({
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        emailVerified: user.emailVerified
+      }));
+      localStorage.setItem('ulfha_user_profile', JSON.stringify(finalProfile));
 
     } catch (err: any) {
       console.error('Email password login error:', err);
@@ -274,49 +302,61 @@ export default function Auth() {
       const userRef = doc(db, 'users', user.uid);
       let userDoc;
       try {
-        userDoc = await getDocWithRetry(userRef);
+        userDoc = await getDoc(userRef);
       } catch (err) {
         handleFirestoreError(err, OperationType.GET, 'users');
       }
 
-      if (userDoc && !userDoc.exists()) {
+      let finalProfileData: any = null;
+      if (userDoc && userDoc.exists()) {
+        finalProfileData = userDoc.data();
+      } else {
         // Generate a random username for Google users if they don't have one
         const baseUsername = (user.displayName || 'user').toLowerCase().replace(/\s+/g, '_');
         const randomSuffix = Math.floor(1000 + Math.random() * 9000);
         const finalUsername = `${baseUsername}${randomSuffix}`;
 
+        finalProfileData = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || 'Ulfah User',
+          username: finalUsername,
+          photoURL: user.photoURL || '',
+          phoneNumber: user.phoneNumber || '',
+          balance: 0,
+          role: 'user',
+          isOnline: true,
+          lastSeen: new Date().toISOString(),
+          isVerified: true, // Google accounts are usually verified
+          isBanned: false,
+          level: 'Bronze',
+          experience: 0,
+          createdAt: serverTimestamp()
+        };
+
         try {
-          await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName || 'Ulfah User',
-            username: finalUsername,
-            photoURL: user.photoURL || '',
-            phoneNumber: user.phoneNumber || '',
-            balance: 0,
-            role: 'user',
-            isOnline: true,
-            lastSeen: new Date().toISOString(),
-            isVerified: true, // Google accounts are usually verified
-            isBanned: false,
-            level: 'Bronze',
-            experience: 0,
-            createdAt: serverTimestamp()
-          }, { merge: true });
+          await setDoc(userRef, finalProfileData, { merge: true });
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, 'users');
         }
-      } else {
-        // Update online status
-        try {
-          await setDoc(userRef, {
-            isOnline: true,
-            lastSeen: new Date().toISOString()
-          }, { merge: true });
-        } catch (err) {
-          handleFirestoreError(err, OperationType.UPDATE, 'users');
-        }
       }
+
+      const isAdminEmail = user.email === 'teemabdulrehman.com@gmail.com' || user.email === 'abdulrehmanhabib.com@gmail.com';
+      const finalProfile = {
+        ...finalProfileData,
+        role: isAdminEmail ? 'admin' : (finalProfileData.role || 'user'),
+      };
+
+      // Set localStorage instantly for immediate transition
+      localStorage.setItem('ulfha_user_credential', JSON.stringify({
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        emailVerified: user.emailVerified
+      }));
+      localStorage.setItem('ulfha_user_profile', JSON.stringify(finalProfile));
+
     } catch (err: any) {
       console.error('Google login error:', err);
       const errStr = err?.message || String(err);

@@ -119,6 +119,15 @@ export interface AppSettings {
   isAdMobBannerEnabled: boolean;
   vapidKey?: string;
   appLogoUrl?: string;
+  adsterraPopunderEnabled?: boolean;
+  adsterraPopunderCode?: string;
+  adsterraSocialBarEnabled?: boolean;
+  adsterraSocialBarCode?: string;
+  adsterraNativeBannerEnabled?: boolean;
+  adsterraNativeBannerCode?: string;
+  adsterraDirectLinkUrl?: string;
+  adsterraDirectLinkEnabled?: boolean;
+  adsterraDownloadTimerSeconds?: number;
 }
 
 export interface SupportTicket {
