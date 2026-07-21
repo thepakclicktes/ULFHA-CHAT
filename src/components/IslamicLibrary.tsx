@@ -20,7 +20,6 @@ import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import BookReader from './BookReader';
 import { storePDF, deletePDF } from '../utils/pdfStorage';
-import { triggerDownloadWithAd } from './AdsterraAds';
 
 export interface Book {
   id: string;

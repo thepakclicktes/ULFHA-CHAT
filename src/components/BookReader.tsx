@@ -27,7 +27,6 @@ import { handleFirestoreError, OperationType } from '../firebaseError';
 import { getPDF, storePDF } from '../utils/pdfStorage';
 import { downloadBlobWithFileSystemAccess } from '../utils/StorageManager';
 import { resolveApiUrl, cn } from '../utils';
-import { triggerDownloadWithAd } from './AdsterraAds';
 
 // Helper to dynamically load a script from CDN
 const loadScript = (src: string): Promise<void> => {

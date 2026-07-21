@@ -543,34 +543,6 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
       if (snapshot.exists()) {
         const data = snapshot.data() as AppSettings;
         setAppSettings(data);
-        
-        // Auto-seed Adsterra codes if they are not defined
-        if (data.adsterraPopunderEnabled === undefined) {
-          updateDoc(doc(db, 'settings', 'global'), {
-            adsterraPopunderEnabled: false,
-            adsterraPopunderCode: `<script src="https://pl30449004.effectivecpmnetwork.com/5a/24/48/5a2448134b09ed4159444d1d76581eda.js"></script>`,
-            adsterraSocialBarEnabled: true,
-            adsterraSocialBarCode: `<script src="https://pl30449005.effectivecpmnetwork.com/05/2a/00/052a0078b24ae3bb7e3608717d652654.js"></script>`,
-            adsterraNativeBannerEnabled: true,
-            adsterraNativeBannerCode: `<script async="async" data-cfasync="false" src="https://pl30449006.effectivecpmnetwork.com/87af93c6b4bea1978455d6049cf4a27d/invoke.js"></script>\n<div id="container-87af93c6b4bea1978455d6049cf4a27d"></div>`,
-            adsterraDirectLinkEnabled: true,
-            adsterraDirectLinkUrl: 'https://www.effectivecpmnetwork.com/5a2448134b09ed4159444d1d76581eda',
-            adsterraDownloadTimerSeconds: 10
-          }).catch(err => console.warn("Auto-seed Adsterra failed:", err));
-        } else {
-          const updates: Partial<AppSettings> = {};
-          // Disable popunder ads as per user command
-          if (data.adsterraPopunderEnabled === true) {
-            updates.adsterraPopunderEnabled = false;
-          }
-          if (data.adsterraDownloadTimerSeconds === undefined || data.adsterraDownloadTimerSeconds < 10) {
-            updates.adsterraDownloadTimerSeconds = 10;
-          }
-          if (Object.keys(updates).length > 0) {
-            updateDoc(doc(db, 'settings', 'global'), updates)
-              .catch(err => console.warn("Auto-update Adsterra settings failed:", err));
-          }
-        }
       }
     }, (error) => handleFirestoreError(error, OperationType.GET, 'settings/global'));
 
@@ -1940,177 +1912,14 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                           </button>
                         </div>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Adsterra Ads Integration */}
-                  <div className="pt-6 border-t border-[#333333]">
-                    <h3 className="text-emerald-400 font-bold text-sm mb-4 flex items-center gap-2 uppercase tracking-wider">
-                      <Sparkles size={16} className="text-emerald-400 animate-pulse" /> Adsterra Advertising Integration
-                    </h3>
-                    <p className="text-xs text-[#858585] mb-6 leading-relaxed">
-                      Configure your Adsterra advertisement units below. Toggle each ad type on/off and paste the script tags or direct links generated from your Adsterra publisher dashboard.
-                    </p>
-
-                    <div className="space-y-6">
-                      
-                      {/* Popunder Ad Config */}
-                      <div className="bg-[#1e1e1e] p-4 rounded-xl border border-[#333333] space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="text-white text-xs font-bold uppercase tracking-wider">1. Popunder Ad Script</h4>
-                            <p className="text-[11px] text-[#858585]">Triggers background popunder ads when visitors interact with the library</p>
-                          </div>
-                          <button 
-                            onClick={() => updateGlobalSetting('adsterraPopunderEnabled', !appSettings?.adsterraPopunderEnabled)}
-                            className={cn(
-                              "w-12 h-6 rounded-full transition-all relative",
-                              appSettings?.adsterraPopunderEnabled ? "bg-emerald-600" : "bg-[#3c3c3c]"
-                            )}
-                          >
-                            <div className={cn(
-                              "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
-                              appSettings?.adsterraPopunderEnabled ? "right-1" : "left-1"
-                            )}></div>
-                          </button>
-                        </div>
-                        {appSettings?.adsterraPopunderEnabled && (
-                          <div className="space-y-2">
-                            <label className="text-[10px] text-[#858585] block uppercase font-mono">Popunder HTML/Script Tag</label>
-                            <textarea
-                              rows={3}
-                              className="w-full bg-[#111111] border border-[#333333] focus:border-emerald-500 rounded p-2 text-xs font-mono text-emerald-400 outline-none"
-                              placeholder="Paste the <script> ... </script> block from Adsterra here"
-                              value={appSettings?.adsterraPopunderCode || ''}
-                              onChange={(e) => updateGlobalSetting('adsterraPopunderCode', e.target.value)}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Social Bar Ad Config */}
-                      <div className="bg-[#1e1e1e] p-4 rounded-xl border border-[#333333] space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="text-white text-xs font-bold uppercase tracking-wider">2. Social Bar Banner</h4>
-                            <p className="text-[11px] text-[#858585]">Shows dynamic interactive floating alert notifications to users</p>
-                          </div>
-                          <button 
-                            onClick={() => updateGlobalSetting('adsterraSocialBarEnabled', !appSettings?.adsterraSocialBarEnabled)}
-                            className={cn(
-                              "w-12 h-6 rounded-full transition-all relative",
-                              appSettings?.adsterraSocialBarEnabled ? "bg-emerald-600" : "bg-[#3c3c3c]"
-                            )}
-                          >
-                            <div className={cn(
-                              "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
-                              appSettings?.adsterraSocialBarEnabled ? "right-1" : "left-1"
-                            )}></div>
-                          </button>
-                        </div>
-                        {appSettings?.adsterraSocialBarEnabled && (
-                          <div className="space-y-2">
-                            <label className="text-[10px] text-[#858585] block uppercase font-mono">Social Bar HTML/Script Tag</label>
-                            <textarea
-                              rows={3}
-                              className="w-full bg-[#111111] border border-[#333333] focus:border-emerald-500 rounded p-2 text-xs font-mono text-emerald-400 outline-none"
-                              placeholder="Paste the social bar script code from Adsterra here"
-                              value={appSettings?.adsterraSocialBarCode || ''}
-                              onChange={(e) => updateGlobalSetting('adsterraSocialBarCode', e.target.value)}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Native Banner Config */}
-                      <div className="bg-[#1e1e1e] p-4 rounded-xl border border-[#333333] space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="text-white text-xs font-bold uppercase tracking-wider">3. Native Banner Inside Download Overlay</h4>
-                            <p className="text-[11px] text-[#858585]">Renders a premium banner directly inside the countdown popup modal</p>
-                          </div>
-                          <button 
-                            onClick={() => updateGlobalSetting('adsterraNativeBannerEnabled', !appSettings?.adsterraNativeBannerEnabled)}
-                            className={cn(
-                              "w-12 h-6 rounded-full transition-all relative",
-                              appSettings?.adsterraNativeBannerEnabled ? "bg-emerald-600" : "bg-[#3c3c3c]"
-                            )}
-                          >
-                            <div className={cn(
-                              "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
-                              appSettings?.adsterraNativeBannerEnabled ? "right-1" : "left-1"
-                            )}></div>
-                          </button>
-                        </div>
-                        {appSettings?.adsterraNativeBannerEnabled && (
-                          <div className="space-y-2">
-                            <label className="text-[10px] text-[#858585] block uppercase font-mono">Native Banner Script/Code</label>
-                            <textarea
-                              rows={3}
-                              className="w-full bg-[#111111] border border-[#333333] focus:border-emerald-500 rounded p-2 text-xs font-mono text-emerald-400 outline-none"
-                              placeholder="Paste the native banner code from Adsterra here"
-                              value={appSettings?.adsterraNativeBannerCode || ''}
-                              onChange={(e) => updateGlobalSetting('adsterraNativeBannerCode', e.target.value)}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Direct Link Monitization */}
-                      <div className="bg-[#1e1e1e] p-4 rounded-xl border border-[#333333] space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="text-white text-xs font-bold uppercase tracking-wider">4. Adsterra Direct Link (Highly Profitable)</h4>
-                            <p className="text-[11px] text-[#858585]">Launches a premium ad landing page when downloading to optimize CPM</p>
-                          </div>
-                          <button 
-                            onClick={() => updateGlobalSetting('adsterraDirectLinkEnabled', !appSettings?.adsterraDirectLinkEnabled)}
-                            className={cn(
-                              "w-12 h-6 rounded-full transition-all relative",
-                              appSettings?.adsterraDirectLinkEnabled ? "bg-emerald-600" : "bg-[#3c3c3c]"
-                            )}
-                          >
-                            <div className={cn(
-                              "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
-                              appSettings?.adsterraDirectLinkEnabled ? "right-1" : "left-1"
-                            )}></div>
-                          </button>
-                        </div>
-                        {appSettings?.adsterraDirectLinkEnabled && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[10px] text-[#858585] block uppercase font-mono">Direct Link URL</label>
-                              <input
-                                type="url"
-                                className="w-full bg-[#111111] border border-[#333333] focus:border-emerald-500 rounded px-2.5 py-1.5 text-xs text-emerald-400 outline-none"
-                                placeholder="https://www.profitablecpmrate.com/..."
-                                value={appSettings?.adsterraDirectLinkUrl || ''}
-                                onChange={(e) => updateGlobalSetting('adsterraDirectLinkUrl', e.target.value)}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] text-[#858585] block uppercase font-mono">Download Delay Countdown (Seconds)</label>
-                              <input
-                                type="number"
-                                min={2}
-                                max={30}
-                                className="w-full bg-[#111111] border border-[#333333] focus:border-emerald-500 rounded px-2.5 py-1.5 text-xs text-emerald-400 outline-none"
-                                placeholder="10"
-                                value={appSettings?.adsterraDownloadTimerSeconds || 10}
-                                onChange={(e) => updateGlobalSetting('adsterraDownloadTimerSeconds', parseInt(e.target.value) || 10)}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
+                
                   </div>
 
                   <div id="bottom-settings" className="pt-4 border-t border-[#333333]">
                     <p className="text-[10px] text-[#858585] text-center italic">
                       Admin Panel for Alpha Chat. Standard edition.
                     </p>
+                  </div>
                   </div>
                 </div>
               </motion.div>

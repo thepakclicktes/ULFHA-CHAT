@@ -119,26 +119,3 @@
   #root {
   }
 }
-
-/* Adsterra Social Bar & Floating Ad CSS Overrides to keep it extremely small & non-intrusive */
-[id^="asb-"], [class*="asb-"], div[id^="asb-"], iframe[id^="asb-"] {
-  max-width: 92vw !important;
-  transform-origin: top center !important;
-  transition: transform 0.2s ease-in-out !important;
-}
-
-@media (max-width: 768px) {
-  [id^="asb-"], [class*="asb-"], div[id^="asb-"], iframe[id^="asb-"] {
-    transform: scale(0.6) !important;
-    max-width: 92vw !important;
-    top: 4px !important;
-  }
-}
-
-@media (min-width: 769px) {
-  [id^="asb-"], [class*="asb-"], div[id^="asb-"], iframe[id^="asb-"] {
-    transform: scale(0.75) !important;
-    transform-origin: top right !important;
-    right: 12px !important;
-  }
-}

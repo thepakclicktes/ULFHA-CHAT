@@ -191,14 +191,13 @@ export default function Auth() {
     }
   };
 
-  // Email & Password Login Handler (Supports Email OR Username login!)
-  const handleEmailPasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailOrUsername.trim()) {
+  // Helper to perform login
+  const performLogin = async (emailOrUsernameInput: string, passwordInput: string) => {
+    if (!emailOrUsernameInput.trim()) {
       setError('Please enter your email or username.');
       return;
     }
-    if (!password) {
+    if (!passwordInput) {
       setError('Please enter your password.');
       return;
     }
@@ -208,7 +207,7 @@ export default function Auth() {
     setSuccessMessage(null);
 
     try {
-      let targetEmail = emailOrUsername.toLowerCase().trim();
+      let targetEmail = emailOrUsernameInput.toLowerCase().trim();
 
       // Check if the input is a username (doesn't contain '@')
       if (!targetEmail.includes('@')) {
@@ -234,7 +233,7 @@ export default function Auth() {
       }
 
       // Perform sign in
-      const result = await signInWithEmailAndPassword(auth, targetEmail, password);
+      const result = await signInWithEmailAndPassword(auth, targetEmail, passwordInput);
       const user = result.user;
 
       // Fast-fetch user profile from Firestore with 400ms timeout fallback to prevent login hanging
@@ -298,6 +297,12 @@ export default function Auth() {
     } finally {
       setLoadingType(null);
     }
+  };
+
+  // Email & Password Login Handler (Supports Email OR Username login!)
+  const handleEmailPasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performLogin(emailOrUsername, password);
   };
 
   const handleGoogleLogin = async () => {
@@ -598,6 +603,14 @@ export default function Auth() {
                           Sign In
                         </>
                       )}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => performLogin('demo@gmail.com', 'admin')}
+                      className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-all shadow-sm mt-4 flex items-center justify-center gap-2"
+                    >
+                      Demo Login (Test)
                     </button>
                   </form>
                 ) : (

@@ -34,6 +34,7 @@ import OfflineLibrary from './OfflineLibrary';
 import CategorySelector from './CategorySelector';
 import QiblaFinder from './QiblaFinder';
 import IslamicCalendarViewer from './IslamicCalendarViewer';
+import Donate from './Donate';
 
 interface ExploreItem {
   id: string;
@@ -55,6 +56,7 @@ export default function Explore() {
   const [showQibla, setShowQibla] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
+  const [showDonate, setShowDonate] = useState(false);
   const [libraryCategory, setLibraryCategory] = useState('all');
 
   // Embedded viewer states
@@ -188,6 +190,13 @@ export default function Explore() {
       urduTitle: 'تسبیح کاؤنٹر',
       icon: <Award size={32} />,
       color: 'bg-lime-500',
+    },
+    {
+      id: 'donate',
+      title: 'Donate',
+      urduTitle: 'عطیہ دیں',
+      icon: <Heart size={32} />,
+      color: 'bg-rose-500',
     }
   ];
 
@@ -214,6 +223,9 @@ export default function Explore() {
         break;
       case 'tasbeeh':
         setShowTasbeeh(true);
+        break;
+      case 'donate':
+        setShowDonate(true);
         break;
       case 'duas':
         setShowDuas(true);
@@ -284,6 +296,10 @@ export default function Explore() {
 
   if (showCalendar) {
     return <IslamicCalendarViewer onClose={() => setShowCalendar(false)} />;
+  }
+
+  if (showDonate) {
+    return <Donate onBack={() => setShowDonate(false)} />;
   }
 
   if (showEmbedded) {
