@@ -940,7 +940,7 @@ export default function BookReader({ bookId, bookTitle, bookUrl, onClose, onCach
           {/* Real Download Button */}
           {!isOffline && (
             <button
-              onClick={() => triggerDownloadWithAd(bookTitle || "Islamic Book", handleRealDownload)}
+              onClick={handleRealDownload}
               disabled={isDownloading}
               className="p-2 bg-emerald-600 border border-emerald-500 text-white hover:bg-emerald-500 rounded-lg disabled:bg-slate-800 disabled:border-slate-700 disabled:text-slate-400 transition-all"
               title="Download"

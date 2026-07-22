@@ -866,7 +866,7 @@ export default function IslamicLibrary({
                             <BookOpen size={14} /> آن لائن پڑھیں (Online Read)
                           </button>
                           <button
-                            onClick={() => triggerDownloadWithAd(vol.name || book.urduTitle, () => startDownload(book.id, idx, vol.url))}
+                            onClick={() => startDownload(book.id, idx, vol.url)}
                             className="flex-1 py-2.5 bg-[#1a2536] hover:bg-slate-800 text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1 shadow-xs"
                           >
                             <Download size={14} /> ڈاؤنلوڈ (Download)

@@ -17,7 +17,13 @@ export default function Donate({ onBack }: DonateProps) {
 
     // Cleanup: Remove the script when the component unmounts
     return () => {
-      document.body.removeChild(script);
+      if (script && document.body.contains(script)) {
+        try {
+          document.body.removeChild(script);
+        } catch {
+          // ignore cleanup error if script was moved or removed by third-party tag
+        }
+      }
     };
   }, []);
 
