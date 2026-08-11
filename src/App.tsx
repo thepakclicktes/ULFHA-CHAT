@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Auth from './components/Auth';
+import LandingPage from './components/LandingPage';
 import ProfileSetupModal from './components/ProfileSetupModal';
 import Sidebar from './components/Sidebar';
 import ChatList from './components/ChatList';
@@ -887,9 +888,14 @@ useEffect(() => {
     return (
       <Routes>
         <Route path="/login" element={<Auth />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/landing" element={<LandingPage onOpenApp={() => navigate('/login')} />} />
+        <Route path="*" element={<LandingPage onOpenApp={() => navigate('/login')} />} />
       </Routes>
     );
+  }
+
+  if (path === '/landing') {
+    return <LandingPage onOpenApp={() => navigate('/')} />;
   }
 
   // Profile Setup popup if logged in with phone number but setup is incomplete
