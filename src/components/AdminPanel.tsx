@@ -14,8 +14,9 @@ import {
   ChevronRight, LayoutGrid, List, BarChart3, Clock, 
   AlertCircle, Info, CheckCircle2, MoreVertical,
   ShieldAlert, MessageSquare, TrendingUp, Send, Database, Shield, RefreshCw,
-  Key, Folder, LogOut, Image as ImageIcon, BookOpen, Sparkles
+  Key, Folder, LogOut, Image as ImageIcon, BookOpen, Sparkles, Newspaper, Tag, Globe
 } from 'lucide-react';
+import { DEFAULT_BLOGS } from './LandingPage';
 import { formatChatDate, cn, getTime, toSafeDate } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { handleFirestoreError, OperationType } from '../utils/errorHandlers';
@@ -28,7 +29,7 @@ console.log("Categories in AdminPanel:", CATEGORIES);
 import 'prismjs/themes/prism-tomorrow.css';
 import * as XLSX from 'xlsx';
 
-type AdminTab = 'users' | 'announcements' | 'settings' | 'logs' | 'fraud' | 'support' | 'analytics' | 'build' | 'logo' | 'books' | 'userActivity';
+type AdminTab = 'users' | 'announcements' | 'settings' | 'logs' | 'fraud' | 'support' | 'analytics' | 'build' | 'logo' | 'books' | 'blogs' | 'userActivity';
 
 interface SupportTicket {
   id?: string;
@@ -117,6 +118,65 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
   const [selectedActivityUser, setSelectedActivityUser] = useState<UserProfile | null>(null);
   const [userMessages, setUserMessages] = useState<any[]>([]);
   const [userStatuses, setUserStatuses] = useState<any[]>([]);
+
+  // Blog Management States
+  const [blogsList, setBlogsList] = useState<any[]>([]);
+  const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
+  const [selectedBlogToEdit, setSelectedBlogToEdit] = useState<any | null>(null);
+  const [blogSearchTerm, setBlogSearchTerm] = useState('');
+
+  useEffect(() => {
+    const q = query(collection(db, 'blogs'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setBlogsList(list);
+    }, (err) => {
+      console.warn("Blogs snapshot error:", err);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleSeedDefaultBlogs = async () => {
+    try {
+      setLoading('seeding-blogs');
+      for (const blog of DEFAULT_BLOGS) {
+        const docRef = doc(collection(db, 'blogs'));
+        await setDoc(docRef, {
+          ...blog,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+      alert("Default blogs seeded successfully into Firestore!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to seed default blogs: " + (err as any).message);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleDeleteBlog = async (blogId: string) => {
+    if (!window.confirm("Are you sure you want to delete this blog article?")) return;
+    try {
+      await deleteDoc(doc(db, 'blogs', blogId));
+      alert("Blog deleted successfully!");
+    } catch (err) {
+      alert("Failed to delete blog: " + (err as any).message);
+    }
+  };
+
+  const handleToggleBlogStatus = async (blog: any) => {
+    try {
+      const newStatus = blog.status === 'published' ? 'draft' : 'published';
+      await updateDoc(doc(db, 'blogs', blog.id), {
+        status: newStatus,
+        updatedAt: serverTimestamp()
+      });
+    } catch (err) {
+      alert("Failed to update status: " + (err as any).message);
+    }
+  };
 
   useEffect(() => {
     if (!selectedActivityUser) {
@@ -783,6 +843,13 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
           title="Book Management"
         >
           <BookOpen size={20} />
+        </button>
+        <button 
+          onClick={() => setActiveTab('blogs')}
+          className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'blogs' ? "text-white border-l-2 border-emerald-500" : "text-[#858585] hover:text-white")}
+          title="Blog Management"
+        >
+          <Newspaper size={20} />
         </button>
         <div className="mt-auto pb-4 flex flex-col gap-4">
           <button 
@@ -2348,6 +2415,147 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                 </motion.div>
               );
             })()}
+
+            {activeTab === 'blogs' && (
+              <motion.div
+                key="blogs"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                {/* Blog Header & Controls */}
+                <div className="bg-[#252526] p-4 rounded-xl border border-[#333333] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Newspaper size={20} className="text-emerald-400" />
+                      Blog & News Center
+                    </h2>
+                    <p className="text-xs text-[#858585] mt-0.5">
+                      Create, edit, and publish news and articles displayed on the app landing page.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    <button
+                      onClick={handleSeedDefaultBlogs}
+                      className="px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                      title="Seed sample default blogs"
+                    >
+                      <Sparkles size={14} /> Seed Default Blogs
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSelectedBlogToEdit(null);
+                        setIsBlogModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus size={16} /> New Article
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter and Search */}
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search blogs..."
+                    value={blogSearchTerm}
+                    onChange={(e) => setBlogSearchTerm(e.target.value)}
+                    className="w-full bg-[#252526] border border-[#333333] focus:border-emerald-500 rounded-xl pl-9 pr-3 py-2 text-xs text-white outline-none"
+                  />
+                </div>
+
+                {/* Blogs Table */}
+                <div className="bg-[#252526] rounded-xl border border-[#333333] overflow-hidden shadow-lg">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-[#2d2d30] text-[#858585] uppercase font-bold tracking-wider border-b border-[#333333]">
+                          <th className="p-4">Article</th>
+                          <th className="p-4">Category</th>
+                          <th className="p-4">Author</th>
+                          <th className="p-4">Status</th>
+                          <th className="p-4">Date</th>
+                          <th className="p-4 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#333333]">
+                        {blogsList
+                          .filter(b => !blogSearchTerm || b.title?.toLowerCase().includes(blogSearchTerm.toLowerCase()) || b.category?.toLowerCase().includes(blogSearchTerm.toLowerCase()))
+                          .map((blog) => (
+                            <tr key={blog.id} className="hover:bg-[#2a2d2e] transition-colors">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  {blog.imageUrl ? (
+                                    <img src={blog.imageUrl} className="w-12 h-10 rounded object-cover shrink-0" alt="" />
+                                  ) : (
+                                    <div className="w-12 h-10 rounded bg-[#1e1e1e] flex items-center justify-center text-gray-500 font-bold text-xs shrink-0">
+                                      Blog
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="font-bold text-white line-clamp-1">{blog.title}</div>
+                                    <div className="text-[10px] text-gray-400 line-clamp-1">{blog.summary}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <span className="bg-emerald-950/50 text-emerald-400 border border-emerald-900/40 px-2 py-0.5 rounded text-[10px] font-bold">
+                                  {blog.category || 'General'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-gray-300 font-medium">{blog.author || 'Admin'}</td>
+                              <td className="p-4">
+                                <button
+                                  onClick={() => handleToggleBlogStatus(blog)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase cursor-pointer border ${
+                                    blog.status === 'published'
+                                      ? 'bg-green-950/60 text-green-400 border-green-800/50'
+                                      : 'bg-yellow-950/60 text-yellow-400 border-yellow-800/50'
+                                  }`}
+                                >
+                                  {blog.status || 'published'}
+                                </button>
+                              </td>
+                              <td className="p-4 text-gray-400 text-[11px] font-mono">{blog.date || 'Today'}</td>
+                              <td className="p-4">
+                                <div className="flex justify-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedBlogToEdit(blog);
+                                      setIsBlogModalOpen(true);
+                                    }}
+                                    className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-900/30 rounded text-[10px] font-bold transition-all cursor-pointer"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteBlog(blog.id)}
+                                    className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-900/30 rounded text-[10px] font-bold transition-all cursor-pointer"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        {blogsList.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="p-8 text-center text-gray-500 italic">
+                              No blog posts found in database. Click "Seed Default Blogs" above or create a new article.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
@@ -2822,6 +3030,211 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                     type="button"
                     onClick={() => setIsBookModalOpen(false)}
                     className="flex-1 bg-[#3c3c3c] hover:bg-[#4c4c4c] text-white font-bold py-2 rounded-xl transition-all text-xs"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Blog Article Create / Edit Modal */}
+      <AnimatePresence>
+        {isBlogModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#252526] rounded-2xl border border-[#333333] max-w-2xl w-full p-6 shadow-2xl relative my-8 text-white"
+            >
+              <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#333333]">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                  <Newspaper size={20} className="text-emerald-400" />
+                  {selectedBlogToEdit ? 'Edit Blog Article' : 'Create New Article'}
+                </h3>
+                <button 
+                  onClick={() => setIsBlogModalOpen(false)}
+                  className="p-1 hover:bg-[#333333] rounded-full text-gray-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <XCircle size={20} />
+                </button>
+              </div>
+
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const form = e.currentTarget;
+                  const formData = new FormData(form);
+
+                  const blogData = {
+                    title: formData.get('title') as string,
+                    category: formData.get('category') as string,
+                    author: formData.get('author') as string,
+                    authorRole: formData.get('authorRole') as string || 'Contributor',
+                    readTime: formData.get('readTime') as string || '3 min read',
+                    imageUrl: formData.get('imageUrl') as string || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+                    summary: formData.get('summary') as string,
+                    content: formData.get('content') as string,
+                    status: formData.get('status') as string || 'published',
+                    date: selectedBlogToEdit?.date || new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                    tags: (formData.get('tags') as string).split(',').map(t => t.trim()).filter(Boolean),
+                    updatedAt: serverTimestamp()
+                  };
+
+                  try {
+                    if (selectedBlogToEdit?.id) {
+                      await updateDoc(doc(db, 'blogs', selectedBlogToEdit.id), blogData);
+                      alert("Blog article updated!");
+                    } else {
+                      await addDoc(collection(db, 'blogs'), {
+                        ...blogData,
+                        createdAt: serverTimestamp()
+                      });
+                      alert("New blog article published!");
+                    }
+                    setIsBlogModalOpen(false);
+                  } catch (err) {
+                    alert("Error saving blog: " + (err as any).message);
+                  }
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div>
+                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Article Title *</label>
+                  <input 
+                    type="text" 
+                    name="title"
+                    required
+                    defaultValue={selectedBlogToEdit?.title || ''}
+                    placeholder="Enter article title..."
+                    className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Category *</label>
+                    <select
+                      name="category"
+                      defaultValue={selectedBlogToEdit?.category || 'Product News'}
+                      className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none"
+                    >
+                      <option value="Product News">Product News</option>
+                      <option value="Guides">Guides</option>
+                      <option value="AI & Tech">AI & Tech</option>
+                      <option value="Community">Community</option>
+                      <option value="Islamic Updates">Islamic Updates</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Status</label>
+                    <select
+                      name="status"
+                      defaultValue={selectedBlogToEdit?.status || 'published'}
+                      className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none"
+                    >
+                      <option value="published">Published</option>
+                      <option value="draft">Draft</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Author Name</label>
+                    <input 
+                      type="text" 
+                      name="author"
+                      defaultValue={selectedBlogToEdit?.author || 'Ulfah Team'}
+                      placeholder="e.g. Admin"
+                      className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Author Role</label>
+                    <input 
+                      type="text" 
+                      name="authorRole"
+                      defaultValue={selectedBlogToEdit?.authorRole || 'Contributor'}
+                      placeholder="e.g. Core Developer"
+                      className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Read Time</label>
+                    <input 
+                      type="text" 
+                      name="readTime"
+                      defaultValue={selectedBlogToEdit?.readTime || '3 min read'}
+                      placeholder="e.g. 4 min read"
+                      className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Cover Image URL</label>
+                  <input 
+                    type="url" 
+                    name="imageUrl"
+                    defaultValue={selectedBlogToEdit?.imageUrl || ''}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Short Excerpt / Summary *</label>
+                  <textarea 
+                    name="summary"
+                    required
+                    rows={2}
+                    defaultValue={selectedBlogToEdit?.summary || ''}
+                    placeholder="Brief 1-2 sentence description..."
+                    className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Full Content (Markdown / Plaintext) *</label>
+                  <textarea 
+                    name="content"
+                    required
+                    rows={6}
+                    defaultValue={selectedBlogToEdit?.content || ''}
+                    placeholder="Write your article content here..."
+                    className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-gray-400 uppercase font-bold mb-1">Tags (comma separated)</label>
+                  <input 
+                    type="text" 
+                    name="tags"
+                    defaultValue={selectedBlogToEdit?.tags?.join(', ') || 'UlfahChat, Announcement'}
+                    placeholder="Update, Privacy, Features"
+                    className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-emerald-500 rounded px-3 py-2 text-white outline-none"
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4 border-t border-[#333333]">
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition-all text-xs cursor-pointer"
+                  >
+                    Save Article
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setIsBlogModalOpen(false)}
+                    className="flex-1 bg-[#3c3c3c] hover:bg-[#4c4c4c] text-white font-bold py-2.5 rounded-xl transition-all text-xs cursor-pointer"
                   >
                     Cancel
                   </button>
