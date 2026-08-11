@@ -392,6 +392,14 @@ export default function Auth() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-dvh bg-[#F0F2F5] p-4 font-sans relative overflow-hidden">
+      {/* Top Left Navigation Link */}
+      <a 
+        href="/landing" 
+        className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 hover:bg-white text-emerald-700 text-xs font-semibold shadow-sm border border-emerald-100 transition-all"
+      >
+        ← Home & Blog
+      </a>
+
       {/* Background Pattern */}
       <div 
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
