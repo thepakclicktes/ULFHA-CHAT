@@ -90,6 +90,22 @@
 /* Add the safe area classes manually to header/footer if needed, 
    but for now let's just make sure the build passes */
 
+/* Hide scrollbars cross-browser for smooth clean mobile/desktop UX */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar,
+.scrollbar-none,
+.scrollbar-hide {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
+
 @layer utilities {
   .animate-marquee {
     display: inline-block;
@@ -104,14 +120,6 @@
 
   .pause:hover {
     animation-play-state: paused;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-  .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
   }
 }
 
