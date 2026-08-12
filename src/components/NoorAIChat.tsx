@@ -17,6 +17,7 @@ import {
   Download
 } from 'lucide-react';
 import { cn, resolveApiUrl } from '../utils';
+import { NoorAISkeleton } from './Skeletons';
 
 interface Source {
   title: string;
@@ -407,18 +408,8 @@ export default function NoorAIChat({ onBack }: { onBack: () => void }) {
 
           {/* Typing indicator */}
           {loading && (
-            <div className="flex justify-start items-end gap-2 max-w-[80%] max-w-4xl mx-auto">
-              <div className="w-8 h-8 rounded-full bg-[#00a884] flex items-center justify-center text-white shrink-0 shadow-sm mb-1">
-                <Bot size={16} />
-              </div>
-              <div className="bg-white dark:bg-[#202c33] rounded-2xl rounded-bl-none p-4 shadow-sm border border-emerald-100 dark:border-white/5 flex items-center gap-1.5">
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce [animation-duration:1s]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce [animation-duration:1s] [animation-delay:0.2s]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce [animation-duration:1s] [animation-delay:0.4s]" />
-                </div>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter ml-1">Noor is thinking...</span>
-              </div>
+            <div className="max-w-4xl mx-auto w-full px-2">
+              <NoorAISkeleton />
             </div>
           )}
 
