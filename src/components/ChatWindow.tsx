@@ -13,6 +13,7 @@ import { triggerPushNotification } from '../utils/notifications';
 import { queuePendingMessage, syncPendingMessages } from '../utils/SyncManager';
 import { useTypingIndicator } from '../hooks/useTypingIndicator';
 import { getLocalMessagesForChat, saveLocalMessages } from '../utils/localDB';
+import { NoorAISkeleton, ChatMessageSkeleton } from './Skeletons';
 
 const MessageBubble = React.memo(({ 
   msg, 
@@ -2432,15 +2433,7 @@ const ChatWindow = React.memo(({ chat, currentUser, onBack, appSettings, onStart
 
                 <div className="space-y-2 text-sm text-gray-800 leading-relaxed">
                   {isMetaLoading ? (
-                    <div className="flex flex-col gap-2 py-4">
-                      <div className="flex items-center gap-2 text-xs text-purple-600 font-bold animate-pulse">
-                        <RefreshCw size={14} className="animate-spin" />
-                        <span>Noor AI is researching and formulating response...</span>
-                      </div>
-                      <div className="h-4 bg-gray-100 rounded animate-pulse w-full" />
-                      <div className="h-4 bg-gray-100 rounded animate-pulse w-[90%]" />
-                      <div className="h-4 bg-gray-100 rounded animate-pulse w-[75%]" />
-                    </div>
+                    <NoorAISkeleton />
                   ) : (
                     <div className="whitespace-pre-wrap font-medium">{metaResponseText}</div>
                   )}
