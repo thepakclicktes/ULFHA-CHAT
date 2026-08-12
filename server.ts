@@ -15,6 +15,7 @@ import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, li
 import { GoogleGenAI } from "@google/genai";
 import { initializeApp as initAdminApp, getApps as getAdminApps, getApp as getAdminApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { getMessaging as getAdminMessaging } from 'firebase-admin/messaging';
 
 // Read config safely with fallback to prevent crashes if file is missing/deleted
 let firebaseConfig: any = {
@@ -782,6 +783,28 @@ async function startServer() {
               console.error(`Failed to send webpush to user ${uid}:`, pushErr.message);
             }
           }
+
+          // Also trigger FCM token notification if user registered an FCM token
+          if (userData?.fcmToken) {
+            try {
+              const adminApps = getAdminApps();
+              if (adminApps.length > 0) {
+                const adminMessaging = getAdminMessaging(adminApps[0]);
+                await adminMessaging.send({
+                  token: userData.fcmToken,
+                  notification: {
+                    title: title || 'New Message',
+                    body: body || 'You received a message',
+                  },
+                  data: data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {}
+                });
+                console.log(`Successfully sent FCM token notification to user ${uid}`);
+              }
+            } catch (fcmErr: any) {
+              console.warn(`FCM token notification fallback for user ${uid}:`, fcmErr.message);
+            }
+          }
+
           processedUids.push(uid);
         }
       } catch (err: any) {
