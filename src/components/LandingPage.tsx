@@ -110,6 +110,15 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    // Enable smooth touch scrolling support across touch devices
+    document.body.style.overflowX = 'hidden';
+    document.body.style.webkitOverflowScrolling = 'touch';
+    return () => {
+      document.body.style.overflowX = 'unset';
+    };
+  }, []);
+
+  useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -232,7 +241,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-full bg-[#FAFAFC] text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white overflow-x-hidden box-border">
+    <div className="min-h-screen w-full max-w-full bg-[#FAFAFC] text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white overflow-x-hidden box-border touch-pan-y">
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-xs w-full max-w-full">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-20 flex items-center justify-between box-border">
           <div className="flex items-center gap-2 cursor-pointer shrink-0 min-w-0" onClick={() => scrollToSection('hero-section')}>
@@ -364,7 +373,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                 <span className="truncate">Ulfah Chat 2.0 • Unified Web & Mobile</span>
               </div>
 
-              <h1 className="text-xl xs:text-2xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.2] sm:leading-[1.12] break-words">
+              <h1 className="text-2xl xs:text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.2] sm:leading-[1.12] break-words">
                 Connect Privately. <br className="hidden sm:inline" />
                 <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 bg-clip-text text-transparent">
                   Learn & Share Seamlessly.
@@ -410,7 +419,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
             </div>
 
             <div id="noor-ai-section" className="lg:col-span-5 flex justify-center scroll-mt-24 w-full max-w-full box-border">
-              <div className="relative w-full max-w-sm sm:max-w-md box-border">
+              <div className="relative w-full max-w-sm sm:max-w-md box-border scale-95 sm:scale-100 transition-transform">
                 <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-3xl blur-2xl opacity-25 animate-pulse pointer-events-none" />
                 
                 <div className="relative bg-white rounded-3xl p-3 sm:p-4 shadow-2xl border border-slate-200/90 text-slate-800 overflow-hidden ring-1 ring-slate-100 box-border">
@@ -438,7 +447,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                     </button>
                   </div>
 
-                  <div className="space-y-2.5 p-2.5 sm:p-3 bg-slate-50/70 rounded-2xl border border-slate-200/70 h-[220px] sm:h-[280px] overflow-y-auto shadow-inner scrollbar-thin text-xs box-border">
+                  <div className="space-y-2.5 p-2.5 sm:p-3 bg-slate-50/70 rounded-2xl border border-slate-200/70 h-[220px] sm:h-[280px] overflow-y-auto shadow-inner scrollbar-thin text-xs box-border touch-pan-y">
                     {noorChat.map((msg, idx) => (
                       <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                         {msg.role === 'assistant' ? (
@@ -467,7 +476,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                     )}
                   </div>
 
-                  <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[10px]">
+                  <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[10px] touch-pan-x">
                     <button 
                       onClick={() => handleSendNoor("What is today's Hadith?")}
                       className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-lg whitespace-nowrap font-semibold transition-all cursor-pointer shrink-0"
@@ -536,7 +545,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full box-border">
           <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16">
             <h2 className="text-xs font-extrabold text-emerald-600 tracking-wider uppercase mb-2">Designed For Excellence</h2>
-            <p className="text-lg sm:text-4xl font-extrabold text-slate-900 tracking-tight px-2">
+            <p className="text-xl sm:text-4xl font-extrabold text-slate-900 tracking-tight px-2">
               Everything You Need in One Unified App
             </p>
             <p className="mt-2.5 sm:mt-4 text-slate-600 text-xs sm:text-base px-2">
@@ -840,7 +849,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                 </button>
               </div>
 
-              <div className="p-5 sm:p-8 overflow-y-auto space-y-6 text-slate-800 box-border">
+              <div className="p-5 sm:p-8 overflow-y-auto space-y-6 text-slate-800 box-border touch-pan-y">
                 {selectedBlog.imageUrl && (
                   <div className="rounded-2xl overflow-hidden max-h-60 sm:max-h-72 w-full">
                     <img src={selectedBlog.imageUrl} alt={selectedBlog.title} className="w-full h-full object-cover" />
