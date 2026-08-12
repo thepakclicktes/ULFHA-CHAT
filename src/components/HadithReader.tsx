@@ -11,6 +11,7 @@ import {
   Quote
 } from 'lucide-react';
 import { cn } from '../utils';
+import { LibraryItemSkeleton } from './Skeletons';
 
 interface HadithBook {
   id: string;
@@ -161,10 +162,7 @@ export default function HadithReader({ onBack }: { onBack: () => void }) {
               className="p-4 space-y-3"
             >
               {loading ? (
-                 <div className="flex flex-col items-center justify-center py-20 gap-4">
-                    <div className="w-10 h-10 border-4 border-[#00a884] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[#667781] Urdu">ابواب لوڈ ہو رہے ہیں...</p>
-                 </div>
+                <LibraryItemSkeleton count={6} />
               ) : Object.entries(sections).map(([id, title]) => (
                 <button
                   key={id}
@@ -190,9 +188,7 @@ export default function HadithReader({ onBack }: { onBack: () => void }) {
               className="p-4 space-y-6 pb-20"
             >
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-4">
-                  <div className="w-10 h-10 border-4 border-[#00a884] border-t-transparent rounded-full animate-spin" />
-                </div>
+                <LibraryItemSkeleton count={6} />
               ) : hadiths.map((h, i) => (
                 <div key={i} className="bg-white dark:bg-[#202c33] p-6 rounded-[32px] shadow-sm border border-gray-100 dark:border-white/5 space-y-6 relative group transform hover:scale-[1.01] transition-transform">
                   <div className="flex justify-between items-center bg-[#f0f2f5] dark:bg-[#2a3942] -mx-6 -mt-6 p-4 px-6 rounded-t-[32px]">
