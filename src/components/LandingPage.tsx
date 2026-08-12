@@ -110,6 +110,17 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
     const sections: Array<{ id: string; tab: 'home' | 'noor-ai' | 'features' | 'library' | 'blog' }> = [
       { id: 'hero-section', tab: 'home' },
       { id: 'noor-ai-section', tab: 'noor-ai' },
@@ -221,16 +232,16 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#FAFAFC] text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white scroll-smooth overflow-x-hidden">
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0" onClick={() => scrollToSection('hero-section')}>
-            <div className="w-9 h-9 sm:w-11 sm:h-11 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-md shadow-emerald-600/20 ring-2 sm:ring-4 ring-emerald-50 shrink-0">
-              <MessageCircle size={20} className="fill-white/20 sm:w-6 sm:h-6" />
+    <div className="min-h-screen w-full max-w-full bg-[#FAFAFC] text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white overflow-x-hidden box-border">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-xs w-full max-w-full">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-20 flex items-center justify-between box-border">
+          <div className="flex items-center gap-2 cursor-pointer shrink-0 min-w-0" onClick={() => scrollToSection('hero-section')}>
+            <div className="w-8 h-8 sm:w-11 sm:h-11 bg-emerald-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-md shadow-emerald-600/20 shrink-0">
+              <MessageCircle size={18} className="fill-white/20 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <span className="text-base sm:text-xl font-extrabold tracking-tight text-slate-900 font-display block leading-none">Ulfah Chat</span>
-              <span className="text-[8px] sm:text-[10px] font-medium text-emerald-600 tracking-wider uppercase block mt-0.5">Next-Gen Ecosystem</span>
+            <div className="min-w-0">
+              <span className="text-sm sm:text-xl font-extrabold tracking-tight text-slate-900 font-display block leading-none truncate">Ulfah Chat</span>
+              <span className="text-[8px] sm:text-[10px] font-medium text-emerald-600 tracking-wider uppercase block mt-0.5 truncate">Ecosystem</span>
             </div>
           </div>
 
@@ -273,21 +284,22 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
             </button>
           </nav>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={onOpenApp}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full font-bold text-xs sm:text-sm shadow-md sm:shadow-lg shadow-emerald-600/25 transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/25 transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
-              <LogIn size={15} className="sm:w-[18px] sm:h-[18px]" />
-              <span>Sign In / Launch</span>
+              <LogIn size={14} className="sm:w-[18px] sm:h-[18px]" />
+              <span className="hidden xs:inline">Sign In / Launch</span>
+              <span className="xs:hidden">Launch</span>
             </button>
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+              className="md:hidden p-1.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors shrink-0"
               aria-label="Toggle Menu"
             >
-              {mobileMenuOpen ? <X size={20} /> : <Layers size={20} />}
+              {mobileMenuOpen ? <X size={18} /> : <Layers size={18} />}
             </button>
           </div>
         </div>
@@ -298,7 +310,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-3 shadow-lg"
+              className="md:hidden bg-white border-b border-slate-200 px-4 py-4 space-y-3 shadow-lg max-h-[80vh] overflow-y-auto w-full box-border"
             >
               <button 
                 onClick={() => scrollToSection('hero-section')} 
@@ -341,32 +353,32 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
       </header>
 
       {/* Hero Section */}
-      <section id="hero-section" className="relative overflow-hidden pt-6 pb-10 sm:py-20 lg:py-28 bg-gradient-to-b from-white via-slate-50/50 to-[#FAFAFC]">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-emerald-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
+      <section id="hero-section" className="relative overflow-hidden pt-6 pb-10 sm:py-20 lg:py-28 bg-gradient-to-b from-white via-slate-50/50 to-[#FAFAFC] w-full max-w-full box-border">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] sm:w-[600px] h-[250px] sm:h-[600px] bg-emerald-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full box-border">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-8 items-center">
-            <div className="lg:col-span-7 space-y-4 sm:space-y-8 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 px-3 py-1 sm:px-4 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold text-emerald-800 shadow-xs">
+            <div className="lg:col-span-7 space-y-4 sm:space-y-8 text-center lg:text-left w-full max-w-full box-border">
+              <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 px-3 py-1 sm:px-4 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold text-emerald-800 shadow-xs max-w-full">
                 <Sparkles size={13} className="text-emerald-600 animate-spin shrink-0" />
-                <span>Ulfah Chat 2.0 • Unified Web & Mobile</span>
+                <span className="truncate">Ulfah Chat 2.0 • Unified Web & Mobile</span>
               </div>
 
-              <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.2] sm:leading-[1.12]">
+              <h1 className="text-xl xs:text-2xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.2] sm:leading-[1.12] break-words">
                 Connect Privately. <br className="hidden sm:inline" />
                 <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-800 bg-clip-text text-transparent">
                   Learn & Share Seamlessly.
                 </span>
               </h1>
 
-              <p className="text-sm sm:text-lg text-slate-600 max-w-2xl leading-relaxed mx-auto lg:mx-0">
+              <p className="text-xs sm:text-lg text-slate-600 max-w-2xl leading-relaxed mx-auto lg:mx-0 break-words">
                 Experience ultra-fast real-time messaging, end-to-end privacy, an extensive offline Islamic library, AI assistance with Noor AI, and global community broadcasts — all in one clean platform.
               </p>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-1">
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-1 w-full">
                 <button
                   onClick={onOpenApp}
-                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-2xl font-bold text-sm sm:text-base shadow-xl shadow-emerald-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2.5 cursor-pointer"
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-2xl font-bold text-xs sm:text-base shadow-xl shadow-emerald-600/30 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2.5 cursor-pointer box-border"
                 >
                   <span>Open Ulfah Chat App</span>
                   <ArrowRight size={18} />
@@ -374,9 +386,9 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
 
                 <button
                   onClick={() => scrollToSection('blogs-section')}
-                  className="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 px-5 py-3 sm:px-7 sm:py-4 rounded-2xl font-bold text-sm sm:text-base shadow-sm transition-all hover:border-slate-300 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 px-5 py-3 sm:px-7 sm:py-4 rounded-2xl font-bold text-xs sm:text-base shadow-sm transition-all hover:border-slate-300 flex items-center justify-center gap-2 cursor-pointer box-border"
                 >
-                  <BookOpen size={16} className="text-slate-500" />
+                  <BookOpen size={16} className="text-slate-500 shrink-0" />
                   <span>Read Blog Articles</span>
                 </button>
               </div>
@@ -397,23 +409,23 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
               </div>
             </div>
 
-            <div id="noor-ai-section" className="lg:col-span-5 flex justify-center scroll-mt-24">
-              <div className="relative w-full max-w-sm sm:max-w-md">
+            <div id="noor-ai-section" className="lg:col-span-5 flex justify-center scroll-mt-24 w-full max-w-full box-border">
+              <div className="relative w-full max-w-sm sm:max-w-md box-border">
                 <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-3xl blur-2xl opacity-25 animate-pulse pointer-events-none" />
                 
-                <div className="relative bg-white rounded-3xl p-3 sm:p-4 shadow-2xl border border-slate-200/90 text-slate-800 overflow-hidden ring-1 ring-slate-100">
+                <div className="relative bg-white rounded-3xl p-3 sm:p-4 shadow-2xl border border-slate-200/90 text-slate-800 overflow-hidden ring-1 ring-slate-100 box-border">
                   <div className="bg-slate-50/90 rounded-2xl p-2.5 sm:p-3 mb-2.5 flex items-center justify-between border border-slate-200/80 shadow-xs">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600 rounded-2xl flex items-center justify-center text-white font-bold shadow-md shadow-emerald-600/20 ring-2 ring-emerald-100 shrink-0">
                         <MessageCircle size={16} className="fill-white/20 sm:w-5 sm:h-5" />
                       </div>
-                      <div>
-                        <div className="font-extrabold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
-                          <span>Noor AI Assistant</span>
-                          <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-black rounded-full uppercase">Live</span>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5 truncate">
+                          <span className="truncate">Noor AI Assistant</span>
+                          <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-black rounded-full uppercase shrink-0">Live</span>
                         </div>
                         <div className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
                           <span>Interactive</span>
                         </div>
                       </div>
@@ -426,19 +438,19 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                     </button>
                   </div>
 
-                  <div className="space-y-2.5 p-2.5 sm:p-3 bg-slate-50/70 rounded-2xl border border-slate-200/70 h-[230px] sm:h-[280px] overflow-y-auto shadow-inner scrollbar-thin text-xs">
+                  <div className="space-y-2.5 p-2.5 sm:p-3 bg-slate-50/70 rounded-2xl border border-slate-200/70 h-[220px] sm:h-[280px] overflow-y-auto shadow-inner scrollbar-thin text-xs box-border">
                     {noorChat.map((msg, idx) => (
                       <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                         {msg.role === 'assistant' ? (
-                          <div className="bg-white text-slate-800 p-2.5 sm:p-3 rounded-2xl rounded-tl-xs max-w-[92%] leading-relaxed shadow-xs border border-slate-200/80">
+                          <div className="bg-white text-slate-800 p-2.5 sm:p-3 rounded-2xl rounded-tl-xs max-w-[92%] leading-relaxed shadow-xs border border-slate-200/80 box-border break-words">
                             <div className="text-[10px] font-extrabold text-emerald-700 mb-1 flex items-center gap-1">
-                              <Sparkles size={11} className="text-emerald-500" />
+                              <Sparkles size={11} className="text-emerald-500 shrink-0" />
                               <span>Noor AI Assistant</span>
                             </div>
                             <div className="whitespace-pre-line text-slate-700">{msg.content}</div>
                           </div>
                         ) : (
-                          <div className="bg-emerald-600 text-white p-2.5 sm:p-3 rounded-2xl rounded-tr-xs max-w-[85%] leading-relaxed shadow-sm font-medium">
+                          <div className="bg-emerald-600 text-white p-2.5 sm:p-3 rounded-2xl rounded-tr-xs max-w-[85%] leading-relaxed shadow-sm font-medium box-border break-words">
                             {msg.content}
                           </div>
                         )}
@@ -448,7 +460,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                     {isNoorLoading && (
                       <div className="flex items-start">
                         <div className="bg-white text-slate-800 p-2.5 rounded-2xl rounded-tl-xs shadow-xs border border-slate-200/80 flex items-center gap-2">
-                          <Sparkles size={12} className="text-emerald-600 animate-spin" />
+                          <Sparkles size={12} className="text-emerald-600 animate-spin shrink-0" />
                           <span className="text-slate-500 font-medium text-[11px]">Noor AI is thinking...</span>
                         </div>
                       </div>
@@ -494,7 +506,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                       value={noorInput}
                       onChange={(e) => setNoorInput(e.target.value)}
                       placeholder="Ask Noor AI anything..."
-                      className="flex-1 bg-slate-50 border border-slate-200/90 focus:bg-white focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition-all"
+                      className="flex-1 bg-slate-50 border border-slate-200/90 focus:bg-white focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition-all min-w-0"
                     />
                     <button 
                       type="submit"
@@ -506,9 +518,9 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                     </button>
                   </form>
 
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-slate-500">Full voice & chat inside app</span>
-                    <button onClick={onOpenApp} className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shadow-xs cursor-pointer">
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                    <span className="font-medium text-slate-500 truncate mr-2">Full voice & chat inside app</span>
+                    <button onClick={onOpenApp} className="bg-slate-900 hover:bg-slate-800 text-white px-2.5 py-1 rounded-lg font-bold transition-all shadow-xs cursor-pointer shrink-0">
                       Launch Now
                     </button>
                   </div>
@@ -520,20 +532,20 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
       </section>
 
       {/* Features Section */}
-      <section id="features-section" className="py-12 sm:py-20 bg-white border-y border-slate-200/80 scroll-mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="features-section" className="py-12 sm:py-20 bg-white border-y border-slate-200/80 scroll-mt-20 w-full max-w-full box-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full box-border">
           <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16">
             <h2 className="text-xs font-extrabold text-emerald-600 tracking-wider uppercase mb-2">Designed For Excellence</h2>
-            <p className="text-xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            <p className="text-lg sm:text-4xl font-extrabold text-slate-900 tracking-tight px-2">
               Everything You Need in One Unified App
             </p>
-            <p className="mt-2.5 sm:mt-4 text-slate-600 text-xs sm:text-base">
+            <p className="mt-2.5 sm:mt-4 text-slate-600 text-xs sm:text-base px-2">
               Built using standard high-speed cloud infrastructure to ensure zero lag, instant notifications, and complete security.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
-            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8 w-full">
+            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group box-border">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 text-emerald-700 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
                 <MessageCircle size={22} className="sm:w-6 sm:h-6" />
               </div>
@@ -543,7 +555,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
               </p>
             </div>
 
-            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group">
+            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group box-border">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 text-emerald-700 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
                 <BookOpen size={22} className="sm:w-6 sm:h-6" />
               </div>
@@ -553,7 +565,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
               </p>
             </div>
 
-            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group">
+            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group box-border">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 text-emerald-700 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
                 <Sparkles size={22} className="sm:w-6 sm:h-6" />
               </div>
@@ -563,7 +575,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
               </p>
             </div>
 
-            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group">
+            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group box-border">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 text-emerald-700 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
                 <Users size={22} className="sm:w-6 sm:h-6" />
               </div>
@@ -573,7 +585,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
               </p>
             </div>
 
-            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group">
+            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group box-border">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 text-emerald-700 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
                 <Phone size={22} className="sm:w-6 sm:h-6" />
               </div>
@@ -583,7 +595,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
               </p>
             </div>
 
-            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group">
+            <div className="bg-[#FAFAFC] p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/80 hover:border-emerald-300 transition-all group box-border">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 text-emerald-700 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
                 <ShieldCheck size={22} className="sm:w-6 sm:h-6" />
               </div>
@@ -597,14 +609,14 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
       </section>
 
       {/* Library Section */}
-      <section id="library-section" className="py-12 sm:py-16 bg-emerald-900 text-white relative overflow-hidden scroll-mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <section id="library-section" className="py-12 sm:py-16 bg-emerald-900 text-white relative overflow-hidden scroll-mt-20 w-full max-w-full box-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full box-border">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div>
               <span className="bg-emerald-800 text-emerald-200 text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                 Spiritual Growth & Knowledge
               </span>
-              <h2 className="text-xl sm:text-4xl font-extrabold tracking-tight mt-3 mb-3 sm:mb-6">
+              <h2 className="text-xl sm:text-4xl font-extrabold tracking-tight mt-3 mb-3 sm:mb-6 leading-snug">
                 Islamic Resources Always at Your Fingertips
               </h2>
               <p className="text-emerald-100 text-xs sm:text-base leading-relaxed mb-5 sm:mb-8">
@@ -620,22 +632,22 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="bg-emerald-800/80 p-4 sm:p-5 rounded-2xl border border-emerald-700/50">
+              <div className="bg-emerald-800/80 p-4 sm:p-5 rounded-2xl border border-emerald-700/50 box-border">
                 <BookOpen className="text-emerald-300 mb-2.5 sm:mb-3" size={24} />
                 <h4 className="font-bold text-sm sm:text-base mb-1">Quran Reader</h4>
                 <p className="text-[11px] sm:text-xs text-emerald-200">Surah recitation, verse-by-verse translation & audio.</p>
               </div>
-              <div className="bg-emerald-800/80 p-4 sm:p-5 rounded-2xl border border-emerald-700/50">
+              <div className="bg-emerald-800/80 p-4 sm:p-5 rounded-2xl border border-emerald-700/50 box-border">
                 <Feather className="text-emerald-300 mb-2.5 sm:mb-3" size={24} />
                 <h4 className="font-bold text-sm sm:text-base mb-1">Authentic Hadiths</h4>
                 <p className="text-[11px] sm:text-xs text-emerald-200">Bukhari, Muslim, and major compilations with search.</p>
               </div>
-              <div className="bg-emerald-800/80 p-4 sm:p-5 rounded-2xl border border-emerald-700/50">
+              <div className="bg-emerald-800/80 p-4 sm:p-5 rounded-2xl border border-emerald-700/50 box-border">
                 <Clock className="text-emerald-300 mb-2.5 sm:mb-3" size={24} />
                 <h4 className="font-bold text-sm sm:text-base mb-1">Prayer & Qibla</h4>
                 <p className="text-[11px] sm:text-xs text-emerald-200">Accurate prayer times & compass direction locator.</p>
               </div>
-              <div className="bg-emerald-800/80 p-4 sm:p-5 rounded-2xl border border-emerald-700/50">
+              <div className="bg-emerald-800/80 p-4 sm:p-5 rounded-2xl border border-emerald-700/50 box-border">
                 <Heart className="text-emerald-300 mb-2.5 sm:mb-3" size={24} />
                 <h4 className="font-bold text-sm sm:text-base mb-1">Tasbeeh & Duas</h4>
                 <p className="text-[11px] sm:text-xs text-emerald-200">Interactive dhikr counter with daily supplications.</p>
@@ -646,8 +658,8 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
       </section>
 
       {/* Blogs & Articles Section */}
-      <section id="blogs-section" className="py-12 sm:py-20 bg-[#FAFAFC] scroll-mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="blogs-section" className="py-12 sm:py-20 bg-[#FAFAFC] scroll-mt-20 w-full max-w-full box-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full box-border">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 sm:mb-12">
             <div>
               <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">
@@ -669,12 +681,12 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search articles & topics..."
-                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-xs transition-all"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-xs transition-all box-border"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 sm:mb-8 no-scrollbar touch-pan-x">
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 sm:mb-8 no-scrollbar touch-pan-x w-full">
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -703,12 +715,12 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
               </button>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8 w-full">
               {filteredBlogs.map((blog) => (
                 <div
                   key={blog.id}
                   onClick={() => setSelectedBlog(blog)}
-                  className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl hover:border-emerald-300 transition-all duration-300 flex flex-col cursor-pointer group"
+                  className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-xl hover:border-emerald-300 transition-all duration-300 flex flex-col cursor-pointer group box-border"
                 >
                   <div className="relative h-44 sm:h-48 bg-slate-100 overflow-hidden">
                     <img
@@ -743,11 +755,11 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                     </div>
 
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         {blog.authorAvatar ? (
-                          <img src={blog.authorAvatar} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover" alt="" />
+                          <img src={blog.authorAvatar} className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover shrink-0" alt="" />
                         ) : (
-                          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">
                             {blog.author[0]}
                           </div>
                         )}
@@ -766,7 +778,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
         </div>
       </section>
 
-      <section className="py-12 sm:py-16 bg-slate-900 text-white">
+      <section className="py-12 sm:py-16 bg-slate-900 text-white w-full max-w-full box-border">
         <div className="max-w-5xl mx-auto px-4 text-center space-y-4 sm:space-y-6">
           <h2 className="text-xl sm:text-4xl font-extrabold tracking-tight">
             Ready to experience Ulfah Chat?
@@ -786,14 +798,14 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
         </div>
       </section>
 
-      <footer className="bg-slate-950 text-slate-400 text-xs py-8 sm:py-10 border-t border-slate-800">
+      <footer className="bg-slate-950 text-slate-400 text-xs py-8 sm:py-10 border-t border-slate-800 w-full max-w-full box-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row items-center gap-2">
-            <div className="w-6 h-6 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+            <div className="w-6 h-6 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0">
               U
             </div>
             <span className="font-bold text-white text-sm">Ulfah Chat</span>
-            <span className="text-slate-400 font-medium">© 2026 abdulrehmanhabibkpk & team the pak hackers. All rights reserved.</span>
+            <span className="text-slate-400 font-medium text-[11px] sm:text-xs">© 2026 abdulrehmanhabibkpk & team the pak hackers. All rights reserved.</span>
           </div>
 
           <div className="flex items-center gap-6">
@@ -807,12 +819,12 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
       {/* Blog Details Modal */}
       <AnimatePresence>
         {selectedBlog && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm box-border">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden relative"
+              className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden relative box-border"
             >
               <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-600">
@@ -828,7 +840,7 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                 </button>
               </div>
 
-              <div className="p-5 sm:p-8 overflow-y-auto space-y-6 text-slate-800">
+              <div className="p-5 sm:p-8 overflow-y-auto space-y-6 text-slate-800 box-border">
                 {selectedBlog.imageUrl && (
                   <div className="rounded-2xl overflow-hidden max-h-60 sm:max-h-72 w-full">
                     <img src={selectedBlog.imageUrl} alt={selectedBlog.title} className="w-full h-full object-cover" />
@@ -840,12 +852,12 @@ export default function LandingPage({ onOpenApp }: LandingPageProps) {
                 </h1>
 
                 <div className="flex items-center gap-3 pb-4 border-b border-slate-100 text-xs text-slate-500">
-                  <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                  <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
                     {selectedBlog.author ? selectedBlog.author[0] : 'U'}
                   </div>
-                  <div>
-                    <div className="font-bold text-slate-900 text-sm">{selectedBlog.author}</div>
-                    <div>{selectedBlog.authorRole || 'Contributor'} • {selectedBlog.date}</div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-900 text-sm truncate">{selectedBlog.author}</div>
+                    <div className="truncate">{selectedBlog.authorRole || 'Contributor'} • {selectedBlog.date}</div>
                   </div>
                 </div>
 
