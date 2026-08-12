@@ -13,6 +13,7 @@ import {
   getAllCachedUserProfiles, 
   getAllCachedGroupsAndChannels 
 } from '../utils/localDB';
+import { ChatListSkeleton } from './Skeletons';
 
 const ChatSkeleton = () => (
   <div className="flex items-center p-3 border-b border-[#F5F6F6] animate-pulse">
@@ -1370,7 +1371,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
 
         <AnimatePresence mode="popLayout">
           {isLoading ? (
-            Array.from({ length: 10 }).map((_, i) => <ChatSkeleton key={i} />)
+            <ChatListSkeleton count={8} />
           ) : (
             <div key="chat-list-content">
               {/* Back header for archived view */}
