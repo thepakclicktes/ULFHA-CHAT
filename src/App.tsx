@@ -29,6 +29,7 @@ import firebaseConfig from '../firebase-applet-config.json';
 import { ShieldAlert, Phone, PhoneOff, Mail, RefreshCw, LogOut, Clock, Video , Lock, MessageCircle, Loader2 } from 'lucide-react';
 import { cn, resolveApiUrl } from './utils';
 import Header from './components/Header';
+import { FullAppSkeleton } from './components/Skeletons';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
 import { Toaster, toast } from 'sonner';
@@ -850,28 +851,10 @@ useEffect(() => {
   };
 
   if (loading && !profile) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#F0F2F5] dark:bg-[#111B21] transition-colors duration-500">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative"
-        >
-          <div className="w-16 h-16 border-4 border-[#00A884]/20 border-t-[#00A884] rounded-full animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <img src="/logo.png" className="w-8 h-8 opacity-20" alt="" />
-          </div>
-        </motion.div>
-        <p className="mt-4 text-[#667781] text-sm font-medium Urdu animate-pulse">درخواست پر کارروائی ہو رہی ہے...</p>
-      </div>
-    );
+    return <FullAppSkeleton />;
   }
 
-  const LoadingFallback = () => (
-    <div className="h-full w-full flex items-center justify-center bg-transparent">
-      <Loader2 className="w-8 h-8 text-[#00A884] animate-spin" />
-    </div>
-  );
+  const LoadingFallback = () => <FullAppSkeleton />;
 
   const path = location.pathname;
 
@@ -921,7 +904,7 @@ useEffect(() => {
   const isAdmin = profile.role === 'admin' || user.email === 'abdulrehmanhabib.com@gmail.com' || user.email === 'teemabdulrehman.com@gmail.com';
   if (appSettings?.isMaintenanceMode && !isAdmin) {
     return (
-      <div className="h-dvh w-full flex flex-col items-center justify-center bg-[#111B21] text-white p-6 text-center">
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-[#111B21] text-white p-6 text-center">
         <ShieldAlert size={64} className="text-red-500 mb-6 animate-pulse" />
         <h1 className="text-3xl font-bold mb-4">System Under Maintenance</h1>
         <p className="text-[#667781] max-w-md leading-relaxed">
@@ -938,7 +921,7 @@ useEffect(() => {
   const isBypassedFromBan = user.email === 'abdulrehmanhabib.com@gmail.com' || user.email === 'teemabdulrehman.com@gmail.com';
   if (profile.isBanned && !isBypassedFromBan) {
     return (
-      <div className="flex items-center justify-center h-dvh bg-[#F0F2F5]">
+      <div className="flex items-center justify-center h-screen bg-[#F0F2F5]">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Account Banned</h1>
           <p className="text-[#54656F]">Your account has been suspended for violating our terms of service.</p>
@@ -952,7 +935,7 @@ useEffect(() => {
   
   if (!isAppUnlocked && profile?.userSettings?.appLockEnabled) {
     return (
-      <div className="flex flex-col items-center justify-center h-dvh bg-[#F0F2F5] animate-in fade-in zoom-in duration-500">
+      <div className="flex flex-col items-center justify-center h-screen bg-[#F0F2F5] animate-in fade-in zoom-in duration-500">
         <div className="w-24 h-24 bg-gray-200 rounded-full mb-8 flex items-center justify-center shadow-inner overflow-hidden border-4 border-white">
           <img 
             src={resolveLogo(appSettings?.appLogoUrl)} 
@@ -983,7 +966,7 @@ useEffect(() => {
   }
 return (
     <div 
-      className={cn(activeTab === 'admin' ? "w-full h-dvh flex flex-col bg-[#1e1e1e] relative overflow-hidden" : "layout-shield relative")}
+      className={cn(activeTab === 'admin' ? "w-full h-screen flex flex-col bg-[#1e1e1e] relative overflow-hidden" : "layout-shield relative")}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
