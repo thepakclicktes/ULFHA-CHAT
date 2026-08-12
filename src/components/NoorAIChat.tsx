@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
-  Send, 
+  Send,  
   Sparkles, 
   ExternalLink, 
   AlertTriangle, 
