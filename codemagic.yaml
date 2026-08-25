@@ -8,7 +8,6 @@ workflows:
     instance_type: mac_mini_m1
     environment:
       java: 17
-      android_ndk: 25.2.9519653
     triggering:
       events:
         - push
