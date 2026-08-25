@@ -391,7 +391,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-dvh bg-[#F0F2F5] p-4 font-sans relative overflow-hidden">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#F0F2F5] p-4 font-sans relative overflow-hidden">
       {/* Top Left Navigation Link */}
       <a 
         href="/landing" 

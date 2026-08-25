@@ -36,7 +36,13 @@ export function useAuth() {
   useEffect(() => {
     let unsubProfile: (() => void) | null = null;
 
+    // Safety timeout to ensure loading never gets stuck indefinitely
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 2500);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(safetyTimer);
       setUser(firebaseUser);
       
       if (unsubProfile) {

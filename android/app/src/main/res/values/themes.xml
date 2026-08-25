@@ -1,0 +1,13 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="Base.Theme.UlfahChat" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <item name="colorPrimary">#00a884</item>
+        <item name="colorPrimaryDark">#008069</item>
+        <item name="colorAccent">#059669</item>
+        <item name="android:statusBarColor">#FAFAFC</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="Theme.UlfahChat" parent="Base.Theme.UlfahChat" />
+</resources>
