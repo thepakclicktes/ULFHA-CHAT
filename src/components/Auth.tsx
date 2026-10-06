@@ -15,6 +15,7 @@ import { getDocWithRetry, getDocsWithRetry } from '../utils/firestoreRetry';
 import { LogIn, Mail, Lock, User, ArrowRight, Github, ImageIcon, AtSign, Eye, EyeOff, Key, ShieldCheck, Smartphone, CheckCircle2, Chrome } from 'lucide-react';
 import { cn } from '../utils';
 import { AppSettings } from '../types';
+import { EMBEDDED_LOGO_DATA_URI } from '../utils/logoData';
 
 export default function Auth() {
   // Current main tab: 'google' | 'anonymous' | 'email_password'
@@ -39,11 +40,9 @@ export default function Auth() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
 
-  const DEFAULT_LOGO = '/logo.png';
-
   const resolveLogo = (url?: string) => {
-    if (!url || url.includes('mosque.png') || url.includes('icons8.com') || url.includes('encrypted-tbn0.gstatic.com')) {
-      return DEFAULT_LOGO;
+    if (!url || typeof url !== 'string' || !url.trim() || url.includes('mosque.png') || url.includes('icons8.com') || url.includes('encrypted-tbn0.gstatic.com')) {
+      return EMBEDDED_LOGO_DATA_URI;
     }
     return url;
   };
@@ -392,14 +391,6 @@ export default function Auth() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#F0F2F5] p-4 font-sans relative overflow-hidden">
-      {/* Top Left Navigation Link */}
-      <a 
-        href="/landing" 
-        className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 hover:bg-white text-emerald-700 text-xs font-semibold shadow-sm border border-emerald-100 transition-all"
-      >
-        ← Home & Blog
-      </a>
-
       {/* Background Pattern */}
       <div 
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
@@ -411,13 +402,16 @@ export default function Auth() {
       ></div>
 
       <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-md w-full border border-gray-100 z-10">
-        <div className="w-20 h-20 rounded-full mb-4 flex items-center justify-center shadow-lg ring-4 ring-[#00A884]/10 transition-transform hover:scale-110 overflow-hidden">
+        <div className="w-20 h-20 rounded-full mb-4 flex items-center justify-center shadow-lg ring-4 ring-[#00A884]/10 transition-transform hover:scale-110 overflow-hidden bg-white">
           <img 
             id="app_logo"
             src={resolveLogo(appSettings?.appLogoUrl)} 
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = EMBEDDED_LOGO_DATA_URI;
+            }}
             className="w-full h-full object-cover"
             alt="Ulfah Chat Logo"
-            referrerPolicy="no-referrer"
           />
         </div>
         <h1 className="text-3xl font-bold text-[#111B21] mb-1">Ulfah Chat</h1>
@@ -611,14 +605,6 @@ export default function Auth() {
                           Sign In
                         </>
                       )}
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => performLogin('demo@gmail.com', 'admin')}
-                      className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-all shadow-sm mt-4 flex items-center justify-center gap-2"
-                    >
-                      Demo Login (Test)
                     </button>
                   </form>
                 ) : (

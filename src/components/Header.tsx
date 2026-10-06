@@ -7,6 +7,7 @@ import { updatePassword, deleteUser } from 'firebase/auth';
 import { UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils';
+import { EMBEDDED_LOGO_DATA_URI } from '../utils/logoData';
 
 interface HeaderProps {
   profile: UserProfile;
@@ -15,10 +16,9 @@ interface HeaderProps {
 }
 
 const Header = React.memo(({ profile, onSearch, logoUrl }: HeaderProps) => {
-  const DEFAULT_LOGO = '/logo.png';
   const resolveLogo = (url?: string) => {
-    if (!url || url.includes('mosque.png') || url.includes('icons8.com') || url.includes('encrypted-tbn0.gstatic.com')) {
-      return DEFAULT_LOGO;
+    if (!url || typeof url !== 'string' || !url.trim() || url.includes('mosque.png') || url.includes('icons8.com') || url.includes('encrypted-tbn0.gstatic.com')) {
+      return EMBEDDED_LOGO_DATA_URI;
     }
     return url;
   };
@@ -108,8 +108,11 @@ const Header = React.memo(({ profile, onSearch, logoUrl }: HeaderProps) => {
 
   const handleLogout = async () => {
     try {
+      localStorage.setItem('ulfha_logged_out', 'true');
+      localStorage.removeItem('ulfha_user_credential');
+      localStorage.removeItem('ulfha_user_profile');
       await auth.signOut();
-      window.location.href = '/';
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -254,12 +257,15 @@ const Header = React.memo(({ profile, onSearch, logoUrl }: HeaderProps) => {
                 exit={{ opacity: 0, x: -20 }}
                 className="flex items-center gap-2"
               >
-                <div className="w-8 h-8 rounded-full overflow-hidden shadow-sm">
+                <div className="w-8 h-8 rounded-full overflow-hidden shadow-sm bg-white">
                   <img 
                     src={resolveLogo(logoUrl)} 
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = EMBEDDED_LOGO_DATA_URI;
+                    }}
                     className="w-full h-full object-cover"
                     alt="Logo"
-                    referrerPolicy="no-referrer"
                   />
                 </div>
                 <h1 className="text-[22px] font-bold text-[#25D366] dark:text-emerald-400 tracking-tight">

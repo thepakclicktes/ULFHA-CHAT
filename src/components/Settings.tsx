@@ -1099,8 +1099,11 @@ const cycleVisibility = (key: string, current: string) => {
         title="Delete account" 
         onClick={() => {
           if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+            localStorage.setItem('ulfha_logged_out', 'true');
+            localStorage.removeItem('ulfha_user_credential');
+            localStorage.removeItem('ulfha_user_profile');
             auth.signOut();
-            navigate('/');
+            navigate('/login');
           }
         }} 
       />

@@ -14,6 +14,7 @@ import {
   getAllCachedGroupsAndChannels 
 } from '../utils/localDB';
 import { ChatListSkeleton } from './Skeletons';
+import { EMBEDDED_LOGO_DATA_URI } from '../utils/logoData';
 
 const ChatSkeleton = () => (
   <div className="flex items-center p-3 border-b border-[#F5F6F6] animate-pulse">
@@ -1138,7 +1139,7 @@ export default function ChatList({ onSelectChat, selectedChat, searchQuery = '',
     displayName: 'Noor AI',
     username: 'noorai',
     isNoorAI: true,
-    photoURL: appLogoUrl || '/logo.png',
+    photoURL: appLogoUrl || EMBEDDED_LOGO_DATA_URI,
     bio: '✨ Online Islamic Assistant - Talk to me!',
     isOnline: true,
     lastSeen: new Date().toISOString()

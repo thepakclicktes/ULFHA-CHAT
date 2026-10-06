@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Auth from './components/Auth';
-import LandingPage from './components/LandingPage';
 import ProfileSetupModal from './components/ProfileSetupModal';
 import Sidebar from './components/Sidebar';
 import ChatList from './components/ChatList';
@@ -19,6 +18,7 @@ const VoiceCall = lazy(() => import('./components/VoiceCall'));
 const NoorAIChat = lazy(() => import('./components/NoorAIChat'));
 
 import ReplyBridge from './components/ReplyBridge';
+import PushPrompt from './push/PushPrompt';
 import { UserProfile, AppSettings, Announcement, Call } from './types';
 import { doc, setDoc, onSnapshot, collection, query, orderBy, where, updateDoc, limit, getDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
@@ -33,13 +33,13 @@ import { FullAppSkeleton } from './components/Skeletons';
 import { motion, AnimatePresence } from 'motion/react';
 import { syncPendingMessages } from './utils/SyncManager';
 import { Toaster, toast } from 'sonner';
+import { EMBEDDED_LOGO_DATA_URI, DEFAULT_APP_LOGO } from './utils/logoData';
 
 const DEFAULT_VAPID_KEY = 'BARsQajcr4y6I9nCfTXGorq433uPL-sAYxTtRlDQbkANR_LSc993JKKlev2TrxjHX4rE_3f4tBVRKlZ70__I708';
-const DEFAULT_APP_LOGO = '/logo.png'; // Improved high-quality fallback logo placeholder
 
 const resolveLogo = (url?: string) => {
-  if (!url || url.includes('mosque.png') || url.includes('icons8.com') || url.includes('encrypted-tbn0.gstatic.com')) {
-    return DEFAULT_APP_LOGO;
+  if (!url || typeof url !== 'string' || !url.trim() || url.includes('mosque.png') || url.includes('icons8.com') || url.includes('encrypted-tbn0.gstatic.com')) {
+    return EMBEDDED_LOGO_DATA_URI;
   }
   return url;
 };
@@ -871,14 +871,9 @@ useEffect(() => {
     return (
       <Routes>
         <Route path="/login" element={<Auth />} />
-        <Route path="/landing" element={<LandingPage onOpenApp={() => navigate('/login')} />} />
-        <Route path="*" element={<LandingPage onOpenApp={() => navigate('/login')} />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
-  }
-
-  if (path === '/landing') {
-    return <LandingPage onOpenApp={() => navigate('/')} />;
   }
 
   // Profile Setup popup if logged in with phone number but setup is incomplete
@@ -939,9 +934,12 @@ useEffect(() => {
         <div className="w-24 h-24 bg-gray-200 rounded-full mb-8 flex items-center justify-center shadow-inner overflow-hidden border-4 border-white">
           <img 
             src={resolveLogo(appSettings?.appLogoUrl)} 
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = EMBEDDED_LOGO_DATA_URI;
+            }}
             className="w-full h-full object-cover"
             alt="Ulfah Chat Logo"
-            referrerPolicy="no-referrer"
           />
         </div>
         <h1 className="text-2xl font-bold text-[#111B21] mb-2">App Locked</h1>
@@ -1115,9 +1113,12 @@ return (
                     <div className="w-64 h-64 bg-gray-200 rounded-full mb-8 flex items-center justify-center opacity-70 shadow-inner overflow-hidden border-4 border-white">
                       <img 
                         src={resolveLogo(appSettings?.appLogoUrl)} 
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = EMBEDDED_LOGO_DATA_URI;
+                        }}
                         className="w-full h-full object-cover"
                         alt="Ulfah Chat Logo"
-                        referrerPolicy="no-referrer"
                       />
                     </div>
                     <h2 className="text-3xl font-light text-[#41525d] mb-4">Ulfah Chat Web</h2>
@@ -1233,6 +1234,9 @@ return (
           </Suspense>
         )}
       </AnimatePresence>
+
+      {/* PWA Web Push Notification Prompt Banner */}
+      <PushPrompt userId={user?.uid} />
     </div>
   );
 }

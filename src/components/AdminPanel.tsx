@@ -16,7 +16,8 @@ import {
   ShieldAlert, MessageSquare, TrendingUp, Send, Database, Shield, RefreshCw,
   Key, Folder, LogOut, Image as ImageIcon, BookOpen, Sparkles, Newspaper, Tag, Globe
 } from 'lucide-react';
-import { DEFAULT_BLOGS } from './LandingPage';
+import { DEFAULT_BLOGS } from '../types/blogs';
+import { EMBEDDED_LOGO_DATA_URI } from '../utils/logoData';
 import { formatChatDate, cn, getTime, toSafeDate } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { handleFirestoreError, OperationType } from '../utils/errorHandlers';
@@ -29,7 +30,9 @@ console.log("Categories in AdminPanel:", CATEGORIES);
 import 'prismjs/themes/prism-tomorrow.css';
 import * as XLSX from 'xlsx';
 
-type AdminTab = 'users' | 'announcements' | 'settings' | 'logs' | 'fraud' | 'support' | 'analytics' | 'build' | 'logo' | 'books' | 'blogs' | 'userActivity';
+import PushPage from '../admin/PushPage';
+
+type AdminTab = 'users' | 'announcements' | 'logs' | 'support' | 'analytics' | 'logo' | 'books' | 'userActivity' | 'push';
 
 interface SupportTicket {
   id?: string;
@@ -543,7 +546,7 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
     return () => unsubscribe();
   }, []);
 
-  const tabs: AdminTab[] = ['users', 'analytics', 'announcements', 'support', 'fraud', 'settings', 'logo', 'logs', 'build', 'books'];
+  const tabs: AdminTab[] = ['users', 'analytics', 'announcements', 'support', 'logo', 'push', 'logs', 'books'];
 
   const cycleTab = (direction: 'up' | 'down') => {
     const currentIndex = tabs.indexOf(activeTab);
@@ -789,13 +792,6 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
           <Activity size={20} />
         </button>
         <button 
-          onClick={() => setActiveTab('fraud')}
-          className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'fraud' ? "text-white border-l-2 border-red-500" : "text-[#858585] hover:text-white")}
-          title="Fraud Monitor"
-        >
-          <ShieldAlert size={20} />
-        </button>
-        <button 
           onClick={() => setActiveTab('support')}
           className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'support' ? "text-white border-l-2 border-emerald-500" : "text-[#858585] hover:text-white")}
           title="Live Support"
@@ -817,13 +813,6 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
           <Bell size={20} />
         </button>
         <button 
-          onClick={() => setActiveTab('settings')}
-          className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'settings' ? "text-white border-l-2 border-[#700122]" : "text-[#858585] hover:text-white")}
-          title="Global Settings"
-        >
-          <Settings size={20} />
-        </button>
-        <button 
           onClick={() => setActiveTab('logo')}
           className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'logo' ? "text-white border-l-2 border-[#700122]" : "text-[#858585] hover:text-white")}
           title="App Logo"
@@ -831,11 +820,11 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
           <ImageIcon size={20} />
         </button>
         <button 
-          onClick={() => setActiveTab('build')}
-          className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'build' ? "text-white border-l-2 border-purple-500" : "text-[#858585] hover:text-white")}
-          title="Build System"
+          onClick={() => setActiveTab('push')}
+          className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'push' ? "text-white border-l-2 border-[#00A884]" : "text-[#858585] hover:text-white")}
+          title="PWA Push Notifications"
         >
-          <Folder size={20} />
+          <Bell size={20} />
         </button>
         <button 
           onClick={() => setActiveTab('books')}
@@ -843,13 +832,6 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
           title="Book Management"
         >
           <BookOpen size={20} />
-        </button>
-        <button 
-          onClick={() => setActiveTab('blogs')}
-          className={cn("p-2 transition-colors flex flex-col items-center gap-1", activeTab === 'blogs' ? "text-white border-l-2 border-emerald-500" : "text-[#858585] hover:text-white")}
-          title="Blog Management"
-        >
-          <Newspaper size={20} />
         </button>
         <div className="mt-auto pb-4 flex flex-col gap-4">
           <button 
@@ -1787,211 +1769,6 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
               </motion.div>
             )}
 
-            {activeTab === 'settings' && (
-              <motion.div 
-                key="settings"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="max-w-2xl space-y-8 relative"
-              >
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Settings size={20} className="text-gray-400" />
-                    Global Configuration
-                  </h2>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                      className="p-2 bg-[#333333] text-white rounded-full hover:bg-[#444444] transition-all"
-                      title="Scroll to Top"
-                    >
-                      <Clock size={16} className="rotate-180" />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        const el = document.getElementById('bottom-settings');
-                        el?.scrollIntoView({ behavior: 'smooth' });
-                      }}
-                      className="p-2 bg-[#333333] text-white rounded-full hover:bg-[#444444] transition-all"
-                      title="Scroll to Bottom"
-                    >
-                      <Clock size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-6 bg-[#252526] p-8 rounded-2xl border border-[#333333] shadow-2xl">
-                  <div className="flex flex-col gap-4">
-                    <div className="pt-6">
-                      <h4 className="text-white font-medium mb-4">Push Notifications</h4>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-xs text-[#858585] block mb-2 uppercase tracking-widest font-bold">FCM VAPID Key</label>
-                          <input 
-                            type="text"
-                            value={appSettings?.vapidKey || ''}
-                            onChange={(e) => updateGlobalSetting('vapidKey', e.target.value)}
-                            placeholder="Enter your VAPID key from Firebase Console"
-                            className="w-full bg-[#111B21] border border-[#333333] focus:border-blue-500 rounded-xl py-3 px-4 text-white text-sm outline-none transition-all"
-                          />
-                          <p className="text-[10px] text-[#858585] mt-2 leading-relaxed">
-                            Required for push notifications. Get this from: <br />
-                            <span className="text-blue-400">Firebase Console &gt; Project Settings &gt; Cloud Messaging &gt; Web configuration</span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-white font-medium">Maintenance Mode</h4>
-                      <p className="text-xs text-[#858585]">Disable all app features for users</p>
-                    </div>
-                    <button 
-                      onClick={() => updateGlobalSetting('isMaintenanceMode', !appSettings?.isMaintenanceMode)}
-                      className={cn(
-                        "w-12 h-6 rounded-full transition-all relative",
-                        appSettings?.isMaintenanceMode ? "bg-red-600" : "bg-[#3c3c3c]"
-                      )}
-                    >
-                      <div className={cn(
-                        "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
-                        appSettings?.isMaintenanceMode ? "right-1" : "left-1"
-                      )}></div>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-white font-medium">Withdrawals Global Switch</h4>
-                      <p className="text-xs text-[#858585]">Enable or disable withdrawal requests</p>
-                    </div>
-                    <button 
-                      onClick={() => updateGlobalSetting('isWithdrawalsEnabled', !appSettings?.isWithdrawalsEnabled)}
-                      className={cn(
-                        "w-12 h-6 rounded-full transition-all relative",
-                        appSettings?.isWithdrawalsEnabled ? "bg-green-600" : "bg-[#3c3c3c]"
-                      )}
-                    >
-                      <div className={cn(
-                        "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
-                        appSettings?.isWithdrawalsEnabled ? "right-1" : "left-1"
-                      )}></div>
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <h4 className="text-white font-medium">Global Reward Multiplier</h4>
-                      <p className="text-xs text-[#858585]">Multiply all earnings (0.1x to 5.0x)</p>
-                      <input 
-                        type="range" 
-                        min="0.1" 
-                        max="5" 
-                        step="0.1"
-                        className="w-full h-1.5 bg-[#3c3c3c] rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        value={appSettings?.rewardMultiplier || 1}
-                        onChange={(e) => updateGlobalSetting('rewardMultiplier', parseFloat(e.target.value))}
-                      />
-                      <div className="flex justify-between text-[10px] text-[#858585] font-bold">
-                        <span>0.1x</span>
-                        <span className="text-blue-400">{appSettings?.rewardMultiplier || 1}x</span>
-                        <span>5.0x</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h4 className="text-white font-medium">Min Withdrawal (PKR)</h4>
-                      <p className="text-xs text-[#858585]">Minimum balance required to withdraw</p>
-                      <input 
-                        type="number" 
-                        className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-blue-500 rounded px-3 py-1.5 text-sm text-white outline-none"
-                        value={appSettings?.minWithdrawal || 500}
-                        onChange={(e) => updateGlobalSetting('minWithdrawal', parseInt(e.target.value))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-white font-medium">Ad Earning Rate (PKR)</h4>
-                    <p className="text-xs text-[#858585]">Amount earned per video ad watched</p>
-                    <input 
-                      type="number" 
-                      step="0.1"
-                      className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-blue-500 rounded px-3 py-1.5 text-sm text-white outline-none"
-                      value={appSettings?.adEarningRate || 1.5}
-                      onChange={(e) => updateGlobalSetting('adEarningRate', parseFloat(e.target.value))}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-white font-medium">Chat Reward Amount (PKR)</h4>
-                    <p className="text-xs text-[#858585]">Amount earned per message sent (10s cooldown)</p>
-                    <input 
-                      type="number" 
-                      step="0.01"
-                      className="w-full bg-[#1e1e1e] border border-[#333333] focus:border-blue-500 rounded px-3 py-1.5 text-sm text-white outline-none"
-                      value={appSettings?.chatRewardAmount || 0.1}
-                      onChange={(e) => updateGlobalSetting('chatRewardAmount', parseFloat(e.target.value))}
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <h4 className="text-white font-medium">System Ticker Messages</h4>
-                    <p className="text-xs text-[#858585]">Messages that scroll at the very top of the app</p>
-                    <div className="flex gap-2">
-                      <input 
-                        id="ticker-input"
-                        type="text" 
-                        placeholder="Add new ticker message..."
-                        className="flex-1 bg-[#1e1e1e] border border-[#333333] focus:border-blue-500 rounded px-3 py-1.5 text-sm text-white outline-none"
-                      />
-                      <button 
-                        onClick={() => {
-                          const input = document.getElementById('ticker-input') as HTMLInputElement;
-                          if (input.value) {
-                            const newMessages = [...(appSettings?.tickerMessages || []), input.value];
-                            updateGlobalSetting('tickerMessages', newMessages);
-                            input.value = '';
-                          }
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-xs font-bold"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {(appSettings?.tickerMessages || []).map((msg, i) => (
-                        <div key={i} className="flex justify-between items-center bg-[#1e1e1e] p-2 rounded border border-[#333333] text-xs">
-                          <span>{msg}</span>
-                          <button 
-                            onClick={() => {
-                              const newMessages = appSettings?.tickerMessages.filter((_, index) => index !== i);
-                              updateGlobalSetting('tickerMessages', newMessages);
-                            }}
-                            className="text-red-500 hover:text-red-400"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ))}
-                
-                  </div>
-
-                  <div id="bottom-settings" className="pt-4 border-t border-[#333333]">
-                    <p className="text-[10px] text-[#858585] text-center italic">
-                      Admin Panel for Alpha Chat. Standard edition.
-                    </p>
-                  </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
             {activeTab === 'logo' && (
               <motion.div 
                 key="logo"
@@ -2016,12 +1793,15 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                        <img 
                         src={
                           (!appSettings?.appLogoUrl || appSettings.appLogoUrl.includes('mosque.png') || appSettings.appLogoUrl.includes('icons8.com') || appSettings.appLogoUrl.includes('encrypted-tbn0.gstatic.com'))
-                            ? '/logo.png'
+                            ? EMBEDDED_LOGO_DATA_URI
                             : appSettings.appLogoUrl
                         } 
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = EMBEDDED_LOGO_DATA_URI;
+                        }}
                         className="w-full h-full object-cover"
                         alt="Current Logo"
-                        referrerPolicy="no-referrer"
                       />
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
@@ -2076,6 +1856,17 @@ export default function AdminPanel({ onExit }: AdminPanelProps) {
                     Once you upload a new logo, our <strong>Real-time State Sync</strong> system automatically pushes the change to all connected users. No page refresh is required for the changes to take effect in the header and home screen empty states.
                   </p>
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'push' && (
+              <motion.div
+                key="push"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <PushPage />
               </motion.div>
             )}
 

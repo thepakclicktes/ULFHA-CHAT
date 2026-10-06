@@ -1,0 +1,23 @@
+{
+  "short_name": "UlfahChat",
+  "name": "UlfahChat - Islamic Messaging & Earning",
+  "description": "Secure Islamic Messaging, Book Reader, Prayer Times & Community Earning PWA",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#111B21",
+  "theme_color": "#00A884",
+  "display": "standalone",
+  "orientation": "portrait"
+}

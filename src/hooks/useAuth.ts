@@ -15,6 +15,7 @@ export function useAuth() {
       return null;
     }
   });
+
   const [profile, setProfile] = useState<UserProfile | null>(() => {
     try {
       const saved = localStorage.getItem('ulfha_user_profile');
@@ -23,6 +24,7 @@ export function useAuth() {
       return null;
     }
   });
+
   const [loading, setLoading] = useState(() => {
     try {
       const savedCred = localStorage.getItem('ulfha_user_credential');
