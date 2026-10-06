@@ -1,0 +1,23 @@
+[
+  {
+    "id": "sub_1791294132834_3hpv9",
+    "endpoint": "https://fcm.googleapis.com/fcm/send/fpnTG2T-3F4:APA91bFFtCmhg31mbmAsXBms8CiIStuV8i7XpQEXjbGmOrCZusdI80aejCww-ofv9e0WjLH3a41gddrzZDfbWJxtmQkrhKfkrRdl5Ef-9SEj67dYV7IBq1RVPkMWpPWtgPA6rHSqTSGA",
+    "keys": {
+      "p256dh": "BCp66Io1wQrtQPKWHvGqvL8sJL2mEoHtx_uxuNyCOTF7JQPUckEfvGET53WeL3Bgue0eXUBFHuFZry4LY-mb0js",
+      "auth": "DReZM-4xLIuGjrGTXswvew"
+    },
+    "subscription": {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fpnTG2T-3F4:APA91bFFtCmhg31mbmAsXBms8CiIStuV8i7XpQEXjbGmOrCZusdI80aejCww-ofv9e0WjLH3a41gddrzZDfbWJxtmQkrhKfkrRdl5Ef-9SEj67dYV7IBq1RVPkMWpPWtgPA6rHSqTSGA",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BCp66Io1wQrtQPKWHvGqvL8sJL2mEoHtx_uxuNyCOTF7JQPUckEfvGET53WeL3Bgue0eXUBFHuFZry4LY-mb0js",
+        "auth": "DReZM-4xLIuGjrGTXswvew"
+      }
+    },
+    "userId": "lF3Fm2x9HiVb9Azuyu9FEyFqaR02",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "platform": "Desktop",
+    "createdAt": "2026-10-06T13:42:12.834Z",
+    "lastSeen": "2026-10-06T13:42:12.834Z"
+  }
+]

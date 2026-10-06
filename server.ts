@@ -140,9 +140,320 @@ async function startServer() {
     vapidPrivate
   );
 
+  // In-memory push storage with file persistence backup
+  const PUSH_SUBS_FILE = path.join(process.cwd(), 'push-subscriptions.json');
+  const PUSH_CAMPAIGNS_FILE = path.join(process.cwd(), 'push-campaigns.json');
+  const PUSH_SETTINGS_FILE = path.join(process.cwd(), 'push-settings.json');
+
+  let pushSubscriptions: any[] = [];
+  let pushCampaigns: any[] = [];
+  let pushSettings = {
+    pushSystemEnabled: true,
+    iconUrl: '/logo.png',
+    contactEmail: 'team@ulfahchat.com',
+    bannerEnabled: true,
+    bannerDelaySeconds: 8,
+    bannerReaskDays: 7,
+    bannerTitle: 'Notifications ON karein 🔔',
+    bannerText: 'Get instant chat alerts, prayer reminders and community updates right on your phone',
+    welcomePushEnabled: true,
+    welcomeTitle: '🔔 Notifications ON!',
+    welcomeText: 'You will now get instant updates and chat notifications right here.',
+    userChatPushEnabled: true,
+    customMessageTemplate: '{senderName}: {messageText}'
+  };
+
+  if (fs.existsSync(PUSH_SUBS_FILE)) {
+    try { pushSubscriptions = JSON.parse(fs.readFileSync(PUSH_SUBS_FILE, 'utf-8')); } catch (e) {}
+  }
+  if (fs.existsSync(PUSH_CAMPAIGNS_FILE)) {
+    try { pushCampaigns = JSON.parse(fs.readFileSync(PUSH_CAMPAIGNS_FILE, 'utf-8')); } catch (e) {}
+  }
+  if (fs.existsSync(PUSH_SETTINGS_FILE)) {
+    try { pushSettings = { ...pushSettings, ...JSON.parse(fs.readFileSync(PUSH_SETTINGS_FILE, 'utf-8')) }; } catch (e) {}
+  }
+
+  const savePushSubs = () => {
+    try { fs.writeFileSync(PUSH_SUBS_FILE, JSON.stringify(pushSubscriptions, null, 2)); } catch (e) {}
+  };
+  const savePushCampaigns = () => {
+    try { fs.writeFileSync(PUSH_CAMPAIGNS_FILE, JSON.stringify(pushCampaigns, null, 2)); } catch (e) {}
+  };
+  const savePushSettings = () => {
+    try { fs.writeFileSync(PUSH_SETTINGS_FILE, JSON.stringify(pushSettings, null, 2)); } catch (e) {}
+  };
+
+  // Push Public Settings endpoint
+  app.get(["/api/push/settings", "/api/admin/push/settings"], (req, res) => {
+    res.json({ ...pushSettings, publicKey: vapidPublic });
+  });
+
+  app.post("/api/admin/push/settings", (req, res) => {
+    try {
+      pushSettings = { ...pushSettings, ...req.body };
+      savePushSettings();
+      res.json({ success: true, settings: pushSettings });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/admin/push/devices", (req, res) => {
+    res.json({ devices: pushSubscriptions });
+  });
+
+  // User-to-User Chat Auto Push Notification Trigger Endpoint
+  app.post("/api/push/notify-user", async (req, res) => {
+    try {
+      const { senderId, senderName, receiverId, text } = req.body;
+      if (!pushSettings.pushSystemEnabled || !pushSettings.userChatPushEnabled) {
+        return res.json({ success: false, reason: "User chat push notifications disabled in settings" });
+      }
+
+      if (!receiverId || !text) {
+        return res.status(400).json({ error: "Receiver ID and message text are required" });
+      }
+
+      // Find recipient subscriptions in pushSubscriptions or Firestore
+      let userSubs = pushSubscriptions.filter(s => s.userId === receiverId);
+
+      if (userSubs.length === 0 && adminDb) {
+        try {
+          const uDoc = await adminDb.collection('users').doc(receiverId).get();
+          if (uDoc.exists) {
+            const rawSubs: string[] = uDoc.data()?.webPushSubscriptions || [];
+            userSubs = rawSubs.map(s => {
+              try { return { subscription: JSON.parse(s) }; } catch (e) { return null; }
+            }).filter(Boolean);
+          }
+        } catch (e) {}
+      }
+
+      if (userSubs.length === 0) {
+        return res.json({ success: false, reason: "No push devices registered for recipient" });
+      }
+
+      const displayTitle = senderName || "New Message";
+      const displayBody = text.length > 80 ? text.substring(0, 80) + '...' : text;
+
+      const payload = JSON.stringify({
+        title: displayTitle,
+        body: displayBody,
+        icon: pushSettings.iconUrl || '/logo.png',
+        badge: '/logo.png',
+        tag: `chat-${senderId || 'user'}`,
+        url: `/chat`
+      });
+
+      let sentCount = 0;
+      for (const target of userSubs) {
+        try {
+          const subObj = target.subscription || { endpoint: target.endpoint, keys: target.keys };
+          await webPush.sendNotification(subObj, payload);
+          sentCount++;
+        } catch (e) {}
+      }
+
+      res.json({ success: true, sentCount });
+    } catch (err: any) {
+      console.error('Notify user error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // API endpoints
-  app.get("/api/push-public-key", (req, res) => {
-    res.json({ publicKey: vapidPublic });
+  app.get(["/api/push/public-key", "/api/push-public-key"], (req, res) => {
+    res.json({ key: vapidPublic, publicKey: vapidPublic });
+  });
+
+  app.post("/api/push/subscribe", async (req, res) => {
+    try {
+      const { subscription, ua, userId } = req.body;
+      if (!subscription || !subscription.endpoint) {
+        return res.status(400).json({ error: "Invalid subscription object" });
+      }
+
+      const endpoint = subscription.endpoint;
+      const platform = (ua || '').toLowerCase().includes('android') ? 'Android'
+        : (ua || '').toLowerCase().includes('iphone') || (ua || '').toLowerCase().includes('ipad') ? 'iOS'
+        : 'Desktop';
+
+      const existingIndex = pushSubscriptions.findIndex(s => s.endpoint === endpoint);
+      const subRecord = {
+        id: existingIndex >= 0 ? pushSubscriptions[existingIndex].id : `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        endpoint,
+        keys: subscription.keys || {},
+        subscription,
+        userId: userId || null,
+        ua: ua || '',
+        platform,
+        createdAt: existingIndex >= 0 ? pushSubscriptions[existingIndex].createdAt : new Date().toISOString(),
+        lastSeen: new Date().toISOString()
+      };
+
+      if (existingIndex >= 0) {
+        pushSubscriptions[existingIndex] = subRecord;
+      } else {
+        pushSubscriptions.push(subRecord);
+      }
+      savePushSubs();
+
+      // Save to user document if userId provided
+      if (userId && adminDb) {
+        try {
+          const userRef = adminDb.collection('users').doc(userId);
+          const userDoc = await userRef.get();
+          if (userDoc.exists) {
+            const subs: string[] = userDoc.data()?.webPushSubscriptions || [];
+            const jsonStr = JSON.stringify(subscription);
+            if (!subs.includes(jsonStr)) {
+              subs.push(jsonStr);
+              await userRef.update({ webPushSubscriptions: subs });
+            }
+          }
+        } catch (e) {}
+      }
+
+      res.json({ success: true, subscriberId: subRecord.id });
+    } catch (err: any) {
+      console.error('Push subscribe error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/push/unsubscribe", (req, res) => {
+    try {
+      const { endpoint } = req.body;
+      if (endpoint) {
+        pushSubscriptions = pushSubscriptions.filter(s => s.endpoint !== endpoint);
+        savePushSubs();
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/admin/generate-vapid", (req, res) => {
+    try {
+      const keys = webPush.generateVAPIDKeys();
+      vapidPublic = keys.publicKey;
+      vapidPrivate = keys.privateKey;
+      fs.writeFileSync(VAPID_KEYS_FILE, JSON.stringify(keys, null, 2), 'utf-8');
+      webPush.setVapidDetails('mailto:support@ulfahchat.example.com', vapidPublic, vapidPrivate);
+      res.json({ success: true, publicKey: vapidPublic });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/admin/push/stats", (req, res) => {
+    try {
+      const totalSubscribers = pushSubscriptions.length;
+      const todayStr = new Date().toISOString().substring(0, 10);
+      const todayNew = pushSubscriptions.filter(s => (s.createdAt || '').startsWith(todayStr)).length;
+      const androidCount = pushSubscriptions.filter(s => s.platform === 'Android').length;
+      const iosCount = pushSubscriptions.filter(s => s.platform === 'iOS').length;
+      const desktopCount = pushSubscriptions.filter(s => s.platform === 'Desktop').length;
+
+      res.json({
+        totalSubscribers,
+        todayNew,
+        androidCount,
+        iosCount,
+        desktopCount,
+        publicKey: vapidPublic
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/admin/push/history", (req, res) => {
+    res.json({ history: pushCampaigns });
+  });
+
+  app.post("/api/admin/push/send", async (req, res) => {
+    try {
+      const { title, body, url, image, icon, audience, userId } = req.body;
+
+      if (!title || !body) {
+        return res.status(400).json({ error: "Title and body are required" });
+      }
+
+      let targets = [...pushSubscriptions];
+
+      if (audience === 'logged_in') {
+        targets = targets.filter(s => !!s.userId);
+      } else if (audience === 'guests') {
+        targets = targets.filter(s => !s.userId);
+      } else if (audience === 'single' && userId) {
+        targets = targets.filter(s => s.userId === userId || s.endpoint.includes(userId) || s.id === userId);
+      }
+
+      if (targets.length === 0) {
+        targets = [...pushSubscriptions];
+      }
+
+      const payload = JSON.stringify({
+        title,
+        body,
+        icon: icon || '/logo.png',
+        badge: '/logo.png',
+        image: image || undefined,
+        tag: 'ulfahchat-broadcast',
+        requireInteraction: false,
+        url: url || '/'
+      });
+
+      let sentCount = 0;
+      let failedCount = 0;
+      const deadEndpoints: string[] = [];
+
+      for (const target of targets) {
+        try {
+          const subObj = target.subscription || { endpoint: target.endpoint, keys: target.keys };
+          await webPush.sendNotification(subObj, payload);
+          sentCount++;
+        } catch (pushErr: any) {
+          failedCount++;
+          if (pushErr.statusCode === 404 || pushErr.statusCode === 410) {
+            deadEndpoints.push(target.endpoint);
+          }
+        }
+      }
+
+      if (deadEndpoints.length > 0) {
+        pushSubscriptions = pushSubscriptions.filter(s => !deadEndpoints.includes(s.endpoint));
+        savePushSubs();
+      }
+
+      const campaignRecord = {
+        id: `camp_${Date.now()}`,
+        title,
+        body,
+        url: url || '/',
+        image: image || null,
+        audience: audience || 'all',
+        sentCount,
+        failedCount,
+        createdAt: new Date().toISOString()
+      };
+
+      pushCampaigns.unshift(campaignRecord);
+      if (pushCampaigns.length > 100) pushCampaigns = pushCampaigns.slice(0, 100);
+      savePushCampaigns();
+
+      res.json({
+        success: true,
+        sentCount,
+        failedCount,
+        cleanedCount: deadEndpoints.length
+      });
+    } catch (err: any) {
+      console.error('Push broadcast error:', err);
+      res.status(500).json({ error: err.message });
+    }
   });
 
   app.post("/api/bridge/send", async (req, res) => {
@@ -856,6 +1167,53 @@ async function startServer() {
       console.error("PDF Proxy error:", err);
       res.status(500).json({ error: err.message || "Failed to proxy PDF" });
     }
+  });
+
+  // APK & Native Android Download Endpoints
+  app.get(["/api/download-apk", "/UlfahChat.apk"], (req, res) => {
+    const apkPublicPath = path.join(process.cwd(), 'public', 'UlfahChat.apk');
+    const apkBuildPath = path.join(process.cwd(), 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
+    
+    let targetPath = null;
+    if (fs.existsSync(apkPublicPath)) {
+      targetPath = apkPublicPath;
+    } else if (fs.existsSync(apkBuildPath)) {
+      targetPath = apkBuildPath;
+    }
+
+    if (targetPath) {
+      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+      res.setHeader('Content-Disposition', 'attachment; filename="UlfahChat.apk"');
+      return res.sendFile(targetPath);
+    }
+
+    return res.status(404).json({
+      error: "APK is currently building or not yet generated. Please try again shortly or use Web PWA."
+    });
+  });
+
+  app.get("/api/download-android-project", (req, res) => {
+    const zipPath = path.join(process.cwd(), 'public', 'UlfahChat-Android-Project.zip');
+    if (fs.existsSync(zipPath)) {
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="UlfahChat-Android-Project.zip"');
+      return res.sendFile(zipPath);
+    }
+    return res.status(404).json({ error: "Android project archive not found." });
+  });
+
+  app.get("/api/apk-status", (req, res) => {
+    const apkPublicPath = path.join(process.cwd(), 'public', 'UlfahChat.apk');
+    const apkBuildPath = path.join(process.cwd(), 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
+    const exists = fs.existsSync(apkPublicPath) || fs.existsSync(apkBuildPath);
+    const size = exists ? (fs.existsSync(apkPublicPath) ? fs.statSync(apkPublicPath).size : fs.statSync(apkBuildPath).size) : 0;
+    res.json({
+      available: exists,
+      url: '/api/download-apk',
+      filename: 'UlfahChat.apk',
+      sizeBytes: size,
+      sizeFormatted: size > 0 ? `${(size / (1024 * 1024)).toFixed(1)} MB` : '0 MB'
+    });
   });
 
   // Vite development integration or static files serving
