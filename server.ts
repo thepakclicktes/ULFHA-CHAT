@@ -6,7 +6,6 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import webPush from "web-push";
 import fs from "fs";
 import { Readable } from "stream";
@@ -56,10 +55,14 @@ try {
   console.error('Firebase Admin initialization failed:', adminInitErr);
 }
 
-async function startServer() {
+/**
+ * Builds the Express app with every /api route registered.
+ * Used by both the local server (server.ts, bottom of file) and the
+ * Vercel serverless entry point (api/index.ts).
+ */
+export async function buildApp(): Promise<express.Express> {
   console.log("Starting server...");
   const app = express();
-  const PORT = 3000;
 
   // CORS middleware to allow cross-origin requests from Vercel/custom domains
   app.use((req, res, next) => {
@@ -130,8 +133,13 @@ async function startServer() {
     const keys = webPush.generateVAPIDKeys();
     vapidPublic = keys.publicKey;
     vapidPrivate = keys.privateKey;
-    fs.writeFileSync(VAPID_KEYS_FILE, JSON.stringify(keys, null, 2), 'utf-8');
-    console.log('Generated and stored new VAPID keys in', VAPID_KEYS_FILE);
+    try {
+      fs.writeFileSync(VAPID_KEYS_FILE, JSON.stringify(keys, null, 2), 'utf-8');
+      console.log('Generated and stored new VAPID keys in', VAPID_KEYS_FILE);
+    } catch (e) {
+      // Read-only filesystem (e.g. Vercel): keep the generated keys in memory only.
+      console.warn('Could not persist VAPID keys to disk (read-only fs?). Set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY env vars for stable keys.', (e as any)?.message || e);
+    }
   }
 
   webPush.setVapidDetails(
@@ -1216,6 +1224,18 @@ async function startServer() {
     });
   });
 
+  // Expose the client-SDK Firestore instance for the standalone server's
+  // background maintenance loop (api/index.ts does not use it).
+  app.locals.db = db;
+
+  return app;
+}
+
+async function startServer() {
+  const PORT = 3000;
+  const app = await buildApp();
+  const db = app.locals.db;
+
   // Vite development integration or static files serving
   if (process.env.NODE_ENV === "production") {
     const distPath = path.join(process.cwd(), 'dist');
@@ -1224,6 +1244,10 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   } else {
+    // Indirect specifier so bundlers (Vercel/@vercel/nft) don't trace the
+    // dev-only "vite" package into the serverless function bundle.
+    const viteModuleName = "vite";
+    const { createServer: createViteServer } = await import(viteModuleName);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -1283,4 +1307,9 @@ async function startServer() {
   });
 }
 
-startServer();
+// On Vercel the app is imported by api/index.ts and invoked per-request,
+// so the HTTP listener must only run when this file is the actual entry point.
+const isEntryPoint = /server\.(ts|js|cjs|mjs)$/.test(process.argv[1] || '');
+if (!process.env.VERCEL && isEntryPoint) {
+  startServer();
+}
